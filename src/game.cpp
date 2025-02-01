@@ -8,16 +8,18 @@ void Game::start() {
         display_board();
         
         // this is important for the Computer to know the current board state
-        // so it can make the best move.
-        std::vector<Move> legal_moves = MoveGenerator::generate_moves(board);
-        if (legal_moves.empty()) {
-            std::cout << "Game over\n";
-            break;
-        }
+        // and the avaiable moves so it can make the best one.
+        // std::vector<Move> legal_moves = MoveGenerator::generate_moves(board);
+        // if (legal_moves.empty()) {
+        //     std::cout << "Game over\n";
+        //     break;
+        // }
 
+        // Get user input in algebraic notation (e.g. e2e4)
         std::string input;
         std::cin >> input;
         Move move = parse_input(input);
+
 
         if (board.is_move_legal(move.from, move.to)) {
             board_history.push(board); // Save current board state before making a move
