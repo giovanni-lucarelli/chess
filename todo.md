@@ -1,3 +1,5 @@
+- [ ] add unit test for every method: important check the bitboard representation for each piece type
+
 ## `chessboard.cpp`
 
 - [ ] add all the rules in is_legal_move()
