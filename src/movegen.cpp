@@ -1,5 +1,6 @@
 #include "movegen.hpp"
-#include "types.hpp" 
+#include "types.hpp"
+#include <iostream>
 
 std::vector<Move> MoveGenerator::generate_moves(const ChessBoard& board) {
     std::vector<Move> moves;
@@ -9,34 +10,57 @@ std::vector<Move> MoveGenerator::generate_moves(const ChessBoard& board) {
 }
 
 void MoveGenerator::generate_pawn_moves(const ChessBoard& board, std::vector<Move>& moves) {
-    // Example implementation for generating pawn moves
-    for (Square from = A2; from <= H7; ++from) {
-        if (board.get_piece_on_square(from).second == PAWN) {
-            Square to = static_cast<Square>(from + 8); // Move forward
-            if (!board.is_occupied(to)) {
-                moves.push_back(Move(from, to, PAWN, false, false, false, false, true));
+    Color side_to_move = board.get_side_to_move();
+    int direction = (side_to_move == WHITE) ? 8 : -8;
+    int start_rank = (side_to_move == WHITE) ? 1 : 6;
+    int promotion_rank = (side_to_move == WHITE) ? 6 : 1;
+    int en_passant_rank = (side_to_move == WHITE) ? 4 : 3;
+
+    U64 pawns = board.get_pieces(side_to_move, PAWN);
+
+    while (pawns) {
+        Square from = static_cast<Square>(__builtin_ctzll(pawns));
+        U64 from_bit = 1ULL << from;
+
+        // Remove the pawn from the bitboard
+        pawns &= ~from_bit;
+
+        // Add pawn single moves
+        Square to = static_cast<Square>(from + direction); // Move forward
+        if (!board.is_occupied(to)) {
+            moves.push_back(Move(from, to));
+            std::cout << "Single move: " << square_to_string(from) << " to " << square_to_string(to) << std::endl;
+        }
+
+        // Add pawn captures
+        // Capture left
+        if (from % 8 != 0) { // Ensure not on the 'a' file
+            to = static_cast<Square>(from + direction - 1);
+            // std::cout << "Checking capture left from " << square_to_string(from) << " to " << square_to_string(to) << std::endl;
+            if (board.is_occupied(to) && board.get_piece_on_square(to).first != side_to_move) {
+                moves.push_back(Move(from, to));
+                std::cout << "Capture left: " << square_to_string(from) << " to " << square_to_string(to) << std::endl;
             }
-            // Add other pawn move logic here (captures, en passant, promotions, etc.)
+        }
+        // Capture right
+        if (from % 8 != 7) { // Ensure not on the 'h' file
+            to = static_cast<Square>(from + direction + 1);
+            // std::cout << "Checking capture right from " << square_to_string(from) << " to " << square_to_string(to) << std::endl;
+            if (board.is_occupied(to) && board.get_piece_on_square(to).first != side_to_move) {
+                moves.push_back(Move(from, to));
+                std::cout << "Capture right: " << square_to_string(from) << " to " << square_to_string(to) << std::endl;
+            }
+        }
+
+        // Add pawn double moves
+        if ((side_to_move == WHITE && from / 8 == 1) || (side_to_move == BLACK && from / 8 == 6)) {
+            to = static_cast<Square>(from + 2 * direction); // Move forward two squares
+            if (!board.is_occupied(to) && !board.is_occupied(static_cast<Square>(from + direction))) {
+                moves.push_back(Move(from, to));
+                std::cout << "Double move: " << square_to_string(from) << " to " << square_to_string(to) << std::endl;
+            }
         }
     }
 }
 
-// void MoveGenerator::generate_knight_moves(const ChessBoard& board, std::vector<Move>& moves) {
-//     // Implement knight move generation logic here
-// }
 
-// void MoveGenerator::generate_bishop_moves(const ChessBoard& board, std::vector<Move>& moves) {
-//     // Implement bishop move generation logic here
-// }
-
-// void MoveGenerator::generate_rook_moves(const ChessBoard& board, std::vector<Move>& moves) {
-//     // Implement rook move generation logic here
-// }
-
-// void MoveGenerator::generate_queen_moves(const ChessBoard& board, std::vector<Move>& moves) {
-//     // Implement queen move generation logic here
-// }
-
-// void MoveGenerator::generate_king_moves(const ChessBoard& board, std::vector<Move>& moves) {
-//     // Implement king move generation logic here
-// }

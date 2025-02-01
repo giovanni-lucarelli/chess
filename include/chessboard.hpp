@@ -1,4 +1,3 @@
-// chessboard.hpp
 #pragma once
 #include "types.hpp"
 #include "move.hpp"
@@ -26,19 +25,22 @@ public:
     // Initialize classic starting position
     void reset();
 
-    // Get all pieces of a type/color
-    U64 get_pieces(Color color, Piece piece) const;
+    
 
     // Check if a square is occupied by any piece
     bool is_occupied(Square sq) const;
 
-    // return the piece and the color on a square
-    std::pair<Color, Piece> get_piece_on_square(Square sq) const;
 
     // Print board (for debugging)
     void print() const;
 
     // Getters
+
+    // Get all pieces of a type/color
+    U64 get_pieces(Color color, Piece piece) const;
+
+    // return the piece and the color on a square
+    std::pair<Color, Piece> get_piece_on_square(Square sq) const;
     Color get_side_to_move() const { return side_to_move; }
     Square get_en_passant_square() const { return en_passant_square; }
     bool get_castling_rights(Color color, bool kingside) const { return castling_rights[color][kingside]; }
@@ -54,29 +56,12 @@ public:
     // add a piece
     void add_piece(Color color, Piece piece, Square sq);
 
-    // check legality of a move
-    bool is_move_legal(Square from, Square to) const;
-
-    // make a move
+    // Move a piece
     void move_piece(Square from, Square to);
 
-    std::vector<Move> generate_legal_moves() const;
+    // Check if a move is legal
+    bool is_move_legal(Square from, Square to) const;
+
+    // std::vector<Move> generate_legal_moves() const;
 
 };
-
-// Utility function to conver a number to each color or piece
-inline std::string color_to_string(Color c) {
-  return c == WHITE ? "WHITE" : "BLACK";
-}
-
-inline std::string piece_to_string(Piece p) {
-  switch (p) {
-    case PAWN: return "PAWN";
-    case KNIGHT: return "KNIGHT";
-    case BISHOP: return "BISHOP";
-    case ROOK: return "ROOK";
-    case QUEEN: return "QUEEN";
-    case KING: return "KING";
-    default: return "INVALID";
-  }
-}

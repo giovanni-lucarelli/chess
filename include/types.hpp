@@ -28,6 +28,8 @@ inline Square& operator++(Square& sq) {
     return sq;
 }
 
+// Utility function to convert a position to a number
+
 // convert number to position
 inline std::string square_to_string(Square sq) {
   std::string files = "ABCDEFGH";
@@ -35,4 +37,18 @@ inline std::string square_to_string(Square sq) {
   return std::string(1, files[sq % 8]) + std::string(1, ranks[sq / 8]);
 }
 
+inline std::string color_to_string(Color c) {
+  return c == WHITE ? "WHITE" : "BLACK";
+}
 
+inline std::string piece_to_string(Piece p) {
+  switch (p) {
+    case PAWN: return "PAWN";
+    case KNIGHT: return "KNIGHT";
+    case BISHOP: return "BISHOP";
+    case ROOK: return "ROOK";
+    case QUEEN: return "QUEEN";
+    case KING: return "KING";
+    default: return "INVALID";
+  }
+}

@@ -1,21 +1,16 @@
 #include "game.hpp"
 #include <iostream>
 
-#include <stack>
-
 void Game::start() {
-    std::stack<ChessBoard> board_history; // Stack to store board states
     board.reset();
     
     while (true) {
         display_board();
         std::vector<Move> legal_moves = MoveGenerator::generate_moves(board);
-        
-        std::cout << "Legal moves:\n";
-        for (const Move& move : legal_moves) {
-            std::cout << move.to_string() << "\n";
+        if (legal_moves.empty()) {
+            std::cout << "Game over\n";
+            break;
         }
-
         std::string input;
         std::cin >> input;
         Move move = parse_input(input);
@@ -34,7 +29,12 @@ void Game::display_board() const {
 }
 
 Move Game::parse_input(const std::string& input) const {
-    // Implement input parsing logic here
-    // For now, return a dummy move with all required arguments
-    return Move(A2, A3, PAWN, false, false, false, true, false, false, false, false, false, false, false);
+    if (input.size() != 4) {
+        return Move(Square::A1, Square::A1); // Invalid move
+    }
+
+    Square from = static_cast<Square>(8 * (input[1] - '1') + (input[0] - 'a'));
+    Square to = static_cast<Square>(8 * (input[3] - '1') + (input[2] - 'a'));
+
+    return Move(from, to);
 }

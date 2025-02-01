@@ -95,93 +95,6 @@ std::pair<Color, Piece> ChessBoard::get_piece_on_square(Square sq) const {
     return {NO_COLOR, NO_PIECE};
 }
 
-// // check legality of a move
-// bool ChessBoard::is_move_legal(Square from, Square to) const {
-//     // check if from and to are in the proper range
-//     if (from < A1 || from > H8 || to < A1 || to > H8) {
-//         return false;
-//     }
-
-//     // Check if the move is valid
-//     auto [color, piece] = get_piece_on_square(from);
-//     if (color != side_to_move) {
-//         return false;
-//     }
-
-//     // Check if the destination square is occupied by a friendly piece
-//     if (is_occupied(to)) {
-//         auto [dest_color, dest_piece] = get_piece_on_square(to);
-//         if (dest_color == color) {
-//             return false;
-//         }
-//     }
-
-//     // Check if the move is valid for the piece
-//     switch (piece) {
-//         case PAWN:
-//             // Check if the destination square is occupied by an enemy piece
-//             if (is_occupied(to)) {
-//                 auto [dest_color, dest_piece] = get_piece_on_square(to);
-//                 if (dest_color != color) {
-//                     return true;
-//                 }
-//             }
-//             break;
-//         case KNIGHT:
-//             // only L-shaped moves
-//             if (abs(from - to) != 6 && abs(from - to) != 10 && abs(from - to) != 15 && abs(from - to) != 17) {
-//                 return false;
-//             }
-//             break;
-//         case BISHOP:
-//             // only diagonal moves
-//             if (abs(from - to) % 9 != 0 && abs(from - to) % 7 != 0) {
-//                 return false;
-//             }
-//             break;
-//         case ROOK:
-//             // only straight moves  
-//             if (from / 8 != to / 8 && from % 8 != to % 8) {
-//                 return false;
-//             }
-//             break;
-//         case QUEEN:
-//             // only diagonal or straight moves
-//             if (abs(from - to) % 9 != 0 && abs(from - to) % 7 != 0 && (from / 8 != to / 8) && (from % 8 != to % 8)) {
-//                 return false;
-//             }
-//             break;
-//         case KING:
-//             // only one square move
-//             if (abs(from - to) != 1 && abs(from - to) != 8 && abs(from - to) != 9 && abs(from - to) != 7) {
-//                 return false;
-//             }
-//             // TODO: Check for castling
-//             // update castling status
-//             // check three rules for castling
-//             break;
-//     }
-
-//     return true;
-// }
-
-// move a piece
-void ChessBoard::move_piece(Square from, Square to) {
-    // Check if the move is legal
-
-    if (!is_move_legal(from, to)) {
-        throw std::runtime_error("Illegal move");
-    }
-
-    // Move the piece
-    auto [color, piece] = get_piece_on_square(from);
-    remove_piece(from);
-    add_piece(color, piece, to);
-
-    // Update game state
-    side_to_move = static_cast<Color>(1 - color);
-}
-
 // remove a piece
 void ChessBoard::remove_piece(Square sq) {
     for (int color = 0; color < 2; color++) {
@@ -199,7 +112,92 @@ void ChessBoard::add_piece(Color color, Piece piece, Square sq) {
     Bitboard::set_bit(pieces[color][piece], sq);
 }
 
+// move a piece
+void ChessBoard::move_piece(Square from, Square to) {
+    // capture
+    if (is_occupied(to)) {
+        remove_piece(to);
+    }
+    
+    std::pair<Color, Piece> piece = get_piece_on_square(from);
+    remove_piece(from);
+    add_piece(piece.first, piece.second, to);
+    side_to_move = (side_to_move == WHITE) ? BLACK : WHITE;
 
-std::vector<Move> ChessBoard::generate_legal_moves() const {
-    return MoveGenerator::generate_moves(*this);
+    
 }
+
+// Check if a move is legal
+bool ChessBoard::is_move_legal(Square from, Square to) const {
+    // chek if the turn is correct
+    if (get_piece_on_square(from).first != side_to_move) {
+        return false;
+    }
+
+    // Check if the from square is occupied
+    if (!is_occupied(from)) {
+        return false;
+    }
+
+    // Check if the to square is occupied by a friendly piece
+    std::pair<Color, Piece> from_piece = get_piece_on_square(from);
+    std::pair<Color, Piece> to_piece = get_piece_on_square(to);
+    if (to_piece.first == from_piece.first) {
+        return false;
+    }
+    
+    // Check if the move is valid for the piece
+    switch (from_piece.second) {
+        case PAWN:
+            // Check if the pawn is moving forward
+            if (from_piece.first == WHITE) {
+                if (to - from == 8) {
+                    return true;
+                }
+            } else {
+                if (from - to == 8) {
+                    return true;
+                }
+            }
+            // Check if the pawn is capturing
+            break;
+        case KNIGHT:
+            // Check if the knight is moving in an L-shape
+            if (std::abs(from - to) == 6 || std::abs(from - to) == 10 ||
+                std::abs(from - to) == 15 || std::abs(from - to) == 17) {
+                return true;
+            }
+            break;
+        case BISHOP:
+            // Check if the bishop is moving diagonally
+            if (std::abs(from - to) % 7 == 0 || std::abs(from - to) % 9 == 0) {
+                return true;
+            }
+            break;
+        case ROOK:
+            // Check if the rook is moving horizontally or vertically
+            if (from / 8 == to / 8 || from % 8 == to % 8) {
+                return true;
+            }
+            break;
+        case QUEEN:
+            // Check if the queen is moving diagonally, horizontally, or vertically
+            if (std::abs(from - to) % 7 == 0 || std::abs(from - to) % 9 == 0 ||
+                from / 8 == to / 8 || from % 8 == to % 8) {
+                return true;
+            }
+            break;
+        case KING:
+            // Check if the king is moving one square in any direction
+            if (std::abs(from - to) == 1 || std::abs(from - to) == 7 ||
+                std::abs(from - to) == 8 || std::abs(from - to) == 9) {
+                return true;
+            }
+            break;
+    }
+    return true;
+}
+
+// std::vector<Move> ChessBoard::generate_legal_moves() const {
+//     return MoveGenerator::generate_moves(*this);
+// }

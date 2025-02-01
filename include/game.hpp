@@ -2,10 +2,14 @@
 #include "chessboard.hpp"
 #include "movegen.hpp"
 #include <string>
+#include <stack>
+
 
 class Game {
 private:
     ChessBoard board;
+    std::stack<ChessBoard> board_history; // Stack to store board states
+
 
 public:
     void start();
