@@ -20,6 +20,9 @@ struct Move {
 
     // Constructor
     Move(Square from, Square to) : from(from), to(to) {
+        if (from == Square::NO_SQUARE || to == Square::NO_SQUARE) {
+            throw std::invalid_argument("Invalid move");
+        }
     }
     
     // to_string method

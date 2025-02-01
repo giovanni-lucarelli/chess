@@ -82,7 +82,6 @@ void ChessBoard::print() const {
     std::cout << "  a b c d e f g h\n\n";
 }
 
-
 // return the piece and the color on a square
 std::pair<Color, Piece> ChessBoard::get_piece_on_square(Square sq) const {
     for (int color = 0; color < 2; color++) {

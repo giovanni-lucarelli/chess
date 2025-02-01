@@ -6,11 +6,15 @@ void Game::start() {
     
     while (true) {
         display_board();
+        
+        // this is important for the Computer to know the current board state
+        // so it can make the best move.
         std::vector<Move> legal_moves = MoveGenerator::generate_moves(board);
         if (legal_moves.empty()) {
             std::cout << "Game over\n";
             break;
         }
+
         std::string input;
         std::cin >> input;
         Move move = parse_input(input);
@@ -30,7 +34,7 @@ void Game::display_board() const {
 
 Move Game::parse_input(const std::string& input) const {
     if (input.size() != 4) {
-        return Move(Square::A1, Square::A1); // Invalid move
+        return Move(Square::NO_SQUARE, Square::NO_SQUARE); // Invalid move
     }
 
     Square from = static_cast<Square>(8 * (input[1] - '1') + (input[0] - 'a'));
