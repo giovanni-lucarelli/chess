@@ -27,6 +27,7 @@ cd build
 2. Create the MoveGenerator class for all the pieces. It should be able to generate all the possible moves for a given position. This will be used to implement the AI.
 3. Implement the AI using the minimax algorithm with alpha-beta pruning.
 4. Implement the UI in python using the bindings created in step 1.
+5. Play online
 
 
 
