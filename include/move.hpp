@@ -1,6 +1,7 @@
 #pragma once
 #include "types.hpp"
 #include <string>
+#include <stdexcept>
 
 struct Move {
     Square from;
