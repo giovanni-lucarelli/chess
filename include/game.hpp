@@ -12,7 +12,7 @@ private:
 
 
 public:
-    void start();
+    void start1v1();
     void display_board() const;
     Move parse_input(const std::string& input) const;
 };

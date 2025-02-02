@@ -78,6 +78,6 @@
 
 int main() {
     Game game;
-    game.start();
+    game.start1v1();
     return 0;
 }

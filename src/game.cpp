@@ -1,7 +1,7 @@
 #include "game.hpp"
 #include <iostream>
 
-void Game::start() {
+void Game::start1v1() {
     board.reset();
     
     while (true) {
@@ -19,7 +19,6 @@ void Game::start() {
         std::string input;
         std::cin >> input;
         Move move = parse_input(input);
-
 
         if (board.is_move_legal(move.from, move.to)) {
             board_history.push(board); // Save current board state before making a move

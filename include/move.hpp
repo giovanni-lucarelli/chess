@@ -1,33 +1,41 @@
+// Description: Defines the Move struct, which represents a move in the game.
+
 #pragma once
 #include "types.hpp"
-#include <string>
-#include <stdexcept>
+
+// Flags for special moves
+enum MoveType {
+    NORMAL,
+    CASTLING,
+    EN_PASSANT,
+    PROMOTION,
+    DOUBLE_PAWN_PUSH
+};
 
 struct Move {
-    Square from;
-    Square to;
-    // Piece promotion;
-    // bool is_en_passant;
-    // bool is_capture;
-    // bool is_double_pawn_push;
-    // bool is_pawn_move;
-    // bool is_check;
-    // bool is_checkmate;
-    // bool is_stalemate;
-    // bool is_draw;
-    // bool is_promotion;
-    // bool is_kingside_castling;
-    // bool is_queenside_castling;
+    Square from;       // Starting square
+    Square to;         // Target square
+    Piece promoted_to; // For pawn promotions (e.g., QUEEN)
+    MoveType type;     // Flags for special moves (en passant, castling, etc.)
 
-    // Constructor
-    Move(Square from, Square to) : from(from), to(to) {
-        if (from == Square::NO_SQUARE || to == Square::NO_SQUARE) {
-            throw std::invalid_argument("Invalid move");
-        }
-    }
-    
-    // to_string method
-    std::string to_string() const {
-        return "Move from " + square_to_string(from) + " to " + square_to_string(to);
+    // Store captured piece (for undoing moves)?
+    Piece captured_piece;
+
+    // Default constructor
+    Move() : from(Square::NO_SQUARE), to(Square::NO_SQUARE), 
+             promoted_to(Piece::NO_PIECE), type(MoveType::NORMAL), 
+             captured_piece(Piece::NO_PIECE) {}
+
+    // Set move with starting and target squares
+    Move(Square from, Square to) : from(from), to(to), 
+                                   promoted_to(Piece::NO_PIECE), type(MoveType::NORMAL), 
+                                   captured_piece(Piece::NO_PIECE) {}
+
+    // Overload == operator for move comparison
+    bool operator==(const Move& other) const {
+        return from == other.from && to == other.to && 
+               promoted_to == other.promoted_to && type == other.type;
     }
 };
+
+

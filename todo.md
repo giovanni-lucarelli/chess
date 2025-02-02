@@ -1,23 +1,17 @@
-- [ ] add unit test for every method: important check the bitboard representation for each piece type
-
-## `chessboard.cpp`
-
-- [ ] add all the rules in is_legal_move()
-  - [ ] add the special moves (castle, en passant)
+# 1. Setup the game in order to play one vs one
+- [ ] add the rules in `chessboard.cpp`, `is_legal_move()` method
+- [ ] add the special moves (castle, en passant)
 - [ ] update the status of the chessboard after special moves
+- [ ] add `is_check()` method
+- [ ] add `is_checkmate()` method
+- [ ] add `is_stalemate()` method
+- [ ] add `is_draw()` method
+- [ ] add `is_threefold_repetition()` method
+- [ ] add `undo_move()` method: should it be in move class, chessboard class or game class?
+- [ ] add tests in `test.cpp`: one for each method (`chestboard`, `move`, `game`, `bitboard`, `types`)
 
+# 2. Python bindings and interface
+- [ ] create a python interface for the game
+  
 
-
-## `movegen.cpp`
-
-- [ ] unificare is_legal_move con generate_pawn_moves
-- [ ] add en passant
-- [ ] add promotion 
-- [ ] are the `bool` attributes in move.hpp compusory?
-
-
-## Mix
-
-- [ ] illegal move exception class
-- [ ] bindings for python: play a game in python without compiling each time in cpp
-- [ ] UI in python
+# 3. Create the MoveGenerator class for all the pieces. 
