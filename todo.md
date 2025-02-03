@@ -1,3 +1,12 @@
+# Chess Rules: `is_legal_move()`
+
+- [ ] queen (chri)
+- [ ] rook (chri)
+- [ ] bishop (chri)
+- [ ] knight (gio)
+- [ ] king (gio)
+- [ ] pawn (gio)
+
 # 1. Setup the game in order to play one vs one
 - [ ] add the rules in `chessboard.cpp`, `is_legal_move()` method
 - [ ] add the special moves (castle, en passant)
