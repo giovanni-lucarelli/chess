@@ -34,7 +34,7 @@ public:
             std::cout << (rank + 1) << " ";
             for (int file = 0; file < 8; file++) {
                 int sq = rank * 8 + file;
-                std::cout << (get_bit(board, static_cast<Square>(sq)) ? "X " : ". ");
+                std::cout << (get_bit(board, static_cast<Square>(sq)) ? "X " : "  ");
             }
             std::cout << "\n";
         }

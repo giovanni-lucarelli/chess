@@ -36,3 +36,17 @@ target_link_libraries(ChessEngineTests GTest::GTest GTest::Main pthread)
 
 # Add test to CTest framework
 add_test(NAME ChessEngineTests COMMAND ChessEngineTests)
+
+# Running executable
+add_custom_target(play
+    COMMAND ChessEngine
+    DEPENDS ChessEngine
+    WORKING_DIRECTORY ${CMAKE_PROJECT_DIR}
+)
+
+# Cleaning
+add_custom_target(clean-all
+    COMMAND ${CMAKE_BUILD_TOOL} clean
+    COMMAND rm -rf CMakeFiles CMakeCache.txt cmake_install.cmake Makefile
+    WORKING_DIRECTORY ${CMAKE_PROJECT_DIR}
+)

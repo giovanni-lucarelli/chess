@@ -16,8 +16,21 @@ void Game::start1v1() {
         // }
 
         // Get user input in algebraic notation (e.g. e2e4)
-        std::string input;
-        std::cin >> input;
+        std::string inputPiece;
+        std::cout << "Enter piece to move (only its square): ";
+        std::cin >> inputPiece;
+        if(inputPiece == "exit") {
+            break;
+        }
+        std::string inputMove;
+        std::cout << "Enter move (only its square): ";
+        std::cin >> inputMove;
+        if(inputMove == "exit") {
+            break;
+        }
+
+        // Concatenating
+        std::string input = inputPiece + inputMove;
         Move move = parse_input(input);
 
         if (board.is_move_legal(move.from, move.to)) {

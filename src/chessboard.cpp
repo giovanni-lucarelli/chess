@@ -66,7 +66,7 @@ void ChessBoard::print() const {
         std::cout << (rank + 1) << " ";
         for (int file = 0; file < 8; file++) {
             int sq = rank * 8 + file;
-            char piece_char = '.';
+            char piece_char = ' ';
             for (int color = 0; color < 2; color++) {
                 for (int piece = 0; piece < 6; piece++) {
                     if (Bitboard::get_bit(pieces[color][piece], static_cast<Square>(sq))) {

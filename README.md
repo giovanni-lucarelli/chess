@@ -20,6 +20,10 @@ cd build
 
 ```
 
+```C++
+// to exit game loop type "exit" instead of a piece or move
+```
+
 ## Roadmap
 
 1. Setup the game in order to play one vs one
