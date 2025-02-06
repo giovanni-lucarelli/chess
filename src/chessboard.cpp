@@ -203,18 +203,26 @@ bool ChessBoard::is_move_legal(Square from, Square to) const {
     // Check if the move is valid for the piece
     switch (from_piece.second) {
         case PAWN:
-            // Check if the pawn is moving forward
-            if (from_piece.first == WHITE) {
-                if (to - from == 8 || to - from == 16) {
+            // Checking if the pawn is in the starting row
+            if(from_piece.first == WHITE && from / 8 == 1) {
+                if(to - from == 8 || to - from == 16) {
+                    return true;
+                }
+            } else if(from_piece.first == BLACK && from / 8 == 6) {
+                if(from - to == 8 || from - to == 16) {
                     return true;
                 }
             } else {
-                if (from - to == 8 || from - to == 16) {
-                    return true;
+                if(from_piece.first == WHITE) {
+                    if(to - from == 8) {
+                        return true;
+                    }
+                } else {
+                    if(from - to == 8) {
+                        return true;
+                    }
                 }
             }
-            // Check if the pawn is capturing
-            break;
         case KNIGHT:
             // Check if the knight is moving in an L-shape
             dx = std::abs((to % 8) - (from % 8));
@@ -247,7 +255,7 @@ bool ChessBoard::is_move_legal(Square from, Square to) const {
             // Check if the king is moving one square in any direction
             if (std::abs(from - to) == 1 || std::abs(from - to) == 7 ||
                 std::abs(from - to) == 8 || std::abs(from - to) == 9) {
-                return ChessBoard::is_path_clear(from, to);
+                return true;
             }
             break;
     }

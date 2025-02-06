@@ -39,6 +39,13 @@ void Game::start1v1() {
         } else {
             std::cout << "Illegal move. Try again.\n";
         }
+
+        // Check if the game is over
+        // if (board.is_checkmate()) {
+        //     display_board();
+        //     std::cout << "Checkmate\n";
+        //     break;
+        // }
     }
 }
 
