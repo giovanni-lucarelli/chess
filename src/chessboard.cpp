@@ -126,6 +126,56 @@ void ChessBoard::move_piece(Square from, Square to) {
     
 }
 
+// Check if the path is clear
+bool ChessBoard::is_path_clear(Square from, Square to) const {
+    // Horizontal check
+    if (from / 8 == to / 8) {
+        int start = std::min(from, to) + 1;
+        int end = std::max(from, to);
+        for (int sq = start; sq < end; sq++) {
+            if (is_occupied(static_cast<Square>(sq))) {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    // Vertical check
+    if (from % 8 == to % 8) {
+        int start = std::min(from, to) + 8;
+        int end = std::max(from, to);
+        for (int sq = start; sq < end; sq += 8) {
+            if (is_occupied(static_cast<Square>(sq))) {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    // Diagonal check
+    if (std::abs(from - to) % 7 == 0 ) {
+        int start = std::min(from, to) + 7;
+        int end = std::max(from, to);
+        for (int sq = start; sq < end; sq += 7) {
+            if (is_occupied(static_cast<Square>(sq))) {
+                return false;
+            }
+        }
+        return true;
+    }
+    if (std::abs(from - to) % 9 == 0 ) {
+        int start = std::min(from, to) + 9;
+        int end = std::max(from, to);
+        for (int sq = start; sq < end; sq += 9) {
+            if (is_occupied(static_cast<Square>(sq))) {
+                return false;
+            }
+        }
+        return true;
+    }
+}
+
+
 // Check if a move is legal
 bool ChessBoard::is_move_legal(Square from, Square to) const {
     // chek if the turn is correct
@@ -145,16 +195,21 @@ bool ChessBoard::is_move_legal(Square from, Square to) const {
         return false;
     }
     
+    int dx;
+    int dy;
+
+    
+
     // Check if the move is valid for the piece
     switch (from_piece.second) {
         case PAWN:
             // Check if the pawn is moving forward
             if (from_piece.first == WHITE) {
-                if (to - from == 8) {
+                if (to - from == 8 || to - from == 16) {
                     return true;
                 }
             } else {
-                if (from - to == 8) {
+                if (from - to == 8 || from - to == 16) {
                     return true;
                 }
             }
@@ -162,39 +217,41 @@ bool ChessBoard::is_move_legal(Square from, Square to) const {
             break;
         case KNIGHT:
             // Check if the knight is moving in an L-shape
-            if (std::abs(from - to) == 6 || std::abs(from - to) == 10 ||
-                std::abs(from - to) == 15 || std::abs(from - to) == 17) {
+            dx = std::abs((to % 8) - (from % 8));
+            dy = std::abs((to / 8) - (from / 8));
+            if ((dx == 2 && dy == 1) || (dx == 1 && dy == 2)) {
                 return true;
-            }
+            } 
             break;
         case BISHOP:
             // Check if the bishop is moving diagonally
             if (std::abs(from - to) % 7 == 0 || std::abs(from - to) % 9 == 0) {
-                return true;
+                return ChessBoard::is_path_clear(from, to);
             }
             break;
         case ROOK:
             // Check if the rook is moving horizontally or vertically
             if (from / 8 == to / 8 || from % 8 == to % 8) {
-                return true;
+                // check if the path is clear
+                return ChessBoard::is_path_clear(from, to);
             }
             break;
         case QUEEN:
             // Check if the queen is moving diagonally, horizontally, or vertically
             if (std::abs(from - to) % 7 == 0 || std::abs(from - to) % 9 == 0 ||
                 from / 8 == to / 8 || from % 8 == to % 8) {
-                return true;
+                return ChessBoard::is_path_clear(from, to);
             }
             break;
         case KING:
             // Check if the king is moving one square in any direction
             if (std::abs(from - to) == 1 || std::abs(from - to) == 7 ||
                 std::abs(from - to) == 8 || std::abs(from - to) == 9) {
-                return true;
+                return ChessBoard::is_path_clear(from, to);
             }
             break;
     }
-    return true;
+    return false;
 }
 
 // std::vector<Move> ChessBoard::generate_legal_moves() const {

@@ -1,6 +1,7 @@
 #pragma once
 #include "types.hpp"
 #include "move.hpp"
+#include "bitboard.hpp"
 #include <array>
 #include <string>
 #include <vector>
@@ -25,7 +26,7 @@ public:
     // Initialize classic starting position
     void reset();
 
-    
+    bool is_path_clear(Square from, Square to) const;
 
     // Check if a square is occupied by any piece
     bool is_occupied(Square sq) const;
@@ -61,6 +62,8 @@ public:
 
     // Check if a move is legal
     bool is_move_legal(Square from, Square to) const;
+
+   
 
     // std::vector<Move> generate_legal_moves() const;
 
