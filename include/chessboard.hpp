@@ -18,6 +18,10 @@ private:
     bool castling_rights[2][2]; // [Color][Queenside, Kingside]
     // int halfmove_clock;
     // int fullmove_number;
+    bool check = false;
+    bool checkmate = false;
+
+    bool DEBUG = true;
 
 public:
 
@@ -63,8 +67,12 @@ public:
     // Check if a move is legal
     bool is_move_legal(Square from, Square to) const;
 
-   
+    // Check if king is in check
+    bool is_in_check(Color color) const;
 
-    // std::vector<Move> generate_legal_moves() const;
+    // Check if the game is over
+    bool is_checkmate() const;
+
+    std::vector<Move> legal_moves(Square piece, Color color) const;
 
 };

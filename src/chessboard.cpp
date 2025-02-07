@@ -121,8 +121,30 @@ void ChessBoard::move_piece(Square from, Square to) {
     std::pair<Color, Piece> piece = get_piece_on_square(from);
     remove_piece(from);
     add_piece(piece.first, piece.second, to);
-    side_to_move = (side_to_move == WHITE) ? BLACK : WHITE;
 
+
+    // checking if the opponent king is in check
+    Square opponent_king_sq;
+    Color opponent_color = (side_to_move == WHITE) ? BLACK : WHITE;
+    for (int i = 0; i < 64; i++) {
+        if (get_piece_on_square(static_cast<Square>(i)) == std::make_pair(opponent_color, KING)) {
+            opponent_king_sq = static_cast<Square>(i);
+        }
+    }
+    if(DEBUG) {
+        std::cout << "\033[1;34mOpponent king square:\033[0m " << square_to_string(opponent_king_sq) << std::endl;
+    }
+    std::cout << "\033[1;32mNext legal moves:\033[0m" << std::endl;
+    for(auto move : legal_moves(to, side_to_move)){
+        std::cout << square_to_string(move.to) << std::endl;
+        if(move.to == opponent_king_sq){
+            std::cout << "\033[1;31mCheck!\033[0m" << std::endl;
+            check = true;
+        }
+    }
+
+
+    side_to_move = (side_to_move == WHITE) ? BLACK : WHITE;
     
 }
 
@@ -206,23 +228,30 @@ bool ChessBoard::is_move_legal(Square from, Square to) const {
             // Checking if the pawn is in the starting row
             if(from_piece.first == WHITE && from / 8 == 1) {
                 if(to - from == 8 || to - from == 16) {
-                    return true;
+                    // Also checking if in front of it is empty
+                    return !is_occupied(to);
                 }
             } else if(from_piece.first == BLACK && from / 8 == 6) {
                 if(from - to == 8 || from - to == 16) {
-                    return true;
+                    return !is_occupied(to);
                 }
             } else {
                 if(from_piece.first == WHITE) {
                     if(to - from == 8) {
-                        return true;
+                        return !is_occupied(to);
                     }
                 } else {
                     if(from - to == 8) {
-                        return true;
+                        return !is_occupied(to);
                     }
                 }
             }
+            // Capturing
+            if(std::abs(from - to) == 7 || std::abs(from - to) == 9) {
+                // Checking if the square is occupied for capturing
+                return is_occupied(to);
+            }
+            break;
         case KNIGHT:
             // Check if the knight is moving in an L-shape
             dx = std::abs((to % 8) - (from % 8));
@@ -262,6 +291,40 @@ bool ChessBoard::is_move_legal(Square from, Square to) const {
     return false;
 }
 
-// std::vector<Move> ChessBoard::generate_legal_moves() const {
-//     return MoveGenerator::generate_moves(*this);
-// }
+bool ChessBoard::is_in_check(Color color) const {
+    // Searching for the king
+    Square king_sq;
+    for (int i = 0; i < 64; i++) {
+        if (get_piece_on_square(static_cast<Square>(i)) == std::make_pair(color, KING)) {
+            king_sq = static_cast<Square>(i);
+        }
+    }
+    // Check 
+}
+
+// Check if the game is over
+bool ChessBoard::is_checkmate() const {
+    // Searching for the king
+    Square king_sq;
+    for (int i = 0; i < 64; i++) {
+        if (get_piece_on_square(static_cast<Square>(i)) == std::make_pair(side_to_move, KING)) {
+            king_sq = static_cast<Square>(i);
+        }
+    }
+    // check if legal_moves is empty
+    if (legal_moves(king_sq, WHITE).empty() || legal_moves(king_sq, BLACK).size() == 0) {
+        return true;
+    }
+}
+
+std::vector<Move> ChessBoard::legal_moves(Square piece, Color color) const {
+    std::vector<Move> moves;
+    for (int i = 0; i < 64; i++) {
+        if (is_move_legal(piece, static_cast<Square>(i))) {
+            moves.push_back(Move(piece, static_cast<Square>(i)));
+        }
+    }
+    return moves;
+}
+
+

@@ -3,6 +3,8 @@
 #include "types.hpp"
 #include <iostream>
 
+#include <string>
+
 class Bitboard {
 
 public:
@@ -40,4 +42,5 @@ public:
         }
         std::cout << "  a b c d e f g h\n\n";
     }
+
 };

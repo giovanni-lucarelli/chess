@@ -32,7 +32,7 @@ inline Square& operator++(Square& sq) {
 
 // convert number to position
 inline std::string square_to_string(Square sq) {
-  std::string files = "ABCDEFGH";
+  std::string files = "abcdefgh";
   std::string ranks = "12345678";
   return std::string(1, files[sq % 8]) + std::string(1, ranks[sq / 8]);
 }
@@ -52,3 +52,6 @@ inline std::string piece_to_string(Piece p) {
     default: return "INVALID";
   }
 }
+
+// convert number to position
+
