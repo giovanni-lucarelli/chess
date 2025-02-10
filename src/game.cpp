@@ -8,7 +8,13 @@ void Game::start1v1() {
         display_board();
 
         // Check if the king is in check
-        board.is_in_check(board.get_side_to_move());
+        board.check_control();
+        if(board.get_check(board.get_side_to_move())) {
+            std::cout << "\033[1;31mCheck!\033[0m" << std::endl;
+        }
+        if(board.get_check(board.get_side_to_move() == WHITE ? BLACK : WHITE)) {
+            std::cout << "\033[1;31mCheck!\033[0m" << std::endl;
+        }
         
         // this is important for the Computer to know the current board state
         // and the avaiable moves so it can make the best one.
@@ -21,26 +27,11 @@ void Game::start1v1() {
         // Get user input in algebraic notation (e.g. e2e4)
         std::string inputPiece;
         std::cout << "Enter piece to move (only its square): ";
-        if (board.get_check(board.get_side_to_move())) {
-            do {
-                std::cout << "\033[1;31mYou can choose only the king!\033[0m" << std::endl;
-                std::cin >> inputPiece;
-                if(inputPiece == "exit") {
-                    break;
-                }
-                // Checking if it is the king
-                Square from = parse_single_input(inputPiece);
-                std::pair<Color, Piece> piece_from = board.get_piece_on_square(from);
-                if (piece_from.second == KING) {
-                    break;
-                }
-            } while (true);
-        } else {
-            std::cin >> inputPiece;
-            if(inputPiece == "exit") {
-                break;
-            }
+        std::cin >> inputPiece;
+        if(inputPiece == "exit") {
+            break;
         }
+        
         
         Square from = parse_single_input(inputPiece);
         std::pair<Color, Piece> piece_from = board.get_piece_on_square(from);

@@ -246,34 +246,39 @@ std::vector<Square> ChessBoard::pseudo_legal_targets(Square from) const {
 }
 
 
-// Check if a given color's king is in check.
-// This function finds the king and then sees if any opponent piece has a pseudo-legal move to capture it.
-bool ChessBoard::is_in_check(Color color) const {
-    Square king_sq = NO_SQUARE;
-    // Find the king's square.
-    for (int i = 0; i < 64; ++i) {
-        if (get_piece_on_square(static_cast<Square>(i)) ==
-            std::make_pair(color, KING)) {
-            king_sq = static_cast<Square>(i);
-            break;
-        }
-    }
-    if (king_sq == NO_SQUARE)
-        return true;  // (should not happen in a normal game)
+// Controlling check conditions for both colors
+void ChessBoard::check_control() {
+    // Clear previous check status
+    white_check = black_check = false;
 
-    Color opponent = (color == WHITE ? BLACK : WHITE);
-    for (int i = 0; i < 64; ++i) {
-        auto info = get_piece_on_square(static_cast<Square>(i));
-        if (info.first == opponent) {
-            auto targets = pseudo_legal_targets(static_cast<Square>(i));
-            for (Square t : targets) {
-                if (t == king_sq)
-                    return true;
-            }
+    // Find the kings
+    Square white_king_sq = NO_SQUARE, black_king_sq = NO_SQUARE;
+    for (int sq = 0; sq < 64; ++sq) {
+        auto piece_info = get_piece_on_square(static_cast<Square>(sq));
+        if (piece_info.second == KING) {
+            if (piece_info.first == WHITE)
+                white_king_sq = static_cast<Square>(sq);
+            else
+                black_king_sq = static_cast<Square>(sq);
         }
     }
-    return false;
+
+    // Check if the kings are under attack
+    for (int sq = 0; sq < 64; ++sq) {
+        auto piece_info = get_piece_on_square(static_cast<Square>(sq));
+        if (piece_info.first == NO_COLOR)
+            continue;
+
+        auto targets = pseudo_legal_targets(static_cast<Square>(sq));
+        for (Square target : targets) {
+            if (target == white_king_sq)
+                black_check = true;
+            if (target == black_king_sq)
+                white_check = true;
+        }
+    }
 }
+
 
 
 // Check if a move from 'from' to 'to' is fully legal.
@@ -299,7 +304,7 @@ bool ChessBoard::is_move_legal(Square from, Square to) const {
     // Second: simulate the move and check king safety.
     ChessBoard board_copy = *this;
     board_copy.move_piece(from, to);
-    if (board_copy.is_in_check(piece_info.first))
+    if (board_copy.get_check(piece_info.first))
         return false;
 
     return true;

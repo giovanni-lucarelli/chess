@@ -76,7 +76,7 @@ public:
     std::vector<Square> pseudo_legal_targets(Square from) const;
 
     // Check if a given color's king is in check
-    bool is_in_check(Color color) const;
+    void check_control();
 
     // Check if a move is legal
     bool is_move_legal(Square from, Square to) const;
