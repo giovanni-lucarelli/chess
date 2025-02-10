@@ -122,207 +122,202 @@ void ChessBoard::move_piece(Square from, Square to) {
     remove_piece(from);
     add_piece(piece.first, piece.second, to);
 
-
-    // checking if the opponent king is in check
-    Square opponent_king_sq;
-    Color opponent_color = (side_to_move == WHITE) ? BLACK : WHITE;
-    for (int i = 0; i < 64; i++) {
-        if (get_piece_on_square(static_cast<Square>(i)) == std::make_pair(opponent_color, KING)) {
-            opponent_king_sq = static_cast<Square>(i);
-        }
-    }
-    if(DEBUG) {
-        std::cout << "\033[1;34mOpponent king square:\033[0m " << square_to_string(opponent_king_sq) << std::endl;
-    }
-    std::cout << "\033[1;32mNext legal moves:\033[0m" << std::endl;
-    for(auto move : legal_moves(to, side_to_move)){
-        std::cout << square_to_string(move.to) << std::endl;
-        if(move.to == opponent_king_sq){
-            std::cout << "\033[1;31mCheck!\033[0m" << std::endl;
-            check = true;
-        }
-    }
-
-
     side_to_move = (side_to_move == WHITE) ? BLACK : WHITE;
     
 }
+// A helper: convert a square index to row and column.
+inline void square_to_coord(Square sq, int &row, int &col) {
+    row = sq / 8;
+    col = sq % 8;
+}
 
-// Check if the path is clear
+// Check if the path between two squares is clear (excluding the destination)
 bool ChessBoard::is_path_clear(Square from, Square to) const {
-    // Horizontal check
-    if (from / 8 == to / 8) {
-        int start = std::min(from, to) + 1;
-        int end = std::max(from, to);
-        for (int sq = start; sq < end; sq++) {
-            if (is_occupied(static_cast<Square>(sq))) {
-                return false;
-            }
-        }
-        return true;
-    }
+    int from_row, from_col, to_row, to_col;
+    square_to_coord(from, from_row, from_col);
+    square_to_coord(to, to_row, to_col);
 
-    // Vertical check
-    if (from % 8 == to % 8) {
-        int start = std::min(from, to) + 8;
-        int end = std::max(from, to);
-        for (int sq = start; sq < end; sq += 8) {
-            if (is_occupied(static_cast<Square>(sq))) {
-                return false;
-            }
-        }
-        return true;
-    }
+    int dr = to_row - from_row;
+    int dc = to_col - from_col;
+    int step_r = (dr == 0 ? 0 : (dr > 0 ? 1 : -1));
+    int step_c = (dc == 0 ? 0 : (dc > 0 ? 1 : -1));
 
-    // Diagonal check
-    if (std::abs(from - to) % 7 == 0 ) {
-        int start = std::min(from, to) + 7;
-        int end = std::max(from, to);
-        for (int sq = start; sq < end; sq += 7) {
-            if (is_occupied(static_cast<Square>(sq))) {
-                return false;
-            }
-        }
-        return true;
+    // Move from the square next to 'from' until reaching 'to'
+    int r = from_row + step_r;
+    int c = from_col + step_c;
+    while (r != to_row || c != to_col) {
+        if (is_occupied(static_cast<Square>(r * 8 + c)))
+            return false;
+        r += step_r;
+        c += step_c;
     }
-    if (std::abs(from - to) % 9 == 0 ) {
-        int start = std::min(from, to) + 9;
-        int end = std::max(from, to);
-        for (int sq = start; sq < end; sq += 9) {
-            if (is_occupied(static_cast<Square>(sq))) {
-                return false;
-            }
+    return true;
+}
+
+// Generate pseudo-legal target squares for the piece on 'from'.
+// (These moves follow the piece's movement rules but do not check king safety.)
+std::vector<Square> ChessBoard::pseudo_legal_targets(Square from) const {
+    std::vector<Square> targets;
+    auto piece_info = get_piece_on_square(from);
+    if (piece_info.first == NO_COLOR)
+        return targets; // no piece on this square
+
+    Color mover = piece_info.first;
+    Piece p = piece_info.second;
+    int from_row, from_col;
+    square_to_coord(from, from_row, from_col);
+
+    // Loop over all destination squares
+    for (int to = 0; to < 64; ++to) {
+        if (to == from)
+            continue;
+        int to_row, to_col;
+        square_to_coord(static_cast<Square>(to), to_row, to_col);
+        int dr = to_row - from_row;
+        int dc = to_col - from_col;
+
+        // Skip if target square contains a friendly piece
+        auto target_info = get_piece_on_square(static_cast<Square>(to));
+        if (target_info.first == mover)
+            continue;
+
+        bool valid = false;
+        switch (p) {
+            case PAWN:
+                if (mover == WHITE) {
+                    // Single forward move
+                    if (dc == 0 && dr == 1 && !is_occupied(static_cast<Square>(to)))
+                        valid = true;
+                    // Double move from starting rank 2
+                    else if (dc == 0 && dr == 2 && from_row == 1 &&
+                             !is_occupied(static_cast<Square>(to)) &&
+                             !is_occupied(static_cast<Square>(from + 8)))
+                        valid = true;
+                    // Diagonal capture
+                    else if (std::abs(dc) == 1 && dr == 1 && target_info.first == BLACK)
+                        valid = true;
+                    // (Optional: add en passant here)
+                } else { // BLACK pawn
+                    if (dc == 0 && dr == -1 && !is_occupied(static_cast<Square>(to)))
+                        valid = true;
+                    else if (dc == 0 && dr == -2 && from_row == 6 &&
+                             !is_occupied(static_cast<Square>(to)) &&
+                             !is_occupied(static_cast<Square>(from - 8)))
+                        valid = true;
+                    else if (std::abs(dc) == 1 && dr == -1 && target_info.first == WHITE)
+                        valid = true;
+                }
+                break;
+
+            case KNIGHT:
+                if ((std::abs(dr) == 2 && std::abs(dc) == 1) ||
+                    (std::abs(dr) == 1 && std::abs(dc) == 2))
+                    valid = true;
+                break;
+
+            case BISHOP:
+                if (std::abs(dr) == std::abs(dc))
+                    valid = is_path_clear(from, static_cast<Square>(to));
+                break;
+
+            case ROOK:
+                if (dr == 0 || dc == 0)
+                    valid = is_path_clear(from, static_cast<Square>(to));
+                break;
+
+            case QUEEN:
+                if ((std::abs(dr) == std::abs(dc)) || (dr == 0 || dc == 0))
+                    valid = is_path_clear(from, static_cast<Square>(to));
+                break;
+
+            case KING:
+                if (std::abs(dr) <= 1 && std::abs(dc) <= 1)
+                    valid = true;
+                // (Optional: add castling rules here)
+                break;
+
+            default:
+                break;
         }
-        return true;
+        if (valid)
+            targets.push_back(static_cast<Square>(to));
     }
+    return targets;
 }
 
 
-// Check if a move is legal
-bool ChessBoard::is_move_legal(Square from, Square to) const {
-    // chek if the turn is correct
-    if (get_piece_on_square(from).first != side_to_move) {
-        return false;
+// Check if a given color's king is in check.
+// This function finds the king and then sees if any opponent piece has a pseudo-legal move to capture it.
+bool ChessBoard::is_in_check(Color color) const {
+    Square king_sq = NO_SQUARE;
+    // Find the king's square.
+    for (int i = 0; i < 64; ++i) {
+        if (get_piece_on_square(static_cast<Square>(i)) ==
+            std::make_pair(color, KING)) {
+            king_sq = static_cast<Square>(i);
+            break;
+        }
     }
+    if (king_sq == NO_SQUARE)
+        return true;  // (should not happen in a normal game)
 
-    // Check if the from square is occupied
-    if (!is_occupied(from)) {
-        return false;
-    }
-
-    // Check if the to square is occupied by a friendly piece
-    std::pair<Color, Piece> from_piece = get_piece_on_square(from);
-    std::pair<Color, Piece> to_piece = get_piece_on_square(to);
-    if (to_piece.first == from_piece.first) {
-        return false;
-    }
-    
-    int dx;
-    int dy;
-
-    
-
-    // Check if the move is valid for the piece
-    switch (from_piece.second) {
-        case PAWN:
-            // Checking if the pawn is in the starting row
-            if(from_piece.first == WHITE && from / 8 == 1) {
-                if(to - from == 8 || to - from == 16) {
-                    // Also checking if in front of it is empty
-                    return !is_occupied(to);
-                }
-            } else if(from_piece.first == BLACK && from / 8 == 6) {
-                if(from - to == 8 || from - to == 16) {
-                    return !is_occupied(to);
-                }
-            } else {
-                if(from_piece.first == WHITE) {
-                    if(to - from == 8) {
-                        return !is_occupied(to);
-                    }
-                } else {
-                    if(from - to == 8) {
-                        return !is_occupied(to);
-                    }
-                }
+    Color opponent = (color == WHITE ? BLACK : WHITE);
+    for (int i = 0; i < 64; ++i) {
+        auto info = get_piece_on_square(static_cast<Square>(i));
+        if (info.first == opponent) {
+            auto targets = pseudo_legal_targets(static_cast<Square>(i));
+            for (Square t : targets) {
+                if (t == king_sq)
+                    return true;
             }
-            // Capturing
-            if(std::abs(from - to) == 7 || std::abs(from - to) == 9) {
-                // Checking if the square is occupied for capturing
-                return is_occupied(to);
-            }
-            break;
-        case KNIGHT:
-            // Check if the knight is moving in an L-shape
-            dx = std::abs((to % 8) - (from % 8));
-            dy = std::abs((to / 8) - (from / 8));
-            if ((dx == 2 && dy == 1) || (dx == 1 && dy == 2)) {
-                return true;
-            } 
-            break;
-        case BISHOP:
-            // Check if the bishop is moving diagonally
-            if (std::abs(from - to) % 7 == 0 || std::abs(from - to) % 9 == 0) {
-                return ChessBoard::is_path_clear(from, to);
-            }
-            break;
-        case ROOK:
-            // Check if the rook is moving horizontally or vertically
-            if (from / 8 == to / 8 || from % 8 == to % 8) {
-                // check if the path is clear
-                return ChessBoard::is_path_clear(from, to);
-            }
-            break;
-        case QUEEN:
-            // Check if the queen is moving diagonally, horizontally, or vertically
-            if (std::abs(from - to) % 7 == 0 || std::abs(from - to) % 9 == 0 ||
-                from / 8 == to / 8 || from % 8 == to % 8) {
-                return ChessBoard::is_path_clear(from, to);
-            }
-            break;
-        case KING:
-            // Check if the king is moving one square in any direction
-            if (std::abs(from - to) == 1 || std::abs(from - to) == 7 ||
-                std::abs(from - to) == 8 || std::abs(from - to) == 9) {
-                return true;
-            }
-            break;
+        }
     }
     return false;
 }
 
-bool ChessBoard::is_in_check(Color color) const {
-    // Searching for the king
-    Square king_sq;
-    for (int i = 0; i < 64; i++) {
-        if (get_piece_on_square(static_cast<Square>(i)) == std::make_pair(color, KING)) {
-            king_sq = static_cast<Square>(i);
+
+// Check if a move from 'from' to 'to' is fully legal.
+// First we check that it is pseudo-legal, then we simulate the move and ensure that it
+// does not leave the mover’s king in check.
+bool ChessBoard::is_move_legal(Square from, Square to) const {
+    auto piece_info = get_piece_on_square(from);
+    if (piece_info.first == NO_COLOR)
+        return false;
+
+    // First: must be a pseudo-legal move.
+    auto targets = pseudo_legal_targets(from);
+    bool found = false;
+    for (Square target : targets) {
+        if (target == to) {
+            found = true;
+            break;
         }
     }
-    // Check 
+    if (!found)
+        return false;
+
+    // Second: simulate the move and check king safety.
+    ChessBoard board_copy = *this;
+    board_copy.move_piece(from, to);
+    if (board_copy.is_in_check(piece_info.first))
+        return false;
+
+    return true;
 }
 
-// Check if the game is over
-bool ChessBoard::is_checkmate() const {
-    // Searching for the king
-    Square king_sq;
-    for (int i = 0; i < 64; i++) {
-        if (get_piece_on_square(static_cast<Square>(i)) == std::make_pair(side_to_move, KING)) {
-            king_sq = static_cast<Square>(i);
-        }
-    }
-    // check if legal_moves is empty
-    if (legal_moves(king_sq, WHITE).empty() || legal_moves(king_sq, BLACK).size() == 0) {
-        return true;
-    }
-}
 
-std::vector<Move> ChessBoard::legal_moves(Square piece, Color color) const {
+
+// Generate all legal moves for the piece on square 'from'
+std::vector<Move> ChessBoard::legal_moves(Square from) const {
     std::vector<Move> moves;
-    for (int i = 0; i < 64; i++) {
-        if (is_move_legal(piece, static_cast<Square>(i))) {
-            moves.push_back(Move(piece, static_cast<Square>(i)));
-        }
+    auto piece_info = get_piece_on_square(from);
+    if (piece_info.first == NO_COLOR)
+        return moves;
+
+    auto targets = pseudo_legal_targets(from);
+    for (Square t : targets) {
+        if (is_move_legal(from, t))
+            moves.push_back(Move(from, t));
     }
     return moves;
 }

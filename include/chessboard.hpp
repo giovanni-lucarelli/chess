@@ -18,7 +18,8 @@ private:
     bool castling_rights[2][2]; // [Color][Queenside, Kingside]
     // int halfmove_clock;
     // int fullmove_number;
-    bool check = false;
+    bool white_check = false;
+    bool black_check = false;
     bool checkmate = false;
 
     bool DEBUG = true;
@@ -49,6 +50,13 @@ public:
     Color get_side_to_move() const { return side_to_move; }
     Square get_en_passant_square() const { return en_passant_square; }
     bool get_castling_rights(Color color, bool kingside) const { return castling_rights[color][kingside]; }
+    bool get_check(Color color) {
+        if (color == WHITE) {
+            return white_check;
+        } else {
+            return black_check;
+        }
+    }
 
     // Setters
     void set_side_to_move(Color color) { side_to_move = color; }
@@ -64,15 +72,18 @@ public:
     // Move a piece
     void move_piece(Square from, Square to);
 
+    // Pseudo-legal moves
+    std::vector<Square> pseudo_legal_targets(Square from) const;
+
+    // Check if a given color's king is in check
+    bool is_in_check(Color color) const;
+
     // Check if a move is legal
     bool is_move_legal(Square from, Square to) const;
 
-    // Check if king is in check
-    bool is_in_check(Color color) const;
 
-    // Check if the game is over
-    bool is_checkmate() const;
 
-    std::vector<Move> legal_moves(Square piece, Color color) const;
+    // Legal moves
+    std::vector<Move> legal_moves(Square from) const;
 
 };
