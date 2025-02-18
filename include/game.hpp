@@ -1,6 +1,5 @@
 #pragma once
 #include "chessboard.hpp"
-#include "movegen.hpp"
 #include <string>
 #include <stack>
 
@@ -8,12 +7,12 @@
 class Game {
 private:
     ChessBoard board;
-    std::stack<ChessBoard> board_history;
-    int turn = 0;
+    std::vector<ChessBoard> board_history;
+    std::stack<std::set<Square>> move_history;
+    int turn;
 
 public:
-    void start1v1();
-    void display_board() const;
-    Move parse_input(const std::string& input) const;
-    Square parse_single_input(const std::string& input) const;
+    Game();
+    void play();
+    std::pair<Square, Square> parse_input(const std::string& from, const std::string& to) const;
 };

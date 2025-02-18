@@ -1,11 +1,21 @@
 #include "game.hpp"
 #include <iostream>
 
-void Game::start1v1() {
+Game::Game() {
     board.reset();
+}
+
+void Game::play() {
     
     while (true) {
-        display_board();
+        board.print();
+
+        // printing color to move in blue
+        if(board.get_side_to_move() == WHITE) {
+            std::cout << "\033[1;34mWhite to move\033[0m" << std::endl;
+        } else {
+            std::cout << "\033[1;34mBlack to move\033[0m" << std::endl;
+        }
 
         // Check if the king is in check
         board.check_control();
@@ -16,13 +26,6 @@ void Game::start1v1() {
             std::cout << "\033[1;31mCheck!\033[0m" << std::endl;
         }
         
-        // this is important for the Computer to know the current board state
-        // and the avaiable moves so it can make the best one.
-        // std::vector<Move> legal_moves = MoveGenerator::generate_moves(board);
-        // if (legal_moves.empty()) {
-        //     std::cout << "Game over\n";
-        //     break;
-        // }
         std::string inputPiece;
         std::string inputMove;
         std::cout << "Enter piece to move (only its square): ";
@@ -30,17 +33,16 @@ void Game::start1v1() {
         if(inputPiece == "exit") {
             break;
         }
-        
-        
-        Square from = parse_single_input(inputPiece);
-        std::pair<Color, Piece> piece_from = board.get_piece_on_square(from);
+
+        Square from = static_cast<Square>(8 * (inputPiece[1] - '1') + (inputPiece[0] - 'a'));
 
         // printing legal moves
-        std::vector<Move> legal_moves = board.legal_moves(from);
-        std::cout << "\033[1;32mlegal moves:\033[0m" << std::endl;
-        for (auto move : legal_moves) {
-            std::cout << square_to_string(move.to) << std::endl;
+        std::vector<Square> legal_moves = board.pseudo_legal_targets(from);
+        std::cout << "Legal moves: ";
+        for (Square sq : legal_moves) {
+            std::cout << static_cast<char>('a' + sq % 8) << static_cast<char>('1' + sq / 8) << " ";
         }
+        std::cout << std::endl;
 
 
         
@@ -50,19 +52,20 @@ void Game::start1v1() {
             break;
         }
 
-        // Concatenating
-        std::string input = inputPiece + inputMove;
-        Move move = parse_input(input);
+        std::pair<Square, Square> move = parse_input(inputPiece, inputMove);
 
         // Obtaining piece and color
-        std::pair<Color, Piece> piece = board.get_piece_on_square(move.from);
+        std::pair<Color, Piece> piece_info = board.get_piece_on_square(from);
 
-        if (board.is_move_legal(move.from, move.to)) {
-            board_history.push(board); // Save current board state before making a move
-            board.move_piece(move.from, move.to);
-        } else {
-            std::cout << "Illegal move. Try again.\n";
+
+        // Check if the move is legal
+        if (!board.is_move_legal(from, move.second)) {
+            std::cout << "Illegal move\n";
+            continue;
         }
+
+        // Make the move
+        board.move_piece(from, move.second);
 
         // Check if the game is over
         // if (board.is_checkmate()) {
@@ -75,28 +78,10 @@ void Game::start1v1() {
     }
 }
 
-void Game::display_board() const {
-    board.print();
+std::pair<Square, Square> Game::parse_input(const std::string& from, const std::string& to) const {
+    Square from_sq = static_cast<Square>(8 * (from[1] - '1') + (from[0] - 'a'));
+    Square to_sq = static_cast<Square>(8 * (to[1] - '1') + (to[0] - 'a'));
+
+    return {from_sq, to_sq};
 }
 
-Move Game::parse_input(const std::string& input) const {
-    if (input.size() != 4) {
-        return Move(Square::NO_SQUARE, Square::NO_SQUARE); // Invalid move
-    }
-
-    Square from = static_cast<Square>(8 * (input[1] - '1') + (input[0] - 'a'));
-    Square to = static_cast<Square>(8 * (input[3] - '1') + (input[2] - 'a'));
-
-    return Move(from, to);
-}
-
-// Parse single input
-Square Game::parse_single_input(const std::string& input) const {
-    if (input.size() != 2) {
-        return Square::NO_SQUARE; // Invalid move
-    }
-
-    Square sq = static_cast<Square>(8 * (input[1] - '1') + (input[0] - 'a'));
-
-    return sq;
-}

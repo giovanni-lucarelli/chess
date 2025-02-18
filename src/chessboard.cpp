@@ -1,8 +1,8 @@
 // chessboard.cpp
 #include "chessboard.hpp"
 #include "bitboard.hpp"
-#include "movegen.hpp"
 #include <iostream>
+
 
 ChessBoard::ChessBoard() : en_passant_square(H8) { // H8 = no en passant
     this->reset();
@@ -272,9 +272,9 @@ void ChessBoard::check_control() {
         auto targets = pseudo_legal_targets(static_cast<Square>(sq));
         for (Square target : targets) {
             if (target == white_king_sq)
-                black_check = true;
-            if (target == black_king_sq)
                 white_check = true;
+            if (target == black_king_sq)
+                black_check = true;
         }
     }
 }
@@ -287,6 +287,10 @@ void ChessBoard::check_control() {
 bool ChessBoard::is_move_legal(Square from, Square to) const {
     auto piece_info = get_piece_on_square(from);
     if (piece_info.first == NO_COLOR)
+        return false;
+
+    // Optionally enforce moving only the side to move:
+    if (piece_info.first != side_to_move)
         return false;
 
     // First: must be a pseudo-legal move.
@@ -304,6 +308,7 @@ bool ChessBoard::is_move_legal(Square from, Square to) const {
     // Second: simulate the move and check king safety.
     ChessBoard board_copy = *this;
     board_copy.move_piece(from, to);
+    board_copy.check_control(); // Update check status after the move.
     if (board_copy.get_check(piece_info.first))
         return false;
 
@@ -313,8 +318,8 @@ bool ChessBoard::is_move_legal(Square from, Square to) const {
 
 
 // Generate all legal moves for the piece on square 'from'
-std::vector<Move> ChessBoard::legal_moves(Square from) const {
-    std::vector<Move> moves;
+std::vector<std::set<Square>> ChessBoard::legal_moves(Square from) const {
+    std::vector<std::set<Square>> moves;
     auto piece_info = get_piece_on_square(from);
     if (piece_info.first == NO_COLOR)
         return moves;
@@ -322,7 +327,7 @@ std::vector<Move> ChessBoard::legal_moves(Square from) const {
     auto targets = pseudo_legal_targets(from);
     for (Square t : targets) {
         if (is_move_legal(from, t))
-            moves.push_back(Move(from, t));
+            moves.push_back({t});
     }
     return moves;
 }
