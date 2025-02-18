@@ -24,6 +24,7 @@ private:
 
     bool DEBUG = true;
 
+
 public:
 
     ChessBoard();

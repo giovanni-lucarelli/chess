@@ -48,5 +48,6 @@ add_custom_target(play
 add_custom_target(clean-all
     COMMAND ${CMAKE_BUILD_TOOL} clean
     COMMAND rm -rf CMakeFiles CMakeCache.txt cmake_install.cmake Makefile
+    COMMAND rm -rf ../build/*
     WORKING_DIRECTORY ${CMAKE_PROJECT_DIR}
 )

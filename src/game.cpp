@@ -23,9 +23,8 @@ void Game::start1v1() {
         //     std::cout << "Game over\n";
         //     break;
         // }
-
-        // Get user input in algebraic notation (e.g. e2e4)
         std::string inputPiece;
+        std::string inputMove;
         std::cout << "Enter piece to move (only its square): ";
         std::cin >> inputPiece;
         if(inputPiece == "exit") {
@@ -44,7 +43,7 @@ void Game::start1v1() {
         }
 
 
-        std::string inputMove;
+        
         std::cout << "Enter move (only its square): ";
         std::cin >> inputMove;
         if(inputMove == "exit") {
