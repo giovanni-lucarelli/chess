@@ -21,9 +21,15 @@ void Game::play() {
             std::cout << "\033[1;31mBlack in check!\033[0m" << std::endl;
         }
 
+        // printing en passant square
+        if(board.get_en_passant_square() != NO_SQUARE) {
+            std::cout << "\nEn passant square: " << square_to_string(board.get_en_passant_square()) << std::endl;
+        }
+
         // Checkmate
         if(board.legal_moves(board.get_side_to_move()).size() == 0 && board.get_check(board.get_side_to_move())) {
-            std::cout << "\033[1;31mCheckmate, !\033[0m" << board.get_side_to_move() << " wins!" << std::endl;
+            Color color = board.get_side_to_move() == WHITE ? BLACK : WHITE;
+            std::cout << "\033[1;31mCheckmate!\033[0m" << color << " wins!" << std::endl;
             break;
         }
 
@@ -75,6 +81,8 @@ void Game::play() {
 
         // Make the move
         board.move_piece(from, move.second);
+
+        
 
         // Check if the game is over
         // if (board.is_checkmate()) {

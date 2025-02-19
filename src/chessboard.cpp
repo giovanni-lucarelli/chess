@@ -129,18 +129,41 @@ void ChessBoard::add_piece(Color color, Piece piece, Square sq) {
 
 // move a piece
 void ChessBoard::move_piece(Square from, Square to) {
-    // capture
+    // capture logic (if there's a piece on 'to')
     if (is_occupied(to)) {
         remove_piece(to);
     }
-    
-    std::pair<Color, Piece> piece = get_piece_on_square(from);
-    remove_piece(from);
-    add_piece(piece.first, piece.second, to);
 
-    side_to_move = (side_to_move == WHITE) ? BLACK : WHITE;
+    auto piece_info = get_piece_on_square(from);
+
+    // Actually move the piece
+    remove_piece(from);
+    add_piece(piece_info.first, piece_info.second, to);
+
+    // en passant capture
+    if (piece_info.second == PAWN && to == en_passant_square) {
+        Square eps_capture_sq = static_cast<Square>(to + (piece_info.first == WHITE ? -8 : 8));
+        remove_piece(eps_capture_sq);
+    }
+
+    // Check if pawn moved two squares
+    if (piece_info.second == PAWN) {
+        int from_row = from / 8;
+        int to_row = to / 8;
+        if (std::abs(from_row - to_row) == 2) {
+            en_passant_square = static_cast<Square>((from_row + to_row) / 2 * 8 + (from % 8));
+        } else {
+            en_passant_square = NO_SQUARE;
+        }
+    } else {
+        en_passant_square = NO_SQUARE;
+    } 
     
+
+    // Switch turns
+    side_to_move = (side_to_move == WHITE) ? BLACK : WHITE;
 }
+
 // A helper: convert a square index to row and column.
 inline void square_to_coord(Square sq, int &row, int &col) {
     row = sq / 8;
@@ -172,11 +195,13 @@ bool ChessBoard::is_path_clear(Square from, Square to) const {
 
 // Generate pseudo-legal target squares for the piece on 'from'.
 // (These moves follow the piece's movement rules but do not check king safety.)
-std::vector<Square> ChessBoard::pseudo_legal_targets(Square from) const {
+std::set<Square> ChessBoard::pseudo_legal_targets(Square from) const {
     std::vector<Square> targets;
     auto piece_info = get_piece_on_square(from);
+    
+    // If the square is empty, return an empty set
     if (piece_info.first == NO_COLOR)
-        return targets; // no piece on this square
+        return {};
 
     Color mover = piece_info.first;
     Piece p = piece_info.second;
@@ -212,7 +237,15 @@ std::vector<Square> ChessBoard::pseudo_legal_targets(Square from) const {
                     // Diagonal capture
                     else if (std::abs(dc) == 1 && dr == 1 && target_info.first == BLACK)
                         valid = true;
-                    // (Optional: add en passant here)
+                    // en passant capture
+                    if (en_passant_square != NO_SQUARE) {
+                        // if it's exactly one diagonal step from 'from'
+                        int from_row = from / 8, from_col = from % 8;
+                        int eps_row = en_passant_square / 8, eps_col = en_passant_square % 8;
+                        if ((eps_row == from_row + 1) && (std::abs(eps_col - from_col) == 1)) {
+                            targets.push_back(en_passant_square);
+                        }
+                    }
                 } else { // BLACK pawn
                     if (dc == 0 && dr == -1 && !is_occupied(static_cast<Square>(to)))
                         valid = true;
@@ -222,6 +255,15 @@ std::vector<Square> ChessBoard::pseudo_legal_targets(Square from) const {
                         valid = true;
                     else if (std::abs(dc) == 1 && dr == -1 && target_info.first == WHITE)
                         valid = true;
+                    // en passant capture
+                    if (en_passant_square != NO_SQUARE) {
+                        // if it's exactly one diagonal step from 'from'
+                        int from_row = from / 8, from_col = from % 8;
+                        int eps_row = en_passant_square / 8, eps_col = en_passant_square % 8;
+                        if ((eps_row == from_row - 1) && (std::abs(eps_col - from_col) == 1)) {
+                            targets.push_back(en_passant_square);
+                        }
+                    }
                 }
                 break;
 
@@ -258,7 +300,7 @@ std::vector<Square> ChessBoard::pseudo_legal_targets(Square from) const {
         if (valid)
             targets.push_back(static_cast<Square>(to));
     }
-    return targets;
+    return std::set<Square>(targets.begin(), targets.end());
 }
 
 

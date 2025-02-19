@@ -71,7 +71,7 @@ public:
     bool is_path_clear(Square from, Square to) const;
     bool is_occupied(Square sq) const;
     
-    std::vector<Square> pseudo_legal_targets(Square from) const;
+    std::set<Square> pseudo_legal_targets(Square from) const;
     bool is_move_legal(Square from, Square to) const;
     std::vector<std::pair<Square, Square>> legal_moves(Square from) const;
     std::vector<std::pair<Square, Square>> legal_moves(Color color) const;
