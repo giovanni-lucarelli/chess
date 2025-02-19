@@ -129,36 +129,43 @@ void ChessBoard::add_piece(Color color, Piece piece, Square sq) {
 
 // move a piece
 void ChessBoard::move_piece(Square from, Square to) {
-    // capture logic (if there's a piece on 'to')
+    auto piece_info = get_piece_on_square(from);
+    Color mover = piece_info.first;
+    Piece p = piece_info.second;
+
+    // Remove captured piece if destination is occupied (or en passant, etc.)
     if (is_occupied(to)) {
         remove_piece(to);
     }
-
-    auto piece_info = get_piece_on_square(from);
-
-    // Actually move the piece
-    remove_piece(from);
-    add_piece(piece_info.first, piece_info.second, to);
-
-    // en passant capture
-    if (piece_info.second == PAWN && to == en_passant_square) {
-        Square eps_capture_sq = static_cast<Square>(to + (piece_info.first == WHITE ? -8 : 8));
-        remove_piece(eps_capture_sq);
+    if (p == PAWN && to == en_passant_square) {
+        // Assuming eps_capture_sq was determined earlier
+        remove_piece(static_cast<Square>(to - 8 * (mover == WHITE ? 1 : -1)));
     }
 
-    // Check if pawn moved two squares
-    if (piece_info.second == PAWN) {
-        int from_row = from / 8;
-        int to_row = to / 8;
+    // Clear en passant square by default.
+    en_passant_square = NO_SQUARE;
+
+    // Check for pawn moving two squares to set en passant.
+    if (p == PAWN) {
+        int from_row = static_cast<int>(from) / 8;
+        int to_row = static_cast<int>(to) / 8;
+        // Update en passant for two-square advance.
         if (std::abs(from_row - to_row) == 2) {
-            en_passant_square = static_cast<Square>((from_row + to_row) / 2 * 8 + (from % 8));
-        } else {
-            en_passant_square = NO_SQUARE;
+            en_passant_square = static_cast<Square>(((from_row + to_row) / 2) * 8 + (from % 8));
         }
-    } else {
-        en_passant_square = NO_SQUARE;
-    } 
+        // Promotion condition: white pawn reaching rank 8; black pawn reaching rank 1.
+        // Here rows are 0-indexed: row 7 for white and row 0 for black.
+        if ((mover == WHITE && to_row == 7) || (mover == BLACK && to_row == 0)) {
+            // You can call a helper here, for example, ask user input or default to QUEEN.
+            // For example, default promotion to queen:
+            p = QUEEN;
+            // Alternatively, implement a function like choose_promotion_piece() to decide.
+        }
+    }
     
+    // Remove pawn from initial square and add it (or its replacement) to the destination.
+    remove_piece(from);
+    add_piece(mover, p, to);
 
     // Switch turns
     side_to_move = (side_to_move == WHITE) ? BLACK : WHITE;
@@ -410,5 +417,18 @@ std::vector<std::pair<Square, Square>> ChessBoard::legal_moves(Color color) cons
         }
     }
     return moves;
+}
+
+Piece ChessBoard::choose_promotion_piece() const {
+    std::cout << "Promote pawn to (q, r, b, n): ";
+    char choice;
+    std::cin >> choice;
+    switch(tolower(choice)) {
+        case 'q': return QUEEN;
+        case 'r': return ROOK;
+        case 'b': return BISHOP;
+        case 'n': return KNIGHT;
+        default: return QUEEN; // default promotion to queen
+    }
 }
 

@@ -78,4 +78,5 @@ public:
 
     void check_control();
 
+    Piece choose_promotion_piece() const;
 };
