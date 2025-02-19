@@ -115,12 +115,11 @@ TEST_F(ChessBoardCustomTest, PawnPromotion) {
     // Place a white pawn on E7.
     board.add_piece(WHITE, PAWN, E7);
     
-    // Move pawn from E7 to E8.
-    board.move_piece(E7, E8);
+    // Move pawn from E7 to E8 in non-interactive mode so it defaults to QUEEN.
+    board.move_piece(E7, E8, false);
     
-    // Get piece on E8
+    // Get piece on E8.
     auto promoted = board.get_piece_on_square(E8);
-    // Assuming choose_promotion_piece() promotes to QUEEN by default.
     EXPECT_EQ(promoted.first, WHITE);
     EXPECT_EQ(promoted.second, QUEEN);
 }

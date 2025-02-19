@@ -66,7 +66,7 @@ public:
 
     void remove_piece(Square sq);
     void add_piece(Color color, Piece piece, Square sq);
-    void move_piece(Square from, Square to);
+    void move_piece(Square from, Square to, bool interactive = true);
 
     bool is_path_clear(Square from, Square to) const;
     bool is_occupied(Square sq) const;
@@ -77,4 +77,6 @@ public:
     std::vector<std::pair<Square, Square>> legal_moves(Color color) const;
 
     void check_control();
+
+    Piece choose_promotion_piece() const;
 };

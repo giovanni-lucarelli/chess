@@ -128,13 +128,14 @@ void ChessBoard::add_piece(Color color, Piece piece, Square sq) {
 }
 
 // move a piece
-void ChessBoard::move_piece(Square from, Square to) {
+void ChessBoard::move_piece(Square from, Square to, bool interactive) {
     auto piece_info = get_piece_on_square(from);
     Color mover = piece_info.first;
     Piece p = piece_info.second;
 
-    // If a rook is captured, update castling rights.
+    // (existing code for capture, en passant, etc.)
     if (is_occupied(to)) {
+        // update castling rights if necessary, then remove piece
         auto captured = get_piece_on_square(to);
         if (captured.second == ROOK) {
             if (captured.first == WHITE) {
@@ -150,10 +151,10 @@ void ChessBoard::move_piece(Square from, Square to) {
     if (p == PAWN && to == en_passant_square) {
         remove_piece(static_cast<Square>(to - 8 * (mover == WHITE ? 1 : -1)));
     }
-
+    
     // Clear en passant square by default.
     en_passant_square = NO_SQUARE;
-
+    
     // For pawns: update en passant and promotion.
     if (p == PAWN) {
         int from_row = static_cast<int>(from) / 8;
@@ -161,34 +162,37 @@ void ChessBoard::move_piece(Square from, Square to) {
         if (std::abs(from_row - to_row) == 2) {
             en_passant_square = static_cast<Square>(((from_row + to_row) / 2) * 8 + (from % 8));
         }
+        // Check promotion: if white pawn reaches rank 8 (row 7) or 
+        // black pawn reaches rank 1 (row 0)
         if (to_row == (mover == WHITE ? 7 : 0)) {
-            // Promote to queen by default.
-            p = QUEEN;
+            if (interactive) {
+                // Call a helper to ask the user which piece to choose.
+                p = choose_promotion_piece(); 
+            } else {
+                // When not interactive (e.g. in simulation), default to queen.
+                p = QUEEN;
+            }
         }
     }
-
+    
     // Handle castling:
     if (p == KING && std::abs(static_cast<int>(to) % 8 - static_cast<int>(from) % 8) == 2) {
         // Since king has moved, remove castling rights for this color.
         castling_rights[mover][0] = false;
         castling_rights[mover][1] = false;
-        // Kingside castling (white): king from E1 (4) to G1 (6).
+        // For example, if white kingside castling:
         if (to == G1) {
-            // Move rook from H1 (7) to F1 (5)
             remove_piece(H1);
             add_piece(mover, ROOK, F1);
         }
-        // Queenside castling (white): king from E1 (4) to C1 (2).
         else if (to == C1) {
-            // Move rook from A1 (0) to D1 (3)
             remove_piece(A1);
             add_piece(mover, ROOK, D1);
         }
-        // Similarly, add black castling moves using appropriate square constants.
+        // You can add similar handling for black castling.
     }
     
-    // Additionally, if a rook moves from its starting square,
-    // update castling rights:
+    // Additionally, if a rook moves from its starting square, update castling rights.
     if (p == ROOK) {
         if (mover == WHITE) {
             if (from == A1) castling_rights[WHITE][0] = false;
@@ -199,7 +203,7 @@ void ChessBoard::move_piece(Square from, Square to) {
         }
     }
     
-    // Remove piece from the source and add the piece (or its promoted version) on the destination.
+    // Remove piece from the source and add the (promoted) piece at the destination.
     remove_piece(from);
     add_piece(mover, p, to);
     
@@ -280,7 +284,7 @@ std::set<Square> ChessBoard::pseudo_legal_targets(Square from) const {
                     // Diagonal capture
                     else if (std::abs(dc) == 1 && dr == 1 && target_info.first == BLACK)
                         valid = true;
-                    // en passant capture
+                    // en_passant capture
                     if (en_passant_square != NO_SQUARE) {
                         // if it's exactly one diagonal step from 'from'
                         int from_row = from / 8, from_col = from % 8;
@@ -298,7 +302,7 @@ std::set<Square> ChessBoard::pseudo_legal_targets(Square from) const {
                         valid = true;
                     else if (std::abs(dc) == 1 && dr == -1 && target_info.first == WHITE)
                         valid = true;
-                    // en passant capture
+                    // en_passant capture
                     if (en_passant_square != NO_SQUARE) {
                         // if it's exactly one diagonal step from 'from'
                         int from_row = from / 8, from_col = from % 8;
@@ -420,7 +424,7 @@ bool ChessBoard::is_move_legal(Square from, Square to) const {
 
     // Second: simulate the move and check king safety.
     ChessBoard board_copy = *this;
-    board_copy.move_piece(from, to);
+    board_copy.move_piece(from, to, false);
     board_copy.check_control();
     bool next_white_check = board_copy.get_check(WHITE);
     bool next_black_check = board_copy.get_check(BLACK);
@@ -466,4 +470,18 @@ std::vector<std::pair<Square, Square>> ChessBoard::legal_moves(Color color) cons
     return moves;
 }
 
-
+Piece ChessBoard::choose_promotion_piece() const {
+    std::cout << "Promote pawn to (q, r, b, n): ";
+    char choice;
+    do {
+        std::cin >> choice;
+    } while (std::tolower(choice) != 'q' && std::tolower(choice) != 'r' &&
+             std::tolower(choice) != 'b' && std::tolower(choice) != 'n');
+    switch (std::tolower(choice)) {
+        case 'q': return QUEEN;
+        case 'r': return ROOK;
+        case 'b': return BISHOP;
+        case 'n': return KNIGHT;
+        default: return QUEEN; // default promotion to Queen if input is invalid
+    }
+}
