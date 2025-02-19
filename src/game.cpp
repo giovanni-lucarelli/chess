@@ -21,6 +21,7 @@ void Game::play() {
             std::cout << "\033[1;31mBlack in check!\033[0m" << std::endl;
         }
 
+
         // printing en passant square
         if(board.get_en_passant_square() != NO_SQUARE) {
             std::cout << "\nEn passant square: " << square_to_string(board.get_en_passant_square()) << std::endl;
@@ -55,7 +56,6 @@ void Game::play() {
         std::cout << "Legal moves: ";
         for (const auto& move : moves) {
             std::cout << square_to_string(move.second) << " ";
-            int n_moves = moves.size();
         }
         std::cout << std::endl;
 
@@ -69,8 +69,6 @@ void Game::play() {
 
         std::pair<Square, Square> move = parse_input(inputPiece, inputMove);
 
-        // Obtaining piece and color
-        std::pair<Color, Piece> piece_info = board.get_piece_on_square(from);
 
 
         // Check if the move is legal

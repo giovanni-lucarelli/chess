@@ -106,6 +106,32 @@ TEST_F(ChessBoardCustomTest, WhiteKingsideCastling) {
     // (If you have a getter for castling rights, assert they are now false.)
 }
 
+// black kingside castling
+TEST_F(ChessBoardCustomTest, BlackKingsideCastling) {
+    // Remove pieces between king and rook.
+    board.remove_piece(F8);
+    board.remove_piece(G8);
+    
+    // Force castling rights if necessary.
+    // (Assumes that after reset, castling_rights for black remain true.)
+    
+    // Move black king from E8 to G8.
+    board.move_piece(E8, G8);
+    
+    // Check that king is on G8.
+    auto kingSquare = board.get_piece_on_square(G8);
+    EXPECT_EQ(kingSquare.first, BLACK);
+    EXPECT_EQ(kingSquare.second, KING);
+    
+    // Check that the rook has moved from H8 to F8.
+    auto rookSquare = board.get_piece_on_square(F8);
+    EXPECT_EQ(rookSquare.first, BLACK);
+    EXPECT_EQ(rookSquare.second, ROOK);
+    
+    // Also, castling rights
+    // (If you have a getter for castling rights, assert they are now false.)
+}
+
 // Test promotion: set up a white pawn at E7 and move to E8, then check it promotes (to QUEEN if using default).
 TEST_F(ChessBoardCustomTest, PawnPromotion) {
     // Remove any piece on E7 and E8.

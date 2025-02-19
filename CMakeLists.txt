@@ -29,6 +29,11 @@ set(TEST_SOURCES
     test/test.cpp
 )
 
+#Compiler flags for optimization and warnings
+if(CMAKE_CXX_COMPILER_ID MATCHES "GNU|Clang")
+    target_compile_options(ChessEngine PRIVATE -Wall -Wextra -Wpedantic -O3)
+endif()
+
 # Create test executable
 add_executable(ChessEngineTests ${TEST_SOURCES} ${SOURCES})
 
@@ -37,6 +42,18 @@ target_link_libraries(ChessEngineTests GTest::GTest GTest::Main pthread)
 
 # Add test to CTest framework
 add_test(NAME ChessEngineTests COMMAND ChessEngineTests)
+
+# Pybind11 setup
+find_package(pybind11 REQUIRED)
+
+# Add python module
+pybind11_add_module(chessengine_py MODULE src/bindings.cpp ${SOURCES})
+
+# Set output name
+set_target_properties(chessengine_py PROPERTIES OUTPUT_NAME "chessengine")
+
+
+
 
 # Running executable
 add_custom_target(play
@@ -53,7 +70,7 @@ add_custom_target(run_tests
 )
 
 # Cleaning
-add_custom_target(clean-all
+add_custom_target(clean_all
     COMMAND ${CMAKE_BUILD_TOOL} clean
     COMMAND rm -rf CMakeFiles CMakeCache.txt cmake_install.cmake Makefile
     COMMAND rm -rf ../build/*
