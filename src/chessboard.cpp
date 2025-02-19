@@ -4,8 +4,24 @@
 #include <iostream>
 
 
-ChessBoard::ChessBoard() : en_passant_square(H8) { // H8 = no en passant
-    this->reset();
+// Constructor
+ChessBoard::ChessBoard() {
+    reset();
+}
+
+// Copy constructor
+ChessBoard::ChessBoard(const ChessBoard& other) {
+    pieces = other.pieces;
+    side_to_move = other.side_to_move;
+    en_passant_square = other.en_passant_square;
+    castling_rights[WHITE][0] = other.castling_rights[WHITE][0];
+    castling_rights[WHITE][1] = other.castling_rights[WHITE][1];
+    castling_rights[BLACK][0] = other.castling_rights[BLACK][0];
+    castling_rights[BLACK][1] = other.castling_rights[BLACK][1];
+    white_check = other.white_check;
+    black_check = other.black_check;
+    // halfmove_clock = other.halfmove_clock;
+    // fullmove_number = other.fullmove_number;
 }
 
 void ChessBoard::reset() {
@@ -305,31 +321,52 @@ bool ChessBoard::is_move_legal(Square from, Square to) const {
     if (!found)
         return false;
 
+
     // Second: simulate the move and check king safety.
     ChessBoard board_copy = *this;
     board_copy.move_piece(from, to);
-    board_copy.check_control(); // Update check status after the move.
-    if (board_copy.get_check(piece_info.first))
-        return false;
+    board_copy.check_control();
+    bool next_white_check = board_copy.get_check(WHITE);
+    bool next_black_check = board_copy.get_check(BLACK);
+
+    // The move is legal if it does not leave the mover's king in check.
+    if (side_to_move == WHITE)
+        return !next_white_check;
+    else
+        return !next_black_check;
+    
+
 
     return true;
 }
 
 
 
-// Generate all legal moves for the piece on square 'from'
-std::vector<std::set<Square>> ChessBoard::legal_moves(Square from) const {
-    std::vector<std::set<Square>> moves;
+// Generate all legal moves for the piece on square 'from', remember that it cannot leave the king in check the next state
+std::vector<std::pair<Square, Square>> ChessBoard::legal_moves(Square from) const {
+    std::vector<std::pair<Square, Square>> moves;
     auto piece_info = get_piece_on_square(from);
     if (piece_info.first == NO_COLOR)
         return moves;
 
     auto targets = pseudo_legal_targets(from);
-    for (Square t : targets) {
-        if (is_move_legal(from, t))
-            moves.push_back({t});
+    for (Square target : targets) {
+        if (is_move_legal(from, target))
+            moves.push_back({from, target});
     }
     return moves;
 }
 
+// Generate all legal moves for a given color
+std::vector<std::pair<Square, Square>> ChessBoard::legal_moves(Color color) const {
+    std::vector<std::pair<Square, Square>> moves;
+    for (int sq = 0; sq < 64; ++sq) {
+        auto piece_info = get_piece_on_square(static_cast<Square>(sq));
+        if (piece_info.first == color) {
+            auto piece_moves = legal_moves(static_cast<Square>(sq));
+            moves.insert(moves.end(), piece_moves.begin(), piece_moves.end());
+        }
+    }
+    return moves;
+}
 

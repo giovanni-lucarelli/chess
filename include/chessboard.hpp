@@ -27,6 +27,7 @@ public:
     friend class Move;
     friend class Game;
     ChessBoard();
+    ChessBoard(const ChessBoard& other);
     void reset();
     void print() const;
 
@@ -72,7 +73,8 @@ public:
     
     std::vector<Square> pseudo_legal_targets(Square from) const;
     bool is_move_legal(Square from, Square to) const;
-    std::vector<std::set<Square>> legal_moves(Square from) const;
+    std::vector<std::pair<Square, Square>> legal_moves(Square from) const;
+    std::vector<std::pair<Square, Square>> legal_moves(Color color) const;
 
     void check_control();
 

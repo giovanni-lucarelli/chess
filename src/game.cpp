@@ -3,27 +3,35 @@
 
 Game::Game() {
     board.reset();
+    turn = 0;
 }
 
 void Game::play() {
     
     while (true) {
-        board.print();
 
-        // printing color to move in blue
-        if(board.get_side_to_move() == WHITE) {
-            std::cout << "\033[1;34mWhite to move\033[0m" << std::endl;
-        } else {
-            std::cout << "\033[1;34mBlack to move\033[0m" << std::endl;
-        }
+        turn += 1;
+        board.print();
 
         // Check if the king is in check
         board.check_control();
-        if(board.get_check(board.get_side_to_move())) {
-            std::cout << "\033[1;31mCheck!\033[0m" << std::endl;
+        if(board.get_check(WHITE)) {
+            std::cout << "\033[1;31mWhite in check!\033[0m" << std::endl;
+        } else if(board.get_check(BLACK)) {
+            std::cout << "\033[1;31mBlack in check!\033[0m" << std::endl;
         }
-        if(board.get_check(board.get_side_to_move() == WHITE ? BLACK : WHITE)) {
-            std::cout << "\033[1;31mCheck!\033[0m" << std::endl;
+
+        // Checkmate
+        if(board.legal_moves(board.get_side_to_move()).size() == 0 && board.get_check(board.get_side_to_move())) {
+            std::cout << "\033[1;31mCheckmate, !\033[0m" << board.get_side_to_move() << " wins!" << std::endl;
+            break;
+        }
+
+        // printing color to move in blue and relative turn
+        if(board.get_side_to_move() == WHITE) {
+            std::cout << "\033[1;34mWhite to move (\033[0m" << (turn / 2) + 1 << "\033[1;34m)\033[0m" << std::endl;
+        } else {
+            std::cout << "\033[1;34mBlack to move (\033[0m" << (turn / 2) << "\033[1;34m)\033[0m" << std::endl;
         }
         
         std::string inputPiece;
@@ -37,10 +45,11 @@ void Game::play() {
         Square from = static_cast<Square>(8 * (inputPiece[1] - '1') + (inputPiece[0] - 'a'));
 
         // printing legal moves
-        std::vector<Square> legal_moves = board.pseudo_legal_targets(from);
+        std::vector<std::pair<Square, Square>> moves = board.legal_moves(from);
         std::cout << "Legal moves: ";
-        for (Square sq : legal_moves) {
-            std::cout << static_cast<char>('a' + sq % 8) << static_cast<char>('1' + sq / 8) << " ";
+        for (const auto& move : moves) {
+            std::cout << square_to_string(move.second) << " ";
+            int n_moves = moves.size();
         }
         std::cout << std::endl;
 
@@ -73,9 +82,8 @@ void Game::play() {
         //     std::cout << "Checkmate\n";
         //     break;
         // }
-
-        turn += 1;
     }
+
 }
 
 std::pair<Square, Square> Game::parse_input(const std::string& from, const std::string& to) const {
