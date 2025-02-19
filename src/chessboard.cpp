@@ -161,8 +161,9 @@ void ChessBoard::move_piece(Square from, Square to) {
         if (std::abs(from_row - to_row) == 2) {
             en_passant_square = static_cast<Square>(((from_row + to_row) / 2) * 8 + (from % 8));
         }
-        if ((mover == WHITE && to_row == 7) || (mover == BLACK && to_row == 0)) {
-            p = choose_promotion_piece();
+        if (to_row == (mover == WHITE ? 7 : 0)) {
+            // Promote to queen by default.
+            p = QUEEN;
         }
     }
 
@@ -465,16 +466,4 @@ std::vector<std::pair<Square, Square>> ChessBoard::legal_moves(Color color) cons
     return moves;
 }
 
-Piece ChessBoard::choose_promotion_piece() const {
-    std::cout << "Promote pawn to (q, r, b, n): ";
-    char choice;
-    std::cin >> choice;
-    switch(tolower(choice)) {
-        case 'q': return QUEEN;
-        case 'r': return ROOK;
-        case 'b': return BISHOP;
-        case 'n': return KNIGHT;
-        default: return QUEEN; // default promotion to queen
-    }
-}
 

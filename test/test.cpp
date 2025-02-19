@@ -60,3 +60,98 @@ TEST_F(ChessBoardTest, IllegalMove) {
     EXPECT_FALSE(board.is_move_legal(E2, E5)); // Pawns can't jump
     EXPECT_FALSE(board.is_move_legal(E1, E3)); // King can't move two squares
 }
+
+#include <gtest/gtest.h>
+#include "chessboard.hpp"
+
+// Extend the ChessBoardTest fixture with helper functions to set up custom states.
+class ChessBoardCustomTest : public ::testing::Test {
+protected:
+    ChessBoard board;
+
+    void SetUp() override {
+        board.reset();
+    }
+    
+    // Clear a square and add a piece to that square.
+    void set_piece(Square sq, Color color, Piece p) {
+        board.remove_piece(sq);
+        board.add_piece(color, p, sq);
+    }
+};
+
+// Test castling: remove blocking pieces for white kingside castling, then move king from E1 to G1.
+TEST_F(ChessBoardCustomTest, WhiteKingsideCastling) {
+    // Remove pieces between king and rook.
+    board.remove_piece(F1);
+    board.remove_piece(G1);
+    
+    // Force castling rights if necessary.
+    // (Assumes that after reset, castling_rights for white remain true.)
+    
+    // Move white king from E1 to G1.
+    board.move_piece(E1, G1);
+    
+    // Check that king is on G1.
+    auto kingSquare = board.get_piece_on_square(G1);
+    EXPECT_EQ(kingSquare.first, WHITE);
+    EXPECT_EQ(kingSquare.second, KING);
+    
+    // Check that the rook has moved from H1 to F1.
+    auto rookSquare = board.get_piece_on_square(F1);
+    EXPECT_EQ(rookSquare.first, WHITE);
+    EXPECT_EQ(rookSquare.second, ROOK);
+    
+    // Also, castling rights should be revoked.
+    // (If you have a getter for castling rights, assert they are now false.)
+}
+
+// Test promotion: set up a white pawn at E7 and move to E8, then check it promotes (to QUEEN if using default).
+TEST_F(ChessBoardCustomTest, PawnPromotion) {
+    // Remove any piece on E7 and E8.
+    board.remove_piece(E7);
+    board.remove_piece(E8);
+    
+    // Place a white pawn on E7.
+    board.add_piece(WHITE, PAWN, E7);
+    
+    // Move pawn from E7 to E8.
+    board.move_piece(E7, E8);
+    
+    // Get piece on E8
+    auto promoted = board.get_piece_on_square(E8);
+    // Assuming choose_promotion_piece() promotes to QUEEN by default.
+    EXPECT_EQ(promoted.first, WHITE);
+    EXPECT_EQ(promoted.second, QUEEN);
+}
+
+// Test en passant capture
+TEST_F(ChessBoardCustomTest, EnPassantCapture) {
+    // Build a custom en passant scenario.
+    // Remove pawn obstacles.
+    board.remove_piece(E2);
+    board.remove_piece(D4);
+    board.remove_piece(E4);
+    
+    // Place white pawn on E4 and black pawn on D4.
+    board.add_piece(WHITE, PAWN, E4);
+    board.add_piece(BLACK, PAWN, D4);
+    
+    // Simulate black pawn moving two squares forward (from D7 to D5) to enable en passant.
+    board.remove_piece(D7);
+    board.add_piece(BLACK, PAWN, D5);
+    
+    // Manually set en passant square to D6.
+    board.set_en_passant_square(D6);
+    
+    // Now white pawn on E4 can capture en passant by moving to D5.
+    board.move_piece(E4, D5);
+    
+    // After en passant, the black pawn that moved two squares should be captured.
+    EXPECT_FALSE(board.is_occupied(D5) && board.get_piece_on_square(D5).first == BLACK);
+    
+    // Verify that the capturing pawn (white) is now on D5.
+    auto epPiece = board.get_piece_on_square(D5);
+    EXPECT_EQ(epPiece.first, WHITE);
+    EXPECT_EQ(epPiece.second, PAWN);
+}

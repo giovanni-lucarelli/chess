@@ -77,6 +77,4 @@ public:
     std::vector<std::pair<Square, Square>> legal_moves(Color color) const;
 
     void check_control();
-
-    Piece choose_promotion_piece() const;
 };

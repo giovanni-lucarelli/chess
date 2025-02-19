@@ -45,6 +45,13 @@ add_custom_target(play
     WORKING_DIRECTORY ${CMAKE_PROJECT_DIR}
 )
 
+# Testing
+add_custom_target(run_tests
+    COMMAND ChessEngineTests
+    DEPENDS ChessEngineTests
+    WORKING_DIRECTORY ${CMAKE_PROJECT_DIR}
+)
+
 # Cleaning
 add_custom_target(clean-all
     COMMAND ${CMAKE_BUILD_TOOL} clean
