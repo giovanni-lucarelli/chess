@@ -49,8 +49,6 @@ find_package(pybind11 REQUIRED)
 # Add python module
 pybind11_add_module(chessengine_py MODULE src/bindings.cpp ${SOURCES})
 
-# Set output name
-set_target_properties(chessengine_py PROPERTIES OUTPUT_NAME "chessengine")
 
 
 

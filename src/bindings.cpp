@@ -10,7 +10,7 @@
 
 namespace py = pybind11;
 
-PYBIND11_MODULE(chessengine, m) {
+PYBIND11_MODULE(chessengine_py, m) {
     m.doc() = "Chess engine module bound via pybind11";
 
     // Bind enums from types.hpp
