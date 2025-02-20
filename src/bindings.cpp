@@ -52,6 +52,12 @@ PYBIND11_MODULE(chessengine_py, m) {
         .value("NO_SQUARE", NO_SQUARE)
         .export_values();
 
+    // square to string
+    m.def("square_to_string", &square_to_string);
+
+    // piece to string
+    m.def("piece_to_string", &piece_to_string);
+
     // Bind the ChessBoard class.
     py::class_<ChessBoard>(m, "ChessBoard")
         .def(py::init<>())
@@ -86,8 +92,10 @@ PYBIND11_MODULE(chessengine_py, m) {
     // Bind the Game class.
     py::class_<Game>(m, "Game")
         .def(py::init<>())
-        .def("play", &Game::play)
         .def("parse_input", &Game::parse_input)
+        .def_readwrite("board", &Game::board)  // Expose board member
+        .def_readwrite("board_history", &Game::board_history)  // Expose board history
+        .def_readwrite("move_history", &Game::move_history)  // Expose move history
         ;
 }
 
