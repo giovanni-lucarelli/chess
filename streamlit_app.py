@@ -70,11 +70,18 @@ def create_board_image(board):
 
 # 5. Streamlit UI
 def main():
-
-    # Create the board image
-    img = create_board_image(board_state)
+    # -- Place two input fields in the Streamlit sidebar --
+    input_square_1 = st.sidebar.text_input("Select piece to move:", "")
+    input_square_2 = st.sidebar.text_input("Insert square to move the piece:", "")
     
-    # Display it
+    # Display the values in the sidebar (optional)
+    if input_square_1:
+        st.sidebar.write("Select piece to move:", input_square_1)
+    if input_square_2:
+        st.sidebar.write("Insert square to move the piece:", input_square_2)
+    
+    # -- Display the board in the main area --
+    img = create_board_image(board_state)
     st.image(img, caption="Current Board", use_column_width=False)
 
 if __name__ == "__main__":

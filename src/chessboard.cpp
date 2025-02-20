@@ -71,6 +71,23 @@ U64 ChessBoard::get_pieces(Color color, Piece piece) const {
     return pieces[color][piece];
 }
 
+std::vector<std::vector<std::string>> ChessBoard::get_board() const {
+    std::vector<std::vector<std::string>> board(8, std::vector<std::string>(8, " "));
+    for (int rank = 0; rank < 8; rank++) {
+        for (int file = 0; file < 8; file++) {
+            int sq = rank * 8 + file;
+            for (int color = 0; color < 2; color++) {
+                for (int piece = 0; piece < 6; piece++) {
+                    if (Bitboard::get_bit(pieces[color][piece], static_cast<Square>(sq))) {
+                        board[rank][file] = (color == WHITE ? "w" : "b") + std::to_string(piece);
+                    }
+                }
+            }
+        }
+    }
+    return board;
+}
+
 // Print board (for debugging)
 void ChessBoard::print() const {
     const char piece_symbols[2][6] = {

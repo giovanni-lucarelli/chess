@@ -11,7 +11,14 @@ void Game::play() {
     while (true) {
 
         turn += 1;
-        board.print();
+        std::vector<std::vector<std::string>> representation = board.get_board();
+        // print
+        for (int i = 0; i < 8; i++) {
+            for (int j = 0; j < 8; j++) {
+                std::cout << representation[i][j] << " ";
+            }
+            std::cout << std::endl;
+        }
 
         // Check if the king is in check
         board.check_control();

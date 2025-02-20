@@ -24,12 +24,12 @@ private:
 
 
 public:
-    friend class Move;
     friend class Game;
     ChessBoard();
     ChessBoard(const ChessBoard& other);
-    void reset();
+    std::vector<std::vector<std::string>> get_board() const;
     void print() const;
+    void reset();
 
 //     /* --------------------------------- */
 //     /*              Getters              */
@@ -50,7 +50,7 @@ public:
             return black_check;
         }
     }
-    
+
 
 //     /* --------------------------------- */
 //     /*              Setters              */
