@@ -10,6 +10,18 @@ SQUARE_SIZE = 90  # pixels for each square
 LIGHT_COLOR = (240, 217, 181)  # light square color
 DARK_COLOR = (181, 136, 99)  # dark square color
 
+board_state = [
+    ["b3", "b1", "b2", "b4", "b5", "b2", "b1", "b3"],
+    ["b0", "b0", "b0", "b0", "b0", "b0", "b0", "b0"],
+    ["", "", "", "", "", "", "", ""],
+    ["", "", "", "", "", "", "", ""],
+    ["", "", "", "", "", "", "", ""],
+    ["", "", "", "", "", "", "", ""],
+    ["w0", "w0", "w0", "w0", "w0", "w0", "w0", "w0"],
+    ["w3", "w1", "w2", "w4", "w5", "w2", "w1", "w3"]
+]   
+    
+
 # Load piece images
 piece_image_paths = {
     "w0": "assets/w_pawn.svg",    # Pawn
@@ -83,53 +95,66 @@ def main():
 
     st.title("Chess Game")
 
-    board_state = game.board.get_board()
-    # Display the current board image
-    img = create_board_image(board_state)
-    st.image(img, caption="Current Board", use_column_width=False)
+    # Create a placeholder for the board image in the main area
+    board_placeholder = st.empty()
 
+    # Render the board in the main area
+    board_state = game.board.get_board()
+    img = create_board_image(board_state)
+    board_placeholder.image(img, caption="Current Board", use_column_width=False)
 
     # Sidebar inputs for selecting piece and move
     input_piece = st.sidebar.text_input("Enter piece to move (e.g., 'e2'):", "")
+    if input_piece:
+        try:
+            from_square = chessengine_py.Square(
+                ord(input_piece[0]) - ord('a') + 8 * (int(input_piece[1]) - 1)
+            )
+            moves = game.board.legal_moves(from_square)
+            legal_moves = [chessengine_py.square_to_string(move[1]) for move in moves]
+            st.sidebar.write("Legal moves:", legal_moves)
+        except Exception as e:
+            st.sidebar.error(f"Invalid input: {e}")
+    
     input_move = st.sidebar.text_input("Enter move (e.g., 'e4'):", "")
 
-    # Increment turn each time a move is made
     if st.sidebar.button("Make Move"):
         if input_piece and input_move:
-            from_square = chessengine_py.Square(ord(input_piece[0]) - ord('a') + 8 * (int(input_piece[1]) - 1))
-            to_square = chessengine_py.Square(ord(input_move[0]) - ord('a') + 8 * (int(input_move[1]) - 1))
-            
-            # Attempt to make the move
+            from_square = chessengine_py.Square(
+                ord(input_piece[0]) - ord('a') + 8 * (int(input_piece[1]) - 1)
+            )
+            to_square = chessengine_py.Square(
+                ord(input_move[0]) - ord('a') + 8 * (int(input_move[1]) - 1)
+            )
             if handle_move(game, from_square, to_square):
                 st.sidebar.success("Move successful!")
                 st.session_state.turn += 1
+                # Update the board image after the move
+                board_state = game.board.get_board()
+                img = create_board_image(board_state)
+                board_placeholder.image(img, caption="Current Board", use_column_width=False)
             else:
                 st.sidebar.error("Illegal move!")
 
-    st.write(f"Turn: {st.session_state.turn}")
-
-
-    # Display the game status
-    if game.board.get_check(chessengine_py.Color.WHITE):
-        st.error("White is in check!")
-    elif game.board.get_check(chessengine_py.Color.BLACK):
-        st.error("Black is in check!")
-
-    # En passant square info
+    # Now, print game info (turn, en passant, check status, etc.) in the sidebar
+    st.sidebar.write(f"Turn: {st.session_state.turn}")
     en_passant = game.board.get_en_passant_square()
     if en_passant != chessengine_py.Square.NO_SQUARE:
-        st.write(f"En Passant square: {chessengine_py.square_to_string(en_passant)}")
+        st.sidebar.write(f"En Passant square: {chessengine_py.square_to_string(en_passant)}")
 
-    # Checkmate check
-    side_to_move = game.board.get_side_to_move()
+    if game.board.get_check(chessengine_py.Color.WHITE):
+        st.sidebar.error("White is in check!")
+    elif game.board.get_check(chessengine_py.Color.BLACK):
+        st.sidebar.error("Black is in check!")
+
     all_legal_moves = []
     for square_int in range(64):
         square = chessengine_py.Square(square_int)
         all_legal_moves.extend(game.board.legal_moves(square))
 
-    if not all_legal_moves and game.board.get_check(side_to_move):
-        winner = "Black" if side_to_move == chessengine_py.Color.WHITE else "White"
-        st.write(f"Checkmate! {winner} wins!")
+    if not all_legal_moves and game.board.get_check(game.board.get_side_to_move()):
+        winner = "Black" if game.board.get_side_to_move() == chessengine_py.Color.WHITE else "White"
+        st.sidebar.write(f"Checkmate! {winner} wins!")
 
 if __name__ == "__main__":
     main()
