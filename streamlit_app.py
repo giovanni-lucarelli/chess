@@ -1,88 +1,135 @@
 import streamlit as st
 from PIL import Image, ImageDraw
+import sys
+sys.path.append("build")
+import chessengine_py  # type: ignore # Import your chess engine module
 
-# 1. Board constants
+# Constants for chessboard
 ROWS, COLS = 8, 8
-SQUARE_SIZE = 90   # pixels for each square
+SQUARE_SIZE = 90  # pixels for each square
 LIGHT_COLOR = (240, 217, 181)  # light square color
-DARK_COLOR  = (181, 136,  99)  # dark square color
+DARK_COLOR = (181, 136, 99)  # dark square color
 
-# 2. Example board state
-board_state = [
-    ["bR", "bN", "bB", "bQ", "bK", "bB", "bN", "bR"],
-    ["bP", "bP", "bP", "bP", "bP", "bP", "bP", "bP"],
-    ["",   "",   "",   "",   "",   "",   "",   ""  ],
-    ["",   "",   "",   "",   "",   "",   "",   ""  ],
-    ["",   "",   "",   "",   "",   "",   "",   ""  ],
-    ["",   "",   "",   "",   "",   "",   "",   ""  ],
-    ["wP", "wP", "wP", "wP", "wP", "wP", "wP", "wP"],
-    ["wR", "wN", "wB", "wQ", "wK", "wB", "wN", "wR"]
-]
-
-# 3. Piece image dictionary
+# Load piece images
 piece_image_paths = {
-    "wP": "assets/w_pawn.svg",
-    "wR": "assets/w_rook.svg",
-    "wN": "assets/w_knight.svg",
-    "wB": "assets/w_bishop.svg",
-    "wQ": "assets/w_queen.svg",
-    "wK": "assets/w_king.svg",
-    "bP": "assets/b_pawn.svg",
-    "bR": "assets/b_rook.svg",
-    "bN": "assets/b_knight.svg",
-    "bB": "assets/b_bishop.svg",
-    "bQ": "assets/b_queen.svg",
-    "bK": "assets/b_king.svg"
+    "w0": "assets/w_pawn.svg",    # Pawn
+    "w1": "assets/w_knight.svg",  # Knight
+    "w2": "assets/w_bishop.svg",  # Bishop
+    "w3": "assets/w_rook.svg",    # Rook
+    "w4": "assets/w_queen.svg",   # Queen
+    "w5": "assets/w_king.svg",    # King
+    "b0": "assets/b_pawn.svg",    # Pawn
+    "b1": "assets/b_knight.svg",  # Knight
+    "b2": "assets/b_bishop.svg",  # Bishop
+    "b3": "assets/b_rook.svg",    # Rook
+    "b4": "assets/b_queen.svg",   # Queen
+    "b5": "assets/b_king.svg"     # King
 }
 
-# Preload piece images (optional but often faster)
+# Preload piece images
 piece_images = {}
 for piece, path in piece_image_paths.items():
     piece_images[piece] = Image.open(path).convert("RGBA")
 
-# 4. Function to create a single PIL image of the entire chessboard
+# Function to create a chessboard image
 def create_board_image(board):
-    width  = COLS * SQUARE_SIZE
+    width = COLS * SQUARE_SIZE
     height = ROWS * SQUARE_SIZE
     board_img = Image.new("RGBA", (width, height), (0, 0, 0, 0))
     draw = ImageDraw.Draw(board_img)
-
-    for row in range(ROWS):
+    
+    # Iterate rows in reverse so that row 7 (white's home) is at the bottom
+    for disp_row, board_row in enumerate(reversed(board)):
         for col in range(COLS):
-            # Determine square color
-            is_light_square = (row + col) % 2 == 1
+            # disp_row now corresponds to the drawing row (0: bottom, 7: top)
+            is_light_square = ((7 - disp_row) + col) % 2 == 0
             color = LIGHT_COLOR if is_light_square else DARK_COLOR
             
             x1 = col * SQUARE_SIZE
-            y1 = row * SQUARE_SIZE
+            # Update y coordinate based on disp_row (0 at bottom)
+            y1 = disp_row * SQUARE_SIZE
             x2 = x1 + SQUARE_SIZE
             y2 = y1 + SQUARE_SIZE
             
             draw.rectangle([x1, y1, x2, y2], fill=color)
-
-            piece_code = board[row][col]
-            if piece_code:
-                # Rotate each piece 180º before pasting
-                piece_img = piece_images[piece_code].rotate(180, expand=True)
-                board_img.paste(piece_img, (x1, y1), piece_img)
-
+            
+            piece_code = board_row[col]
+            # Skip empty squares
+            if piece_code.strip():
+                if piece_code in piece_images:
+                    piece_img = piece_images[piece_code].rotate(180, expand=True)
+                    board_img.paste(piece_img, (x1, y1), piece_img)
+                else:
+                    print(f"Warning: {piece_code} image not found.")
     return board_img
 
-# 5. Streamlit UI
+# Function to handle chess game moves
+def handle_move(game, from_square, to_square):
+    if game.board.is_move_legal(from_square, to_square):
+        game.board.move_piece(from_square, to_square)
+        return True
+    return False
+
+def init_state():
+    if "game" not in st.session_state:
+        st.session_state.game = chessengine_py.Game()
+    if "turn" not in st.session_state:
+        st.session_state.turn = 0
+
+# Streamlit UI
 def main():
-    # -- Place two input fields in the Streamlit sidebar --
-    input_square_1 = st.sidebar.text_input("Select piece to move:", "")
-    input_square_2 = st.sidebar.text_input("Insert square to move the piece:", "")
-    
-    # Display the values in the sidebar (optional)
-    if input_square_1:
-        st.sidebar.write("Select piece to move:", input_square_1)
-    if input_square_2:
-        st.sidebar.write("Insert square to move the piece:", input_square_2)
-    
-    # -- Display the board in the main area --
+    init_state()
+    game = st.session_state.game
+
+    st.title("Chess Game")
+
+    board_state = game.board.get_board()
+    # Display the current board image
     img = create_board_image(board_state)
     st.image(img, caption="Current Board", use_column_width=False)
+
+
+    # Sidebar inputs for selecting piece and move
+    input_piece = st.sidebar.text_input("Enter piece to move (e.g., 'e2'):", "")
+    input_move = st.sidebar.text_input("Enter move (e.g., 'e4'):", "")
+
+    # Increment turn each time a move is made
+    if st.sidebar.button("Make Move"):
+        if input_piece and input_move:
+            from_square = chessengine_py.Square(ord(input_piece[0]) - ord('a') + 8 * (int(input_piece[1]) - 1))
+            to_square = chessengine_py.Square(ord(input_move[0]) - ord('a') + 8 * (int(input_move[1]) - 1))
+            
+            # Attempt to make the move
+            if handle_move(game, from_square, to_square):
+                st.sidebar.success("Move successful!")
+                st.session_state.turn += 1
+            else:
+                st.sidebar.error("Illegal move!")
+
+    st.write(f"Turn: {st.session_state.turn}")
+
+
+    # Display the game status
+    if game.board.get_check(chessengine_py.Color.WHITE):
+        st.error("White is in check!")
+    elif game.board.get_check(chessengine_py.Color.BLACK):
+        st.error("Black is in check!")
+
+    # En passant square info
+    en_passant = game.board.get_en_passant_square()
+    if en_passant != chessengine_py.Square.NO_SQUARE:
+        st.write(f"En Passant square: {chessengine_py.square_to_string(en_passant)}")
+
+    # Checkmate check
+    side_to_move = game.board.get_side_to_move()
+    all_legal_moves = []
+    for square_int in range(64):
+        square = chessengine_py.Square(square_int)
+        all_legal_moves.extend(game.board.legal_moves(square))
+
+    if not all_legal_moves and game.board.get_check(side_to_move):
+        winner = "Black" if side_to_move == chessengine_py.Color.WHITE else "White"
+        st.write(f"Checkmate! {winner} wins!")
 
 if __name__ == "__main__":
     main()
