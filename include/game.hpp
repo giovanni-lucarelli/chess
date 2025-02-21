@@ -1,5 +1,7 @@
 #pragma once
 #include "chessboard.hpp"
+#include "move.hpp"
+#include "movegen.hpp"
 #include <string>
 #include <stack>
 
@@ -14,5 +16,6 @@ private:
 public:
     Game();
     void play();
+    void play_vs_pc();
     std::pair<Square, Square> parse_input(const std::string& from, const std::string& to) const;
 };

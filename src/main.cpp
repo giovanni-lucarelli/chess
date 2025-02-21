@@ -78,6 +78,6 @@
 
 int main() {
     Game game;
-    game.play();
+    game.play_vs_pc();
     return 0;
 }

@@ -13,6 +13,8 @@ include_directories(${PROJECT_SOURCE_DIR}/include)
 
 # Source files
 set(SOURCES
+    src/movegen.cpp
+    src/search.cpp
     src/chessboard.cpp
     src/game.cpp
 )

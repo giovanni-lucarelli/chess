@@ -411,7 +411,6 @@ std::set<Square> ChessBoard::pseudo_legal_targets(Square from) const {
     return std::set<Square>(targets.begin(), targets.end());
 }
 
-
 // Controlling check conditions for both colors
 void ChessBoard::check_control() {
     // Clear previous check status
@@ -444,8 +443,6 @@ void ChessBoard::check_control() {
         }
     }
 }
-
-
 
 // Check if a move from 'from' to 'to' is fully legal.
 // First we check that it is pseudo-legal, then we simulate the move and ensure that it
@@ -490,8 +487,6 @@ bool ChessBoard::is_move_legal(Square from, Square to) const {
     return true;
 }
 
-
-
 // Generate all legal moves for the piece on square 'from', remember that it cannot leave the king in check the next state
 std::vector<std::pair<Square, Square>> ChessBoard::legal_moves(Square from) const {
     std::vector<std::pair<Square, Square>> moves;
@@ -534,4 +529,78 @@ Piece ChessBoard::choose_promotion_piece() const {
         case 'n': return KNIGHT;
         default: return QUEEN; // default promotion to Queen if input is invalid
     }
+}
+
+bool ChessBoard::is_game_over() {
+    // Check if the side to move is in checkmate
+    check_control();
+    if (side_to_move == WHITE && white_check) {
+        return true;
+    } else if (side_to_move == BLACK && black_check) {
+        return true;
+    }
+
+    // Check if the side to move has no legal moves
+    if (legal_moves(side_to_move).empty()) {
+        return true;
+    }
+
+    return false;
+}
+
+void ChessBoard::undo_move(Square from, Square to, Piece captured_piece, bool interactive) {
+    auto piece_info = get_piece_on_square(to);
+    Color mover = piece_info.first;
+    Piece p = piece_info.second;
+
+    // Undo castling
+    if (p == KING && std::abs(static_cast<int>(to) % 8 - static_cast<int>(from) % 8) == 2) {
+        if (mover == WHITE) {
+            if (to == G1) {
+                // White kingside castling: King E1->G1; move rook F1->H1.
+                remove_piece(F1);
+                add_piece(mover, ROOK, H1);
+            } else if (to == C1) {
+                // White queenside castling: King E1->C1; move rook D1->A1.
+                remove_piece(D1);
+                add_piece(mover, ROOK, A1);
+            }
+        } else if (mover == BLACK) {
+            if (to == G8) {
+                // Black kingside castling: King E8->G8; move rook F8->H8.
+                remove_piece(F8);
+                add_piece(mover, ROOK, H8);
+            } else if (to == C8) {
+                // Black queenside castling: King E8->C8; move rook D8->A8.
+                remove_piece(D8);
+                add_piece(mover, ROOK, A8);
+            }
+        }
+    }
+
+    // Undo en passant
+    if (p == PAWN && to == en_passant_square) {
+        if (mover == WHITE) {
+            add_piece(BLACK, PAWN, static_cast<Square>(to - 8));
+        } else {
+            add_piece(WHITE, PAWN, static_cast<Square>(to + 8));
+        }
+    }
+
+    // Undo promotion
+    if (p == PAWN && (to / 8 == 0 || to / 8 == 7)) {
+        p = PAWN;
+    }
+
+    // Undo capture
+    if (captured_piece != NO_PIECE) {
+        add_piece(mover == WHITE ? BLACK : WHITE, captured_piece, to);
+    }
+
+    // Undo the move
+    remove_piece(to);
+    add_piece(mover, p, from);
+
+    // Switch turns
+    side_to_move = (side_to_move == WHITE) ? BLACK : WHITE;
 }

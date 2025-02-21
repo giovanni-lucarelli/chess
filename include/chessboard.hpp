@@ -61,23 +61,33 @@ public:
     void set_castling_rights(Color color, bool kingside, bool value) { castling_rights[color][kingside] = value; }
 
 
-//     /* --------------------------------- */
-//     /*              Other                */
-//     /* --------------------------------- */
+/* -------------------------------------------------------------------------- */
+/*                           Piece Movement on Board                          */
+/* -------------------------------------------------------------------------- */
 
     void remove_piece(Square sq);
     void add_piece(Color color, Piece piece, Square sq);
     void move_piece(Square from, Square to, bool interactive = true);
+    
+    // remove from "to" square and add to "from" square 
+    void undo_move(Square from, Square to, Piece captured_piece = NO_PIECE, bool interactive = true);
+
+/* -------------------------------------------------------------------------- */
+/*                          Elementary Rules Checking                         */
+/* -------------------------------------------------------------------------- */
 
     bool is_path_clear(Square from, Square to) const;
     bool is_occupied(Square sq) const;
-    
-    std::set<Square> pseudo_legal_targets(Square from) const;
     bool is_move_legal(Square from, Square to) const;
-    std::vector<std::pair<Square, Square>> legal_moves(Square from) const;
-    std::vector<std::pair<Square, Square>> legal_moves(Color color) const;
-
+    bool is_game_over();
+    // ? check setters for both colors
     void check_control();
 
     Piece choose_promotion_piece() const;
+    
+    // ? Re-styling: should be just a filter of movegen or a property of the chessboard?
+    std::set<Square> pseudo_legal_targets(Square from) const;
+    std::vector<std::pair<Square, Square>> legal_moves(Square from) const;
+    std::vector<std::pair<Square, Square>> legal_moves(Color color) const;
+
 };
