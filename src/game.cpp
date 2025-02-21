@@ -11,14 +11,16 @@ void Game::play() {
     while (true) {
 
         turn += 1;
-        std::vector<std::vector<std::string>> representation = board.get_board();
+        // std::vector<std::vector<std::string>> representation = board.get_board();
         // print
-        for (int i = 0; i < 8; i++) {
-            for (int j = 0; j < 8; j++) {
-                std::cout << representation[i][j] << " ";
-            }
-            std::cout << std::endl;
-        }
+        // for (int i = 0; i < 8; i++) {
+        //     for (int j = 0; j < 8; j++) {
+        //         std::cout << representation[i][j] << " ";
+        //     }
+        //     std::cout << std::endl;
+        // }
+
+        board.print();
 
         // Check if the king is in check
         board.check_control();
@@ -80,7 +82,7 @@ void Game::play() {
 
         // Check if the move is legal
         if (!board.is_move_legal(from, move.second)) {
-            std::cout << "Illegal move\n";
+            std::cout << "\033[1;31mIllegal move\033[0m\n";
             continue;
         }
 
