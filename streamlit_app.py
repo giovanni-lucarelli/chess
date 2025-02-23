@@ -44,21 +44,19 @@ for piece, path in piece_image_paths.items():
     piece_images[piece] = Image.open(path).convert("RGBA")
 
 # Function to create a chessboard image
-def create_board_image(board):
+def create_board_image(board, highlight_square=None, legal_moves=None):
     width = COLS * SQUARE_SIZE
     height = ROWS * SQUARE_SIZE
     board_img = Image.new("RGBA", (width, height), (0, 0, 0, 0))
     draw = ImageDraw.Draw(board_img)
     
-    # Iterate rows in reverse so that row 7 (white's home) is at the bottom
+    # Draw the board and pieces.
     for disp_row, board_row in enumerate(reversed(board)):
         for col in range(COLS):
-            # disp_row now corresponds to the drawing row (0: bottom, 7: top)
             is_light_square = ((7 - disp_row) + col) % 2 == 0
             color = LIGHT_COLOR if is_light_square else DARK_COLOR
             
             x1 = col * SQUARE_SIZE
-            # Update y coordinate based on disp_row (0 at bottom)
             y1 = disp_row * SQUARE_SIZE
             x2 = x1 + SQUARE_SIZE
             y2 = y1 + SQUARE_SIZE
@@ -66,13 +64,33 @@ def create_board_image(board):
             draw.rectangle([x1, y1, x2, y2], fill=color)
             
             piece_code = board_row[col]
-            # Skip empty squares
             if piece_code.strip():
                 if piece_code in piece_images:
                     piece_img = piece_images[piece_code].rotate(180, expand=True)
                     board_img.paste(piece_img, (x1, y1), piece_img)
                 else:
                     print(f"Warning: {piece_code} image not found.")
+    
+    # Highlight legal move squares in blue.
+    if legal_moves is not None:
+        for (row, col) in legal_moves:
+            disp_row = (ROWS - 1) - row  # convert board coordinate to display coordinate
+            x1 = col * SQUARE_SIZE
+            y1 = disp_row * SQUARE_SIZE
+            x2 = x1 + SQUARE_SIZE
+            y2 = y1 + SQUARE_SIZE
+            draw.rectangle([x1, y1, x2, y2], outline="blue", width=5)
+    
+    # If a square is highlighted (e.g., king in check), draw a red border.
+    if highlight_square is not None:
+        board_row, board_col = highlight_square
+        disp_row = (ROWS - 1) - board_row
+        x1 = board_col * SQUARE_SIZE
+        y1 = disp_row * SQUARE_SIZE
+        x2 = x1 + SQUARE_SIZE
+        y2 = y1 + SQUARE_SIZE
+        draw.rectangle([x1, y1, x2, y2], outline="red", width=5)
+    
     return board_img
 
 # Function to handle chess game moves
@@ -94,25 +112,32 @@ def main():
     game = st.session_state.game
 
     st.title("Chess Game")
-
-    # Create a placeholder for the board image in the main area
     board_placeholder = st.empty()
 
-    # Render the board in the main area
+    # Render the board in the main area initially.
     board_state = game.board.get_board()
     img = create_board_image(board_state)
     board_placeholder.image(img, caption="Current Board", use_column_width=False)
 
     # Sidebar inputs for selecting piece and move
     input_piece = st.sidebar.text_input("Enter piece to move (e.g., 'e2'):", "")
+    legal_highlights = None
     if input_piece:
         try:
             from_square = chessengine_py.Square(
                 ord(input_piece[0]) - ord('a') + 8 * (int(input_piece[1]) - 1)
             )
             moves = game.board.legal_moves(from_square)
-            legal_moves = [chessengine_py.square_to_string(move[1]) for move in moves]
-            st.sidebar.write("Legal moves:", legal_moves)
+            legal_moves_str = [chessengine_py.square_to_string(move[1]) for move in moves]
+            st.sidebar.write("Legal moves:", legal_moves_str)
+            # Compute the board coordinate for each 'to' square.
+            legal_highlights = []
+            for move in moves:
+                # Convert square number to (row, col):
+                square_val = int(move[1])
+                row = square_val // 8
+                col = square_val % 8
+                legal_highlights.append((row, col))
         except Exception as e:
             st.sidebar.error(f"Invalid input: {e}")
     
@@ -129,23 +154,21 @@ def main():
             if handle_move(game, from_square, to_square):
                 st.sidebar.success("Move successful!")
                 st.session_state.turn += 1
-                # Update the board image after the move
                 board_state = game.board.get_board()
-                img = create_board_image(board_state)
+                legal_highlights = None  # Clear legal move highlights after move.
+                img = create_board_image(board_state, legal_moves=legal_highlights)
                 board_placeholder.image(img, caption="Current Board", use_column_width=False)
             else:
                 st.sidebar.error("Illegal move!")
 
-    # Now, print game info (turn, en passant, check status, etc.) in the sidebar
     st.sidebar.write(f"Turn: {st.session_state.turn}")
-    en_passant = game.board.get_en_passant_square()
-    if en_passant != chessengine_py.Square.NO_SQUARE:
-        st.sidebar.write(f"En Passant square: {chessengine_py.square_to_string(en_passant)}")
+    game.board.check_control()
 
+    # Check and print if a king is in check.
     if game.board.get_check(chessengine_py.Color.WHITE):
-        st.sidebar.error("White is in check!")
-    elif game.board.get_check(chessengine_py.Color.BLACK):
-        st.sidebar.error("Black is in check!")
+        st.sidebar.error("White King is in check!")
+    if game.board.get_check(chessengine_py.Color.BLACK):
+        st.sidebar.error("Black King is in check!")
 
     all_legal_moves = []
     for square_int in range(64):
@@ -155,6 +178,32 @@ def main():
     if not all_legal_moves and game.board.get_check(game.board.get_side_to_move()):
         winner = "Black" if game.board.get_side_to_move() == chessengine_py.Color.WHITE else "White"
         st.sidebar.write(f"Checkmate! {winner} wins!")
+
+    # Get the updated board state.
+    board_state = game.board.get_board()
+
+    # Determine which king, if any, needs a red highlight.
+    highlight_square = None
+    if game.board.get_check(chessengine_py.Color.WHITE):
+        for row_idx, row in enumerate(board_state):
+            for col_idx, cell in enumerate(row):
+                if cell == "w5":  # White king piece code
+                    highlight_square = (row_idx, col_idx)
+                    break
+            if highlight_square is not None:
+                break
+    if game.board.get_check(chessengine_py.Color.BLACK):
+        for row_idx, row in enumerate(board_state):
+            for col_idx, cell in enumerate(row):
+                if cell == "b5":  # Black king piece code
+                    highlight_square = (row_idx, col_idx)
+                    break
+            if highlight_square is not None:
+                break
+
+    # Render the final board image with both blue highlights (legal moves) and, if applicable, a red highlight.
+    img = create_board_image(board_state, highlight_square, legal_moves=legal_highlights)
+    board_placeholder.image(img, caption="Current Board", use_column_width=False)
 
 if __name__ == "__main__":
     main()
