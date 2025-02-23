@@ -119,7 +119,17 @@ def main():
     img = create_board_image(board_state)
     board_placeholder.image(img, caption="Current Board", use_column_width=False)
 
+    # Create a placeholder for displaying which side's turn it is.
+    turn_placeholder = st.sidebar.empty()
+
     # Sidebar inputs for selecting piece and move
+
+    side_to_move = game.board.get_side_to_move()
+    if side_to_move == chessengine_py.Color.WHITE:
+        turn_placeholder.write("White's turn")
+    else:
+        turn_placeholder.write("Black's turn")
+
     input_piece = st.sidebar.text_input("Enter piece to move (e.g., 'e2'):", "")
     legal_highlights = None
     if input_piece:
@@ -156,6 +166,12 @@ def main():
                 st.session_state.turn += 1
                 board_state = game.board.get_board()
                 legal_highlights = None  # Clear legal move highlights after move.
+                # Update the sidebar turn message.
+                side_to_move = game.board.get_side_to_move()
+                if side_to_move == chessengine_py.Color.WHITE:
+                    turn_placeholder.write("White's turn")
+                else:
+                    turn_placeholder.write("Black's turn")
                 img = create_board_image(board_state, legal_moves=legal_highlights)
                 board_placeholder.image(img, caption="Current Board", use_column_width=False)
             else:
