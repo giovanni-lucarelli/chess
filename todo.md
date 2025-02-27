@@ -1,1 +1,5 @@
 - [ ] cambiare tutto usando la `struct` `Move`
+    - [x] test 1 vs 1 with new implementation 
+    - [ ] update movegen/search modules with `Move`
+    - [ ] update rules checking using Move struct flags (i.e. move type)
+- [ ] game.hpp/cpp in python

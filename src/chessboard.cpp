@@ -50,7 +50,7 @@ void ChessBoard::reset() {
     side_to_move = WHITE;
     castling_rights[WHITE][0] = castling_rights[WHITE][1] = true; // QK
     castling_rights[BLACK][0] = castling_rights[BLACK][1] = true;
-    en_passant_square = H8; // No en passant
+    en_passant_square = NO_SQUARE; 
     // halfmove_clock = 0;
     // fullmove_number = 1;
 }
@@ -389,9 +389,7 @@ std::vector<Move> ChessBoard::legal_moves(Square from) const {
     if (piece_info.first == NO_COLOR)
         return moves;
 
-    auto moves = pseudo_legal_moves(from);
-
-    for (auto move : moves) {
+    for (auto move : pseudo_legal_moves(from)) {
         if (is_move_legal(move))
             moves.push_back(move);
     }
@@ -478,6 +476,11 @@ void ChessBoard::do_move(const Move& move) {
     Piece p = move.piece;
     MoveType type = move.type;
 
+    // std::cout << "Applying move: " << square_to_string(move.from) << " -> " 
+    //           << square_to_string(move.to) << std::endl;
+    
+    //           print();
+
     // Ensure the move is legal
     if (p == NO_PIECE) {
         std::cerr << "Error: No piece on the selected square!\n";
@@ -537,17 +540,24 @@ void ChessBoard::do_move(const Move& move) {
 
     // Switch turns
     side_to_move = (side_to_move == WHITE) ? BLACK : WHITE;
+
+    // std::cout << "Board after move:\n";
+    // print();
 }
 
 
-void ChessBoard::undo_move(const Move& move, bool interactive) {
+void ChessBoard::undo_move(const Move& move) {
     // Get the moved piece and its color
     Color mover = (side_to_move == WHITE) ? BLACK : WHITE; // Undoing move, so switch turn back
     Piece p = move.piece;
 
     // Undo promotion: If the piece was promoted, revert it back to a pawn
     if (move.type == PROMOTION) {
-        p = PAWN;
+        remove_piece(move.to);  // Remove promoted piece
+        add_piece(mover, PAWN, move.from);  // Restore pawn
+    } else {
+        remove_piece(move.to);  // Remove moved piece
+        add_piece(mover, p, move.from);
     }
 
     // Restore captured piece (if there was one)
@@ -575,6 +585,8 @@ void ChessBoard::undo_move(const Move& move, bool interactive) {
                 add_piece(BLACK, ROOK, A8);
             }
         }
+        // Restore king position
+        add_piece(mover, KING, move.from);
     }
 
     // Undo en passant
@@ -586,10 +598,7 @@ void ChessBoard::undo_move(const Move& move, bool interactive) {
         }
     }
 
-    // Move the piece back to its original square
-    remove_piece(move.to);
-    add_piece(mover, p, move.from);
-
     // Switch turns back
     side_to_move = mover;
 }
+ 

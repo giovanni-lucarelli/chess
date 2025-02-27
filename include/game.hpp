@@ -14,7 +14,7 @@ private:
 public:
     Game();
     void play();
-    void play_vs_pc();
+    void play_vs_pc(const int search_depth);
     std::pair<Square, Square> parse_input(const std::string& from, const std::string& to) const;
     Move parse_move(const std::string& from, const std::string& to) const;
 };

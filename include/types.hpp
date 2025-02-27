@@ -1,6 +1,7 @@
 #pragma once
 #include <cstdint>
 #include <string>
+#include <iostream>
 
 // 64-bit unsigned integer (represents a chessboard)
 using U64 = uint64_t;
@@ -85,5 +86,15 @@ struct Move {
   bool operator==(const Move& other) const {
       return from == other.from && to == other.to && 
              promoted_to == other.promoted_to && type == other.type;
+  }
+
+  void to_string() {
+    std::cout << "Move " << color_to_string(color) << piece_to_string(piece) << " from " 
+              << square_to_string(from) << " to " 
+              << square_to_string(to);
+    if (promoted_to != NO_PIECE) {
+        std::cout << " promote to " << piece_to_string(promoted_to);
+    }
+    std::cout << std::endl;
   }
 };

@@ -94,6 +94,6 @@ public:
     void add_piece(Color color, Piece piece, Square sq);
 
     void do_move(const Move& move);
-    void undo_move(const Move& move, bool interactive);
+    void undo_move(const Move& move);
     
 };

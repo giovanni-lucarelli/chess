@@ -3,6 +3,36 @@
 #include <algorithm>
 #include <map>
 
+// Generates all legal moves for the current position
+std::vector<Move> generate_legal_moves(const ChessBoard& board) {
+    std::vector<Move> moves;
+    for (int i = 0; i < 64; i++) {
+        Square from = static_cast<Square>(i);
+        if (board.is_occupied(from) && board.get_piece_on_square(from).first == board.get_side_to_move()) {
+            std::vector<Move> targets = board.legal_moves(from);
+            for (const Move& target : targets) { // Use const reference to avoid copies
+                if (board.is_move_legal(target)) {
+                    moves.push_back(target); // Push the original target move
+                }
+            }
+        }
+    }
+    return moves;
+}
+
+// print all moves: for debugging purposes
+void print_moves(const std::vector<Move>& moves) {
+    for (const Move& move : moves) {
+        std::cout << "Move " << piece_to_string(move.piece) << " from " 
+                  << square_to_string(move.from) << " to " 
+                  << square_to_string(move.to);
+        if (move.promoted_to != NO_PIECE) {
+            std::cout << " promote to " << piece_to_string(move.promoted_to);
+        }
+        std::cout << std::endl;
+    }
+}
+
 // Not working correctly
 int evaluate(const ChessBoard& board) {
     int score = 0;
@@ -28,8 +58,7 @@ int alpha_beta(ChessBoard& board, int depth, int alpha, int beta, bool maximizin
         return evaluate(board);
     }
 
-    MoveGenerator moveGen;
-    std::vector<Move> legal_moves = moveGen.generate_legal_moves(board);
+    std::vector<Move> legal_moves = generate_legal_moves(board);
 
     if (maximizingPlayer) {
         int maxEval = -100000;
@@ -39,7 +68,7 @@ int alpha_beta(ChessBoard& board, int depth, int alpha, int beta, bool maximizin
 
             board.do_move(move);
             int eval = alpha_beta(board, depth - 1, alpha, beta, false);
-            board.undo_move(move.from, move.to, captured_piece, promoted_piece, false);
+            board.undo_move(move);
 
             maxEval = std::max(maxEval, eval);
             alpha = std::max(alpha, eval);
@@ -54,7 +83,7 @@ int alpha_beta(ChessBoard& board, int depth, int alpha, int beta, bool maximizin
 
             board.do_move(move);
             int eval = alpha_beta(board, depth - 1, alpha, beta, true);
-            board.undo_move(move.from, move.to, captured_piece, promoted_piece, false);
+            board.undo_move(move);
 
             minEval = std::min(minEval, eval);
             beta = std::min(beta, eval);
@@ -73,8 +102,7 @@ Move find_best_move(ChessBoard& board, int depth) {
     int alpha = -100000;
     int beta = 100000;
 
-    MoveGenerator moveGen;
-    std::vector<Move> legal_moves = moveGen.generate_legal_moves(board);
+    std::vector<Move> legal_moves = generate_legal_moves(board);
 
     for (Move move : legal_moves) {
         Piece captured_piece = board.get_piece_on_square(move.to).second;
@@ -82,7 +110,7 @@ Move find_best_move(ChessBoard& board, int depth) {
 
         board.do_move(move);
         int eval = alpha_beta(board, depth - 1, alpha, beta, false);
-        board.undo_move(move.from, move.to, captured_piece, promoted_piece, false);
+        board.undo_move(move);
 
         if (eval > bestEval) {
             bestEval = eval;
