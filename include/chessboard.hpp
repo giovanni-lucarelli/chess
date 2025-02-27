@@ -1,6 +1,7 @@
 #pragma once
 #include "types.hpp"
 #include "bitboard.hpp"
+#include "move.hpp"
 #include <array>
 #include <string>
 #include <vector>
@@ -67,10 +68,11 @@ public:
 
     void remove_piece(Square sq);
     void add_piece(Color color, Piece piece, Square sq);
-    void move_piece(Square from, Square to, bool interactive = true);
+    // void move_piece(Square from, Square to, bool interactive = true);
+    void do_move(const Move& move);
     
     // remove from "to" square and add to "from" square 
-    void undo_move(Square from, Square to, Piece captured_piece = NO_PIECE, bool interactive = true);
+    void undo_move(Square from, Square to, Piece captured_piece, Piece promoted_piece, bool interactive);
 
 /* -------------------------------------------------------------------------- */
 /*                          Elementary Rules Checking                         */
@@ -78,7 +80,8 @@ public:
 
     bool is_path_clear(Square from, Square to) const;
     bool is_occupied(Square sq) const;
-    bool is_move_legal(Square from, Square to) const;
+    // ? bool is_move_legal(Square from, Square to) const;
+    bool is_move_legal(Move move) const;
     bool is_game_over();
     // ? check setters for both colors
     void check_control();
@@ -87,7 +90,8 @@ public:
     
     // ? Re-styling: should be just a filter of movegen or a property of the chessboard?
     std::set<Square> pseudo_legal_targets(Square from) const;
-    std::vector<std::pair<Square, Square>> legal_moves(Square from) const;
+    // std::vector<std::pair<Square, Square>> legal_moves(Square from) const;
     std::vector<std::pair<Square, Square>> legal_moves(Color color) const;
+    std::vector<Move> legal_moves(Square from) const;
 
 };

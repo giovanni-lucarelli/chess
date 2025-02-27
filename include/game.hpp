@@ -18,4 +18,5 @@ public:
     void play();
     void play_vs_pc();
     std::pair<Square, Square> parse_input(const std::string& from, const std::string& to) const;
+    Move parse_move(const std::string& from, const std::string& to) const;
 };

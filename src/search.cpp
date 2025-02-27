@@ -24,9 +24,7 @@ int evaluate(const ChessBoard& board) {
 }
 
 // --- Alpha-Beta Pruning Search ---
-int alpha_beta(ChessBoard& board1, int depth, int alpha, int beta, bool maximizingPlayer) {
-    
-    ChessBoard board = board1;
+int alpha_beta(ChessBoard& board, int depth, int alpha, int beta, bool maximizingPlayer) {
     if (depth == 0 || board.is_game_over()) {
         return evaluate(board);
     }
@@ -37,9 +35,13 @@ int alpha_beta(ChessBoard& board1, int depth, int alpha, int beta, bool maximizi
     if (maximizingPlayer) {
         int maxEval = -100000;
         for (Move move : legal_moves) {
-            board.move_piece(move.from, move.to);
+            Piece captured_piece = board.get_piece_on_square(move.to).second;  // Track captured piece
+            Piece promoted_piece = (move.promoted_to ? move.promoted_to : NO_PIECE);  // Track promotion
+
+            board.do_move(move);
             int eval = alpha_beta(board, depth - 1, alpha, beta, false);
-            board.undo_move(move.from, move.to);
+            board.undo_move(move.from, move.to, captured_piece, promoted_piece, false);
+
             maxEval = std::max(maxEval, eval);
             alpha = std::max(alpha, eval);
             if (beta <= alpha) break;  // Pruning
@@ -48,9 +50,13 @@ int alpha_beta(ChessBoard& board1, int depth, int alpha, int beta, bool maximizi
     } else {
         int minEval = 100000;
         for (Move move : legal_moves) {
-            board.move_piece(move.from, move.to);
+            Piece captured_piece = board.get_piece_on_square(move.to).second;
+            Piece promoted_piece = (move.promoted_to ? move.promoted_to : NO_PIECE);
+
+            board.do_move(move);
             int eval = alpha_beta(board, depth - 1, alpha, beta, true);
-            board.undo_move(move.from, move.to);
+            board.undo_move(move.from, move.to, captured_piece, promoted_piece, false);
+
             minEval = std::min(minEval, eval);
             beta = std::min(beta, eval);
             if (beta <= alpha) break;  // Pruning
@@ -59,9 +65,10 @@ int alpha_beta(ChessBoard& board1, int depth, int alpha, int beta, bool maximizi
     }
 }
 
+
+
 // --- Find the Best Move ---
-Move find_best_move(ChessBoard& board1, int depth) {
-    ChessBoard board = board1;
+Move find_best_move(ChessBoard& board, int depth) {
     Move bestMove;
     int bestEval = -100000;
     int alpha = -100000;
@@ -71,9 +78,13 @@ Move find_best_move(ChessBoard& board1, int depth) {
     std::vector<Move> legal_moves = moveGen.generate_legal_moves(board);
 
     for (Move move : legal_moves) {
-        board.move_piece(move.from, move.to);
+        Piece captured_piece = board.get_piece_on_square(move.to).second;
+        Piece promoted_piece = (move.promoted_to ? move.promoted_to : NO_PIECE);
+
+        board.do_move(move);
         int eval = alpha_beta(board, depth - 1, alpha, beta, false);
-        board.undo_move(move.from, move.to);
+        board.undo_move(move.from, move.to, captured_piece, promoted_piece, false);
+
         if (eval > bestEval) {
             bestEval = eval;
             bestMove = move;
@@ -82,3 +93,5 @@ Move find_best_move(ChessBoard& board1, int depth) {
     
     return bestMove;
 }
+
+

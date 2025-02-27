@@ -9,10 +9,13 @@ std::vector<Move> MoveGenerator::generate_legal_moves(const ChessBoard& board){
     for (int i = 0; i < 64; i++){
         Square from = static_cast<Square>(i);
         if (board.is_occupied(from) && board.get_piece_on_square(from).first == board.get_side_to_move()){
-            std::vector<std::pair<Square, Square>> targets = board.legal_moves(from);
-            for (std::pair<Square, Square> target : targets){
-                Move move(target.first, target.second, board.get_piece_on_square(from).second);
-                moves.push_back(move);
+            std::vector<Move> targets = board.legal_moves(from);
+            for (Move target : targets){
+                Move move(target.from, target.to, target.piece);
+                move.color = board.get_side_to_move();
+                if (board.is_move_legal(move)){
+                    moves.push_back(move);
+                }
             }
         }
     }

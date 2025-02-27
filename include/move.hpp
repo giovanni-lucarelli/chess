@@ -18,6 +18,7 @@ struct Move {
     Piece promoted_to; // For pawn promotions (e.g., QUEEN)
     Piece piece;       // Piece moved
     MoveType type;     // Flags for special moves (en passant, castling, etc.)
+    Color color;       // Color of the piece moved
 
     // Store captured piece (for undoing moves)?
     Piece captured_piece;

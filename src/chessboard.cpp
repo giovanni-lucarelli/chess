@@ -1,6 +1,7 @@
 // chessboard.cpp
 #include "chessboard.hpp"
 #include "bitboard.hpp"
+#include "move.hpp"
 #include <iostream>
 
 
@@ -145,95 +146,95 @@ void ChessBoard::add_piece(Color color, Piece piece, Square sq) {
 }
 
 // move a piece
-void ChessBoard::move_piece(Square from, Square to, bool interactive) {
-    auto piece_info = get_piece_on_square(from);
-    Color mover = piece_info.first;
-    Piece p = piece_info.second;
+// void ChessBoard::move_piece(Square from, Square to, bool interactive) {
+//     auto piece_info = get_piece_on_square(from);
+//     Color mover = piece_info.first;
+//     Piece p = piece_info.second;
 
-    // Capture: if destination is occupied.
-    if (is_occupied(to)) {
-        auto captured = get_piece_on_square(to);
-        if (captured.second == ROOK) {
-            if (captured.first == WHITE) {
-                if (to == A1) castling_rights[WHITE][0] = false;
-                if (to == H1) castling_rights[WHITE][1] = false;
-            } else if (captured.first == BLACK) {
-                if (to == A8) castling_rights[BLACK][0] = false;
-                if (to == H8) castling_rights[BLACK][1] = false;
-            }
-        }
-        remove_piece(to);
-    }
-    // Handle en passant.
-    if (p == PAWN && to == en_passant_square) {
-        remove_piece(static_cast<Square>(to - 8 * (mover == WHITE ? 1 : -1)));
-    }
+//     // Capture: if destination is occupied.
+//     if (is_occupied(to)) {
+//         auto captured = get_piece_on_square(to);
+//         if (captured.second == ROOK) {
+//             if (captured.first == WHITE) {
+//                 if (to == A1) castling_rights[WHITE][0] = false;
+//                 if (to == H1) castling_rights[WHITE][1] = false;
+//             } else if (captured.first == BLACK) {
+//                 if (to == A8) castling_rights[BLACK][0] = false;
+//                 if (to == H8) castling_rights[BLACK][1] = false;
+//             }
+//         }
+//         remove_piece(to);
+//     }
+//     // Handle en passant.
+//     if (p == PAWN && to == en_passant_square) {
+//         remove_piece(static_cast<Square>(to - 8 * (mover == WHITE ? 1 : -1)));
+//     }
     
-    // Clear en passant square by default.
-    en_passant_square = H8; // Or NO_SQUARE if defined appropriately
+//     // Clear en passant square by default.
+//     en_passant_square = H8; // Or NO_SQUARE if defined appropriately
 
-    // For pawns: update en passant and promotion.
-    if (p == PAWN) {
-        int from_row = static_cast<int>(from) / 8;
-        int to_row = static_cast<int>(to) / 8;
-        if (std::abs(from_row - to_row) == 2) {
-            en_passant_square = static_cast<Square>(((from_row + to_row) / 2) * 8 + (from % 8));
-        }
-        if (to_row == (mover == WHITE ? 7 : 0)) {
-            if (interactive) {
-                p = choose_promotion_piece();
-            } else {
-                p = QUEEN;
-            }
-        }
-    }
+//     // For pawns: update en passant and promotion.
+//     if (p == PAWN) {
+//         int from_row = static_cast<int>(from) / 8;
+//         int to_row = static_cast<int>(to) / 8;
+//         if (std::abs(from_row - to_row) == 2) {
+//             en_passant_square = static_cast<Square>(((from_row + to_row) / 2) * 8 + (from % 8));
+//         }
+//         if (to_row == (mover == WHITE ? 7 : 0)) {
+//             if (interactive) {
+//                 p = choose_promotion_piece();
+//             } else {
+//                 p = QUEEN;
+//             }
+//         }
+//     }
     
-    // Handle castling:
-    if (p == KING && std::abs(static_cast<int>(to) % 8 - static_cast<int>(from) % 8) == 2) {
-        // Remove castling rights for the mover.
-        castling_rights[mover][0] = false;
-        castling_rights[mover][1] = false;
-        if (mover == WHITE) {
-            if (to == G1) {
-                // White kingside castling: King E1->G1; move rook H1->F1.
-                remove_piece(H1);
-                add_piece(mover, ROOK, F1);
-            } else if (to == C1) {
-                // White queenside castling: King E1->C1; move rook A1->D1.
-                remove_piece(A1);
-                add_piece(mover, ROOK, D1);
-            }
-        } else if (mover == BLACK) {
-            if (to == G8) {
-                // Black kingside castling: King E8->G8; move rook H8->F8.
-                remove_piece(H8);
-                add_piece(mover, ROOK, F8);
-            } else if (to == C8) {
-                // Black queenside castling: King E8->C8; move rook A8->D8.
-                remove_piece(A8);
-                add_piece(mover, ROOK, D8);
-            }
-        }
-    }
+//     // Handle castling:
+//     if (p == KING && std::abs(static_cast<int>(to) % 8 - static_cast<int>(from) % 8) == 2) {
+//         // Remove castling rights for the mover.
+//         castling_rights[mover][0] = false;
+//         castling_rights[mover][1] = false;
+//         if (mover == WHITE) {
+//             if (to == G1) {
+//                 // White kingside castling: King E1->G1; move rook H1->F1.
+//                 remove_piece(H1);
+//                 add_piece(mover, ROOK, F1);
+//             } else if (to == C1) {
+//                 // White queenside castling: King E1->C1; move rook A1->D1.
+//                 remove_piece(A1);
+//                 add_piece(mover, ROOK, D1);
+//             }
+//         } else if (mover == BLACK) {
+//             if (to == G8) {
+//                 // Black kingside castling: King E8->G8; move rook H8->F8.
+//                 remove_piece(H8);
+//                 add_piece(mover, ROOK, F8);
+//             } else if (to == C8) {
+//                 // Black queenside castling: King E8->C8; move rook A8->D8.
+//                 remove_piece(A8);
+//                 add_piece(mover, ROOK, D8);
+//             }
+//         }
+//     }
     
-    // Update castling rights if a rook moves from its starting square.
-    if (p == ROOK) {
-        if (mover == WHITE) {
-            if (from == A1) castling_rights[WHITE][0] = false;
-            if (from == H1) castling_rights[WHITE][1] = false;
-        } else if (mover == BLACK) {
-            if (from == A8) castling_rights[BLACK][0] = false;
-            if (from == H8) castling_rights[BLACK][1] = false;
-        }
-    }
+//     // Update castling rights if a rook moves from its starting square.
+//     if (p == ROOK) {
+//         if (mover == WHITE) {
+//             if (from == A1) castling_rights[WHITE][0] = false;
+//             if (from == H1) castling_rights[WHITE][1] = false;
+//         } else if (mover == BLACK) {
+//             if (from == A8) castling_rights[BLACK][0] = false;
+//             if (from == H8) castling_rights[BLACK][1] = false;
+//         }
+//     }
     
-    // Remove the piece from the source square and place it (or its promoted form) at the destination.
-    remove_piece(from);
-    add_piece(mover, p, to);
+//     // Remove the piece from the source square and place it (or its promoted form) at the destination.
+//     remove_piece(from);
+//     add_piece(mover, p, to);
     
-    // Switch turns.
-    side_to_move = (side_to_move == WHITE) ? BLACK : WHITE;
-}
+//     // Switch turns.
+//     side_to_move = (side_to_move == WHITE) ? BLACK : WHITE;
+// }
 
 // A helper: convert a square index to row and column.
 inline void square_to_coord(Square sq, int &row, int &col) {
@@ -447,20 +448,59 @@ void ChessBoard::check_control() {
 // Check if a move from 'from' to 'to' is fully legal.
 // First we check that it is pseudo-legal, then we simulate the move and ensure that it
 // does not leave the mover’s king in check.
-bool ChessBoard::is_move_legal(Square from, Square to) const {
-    auto piece_info = get_piece_on_square(from);
-    if (piece_info.first == NO_COLOR)
+// bool ChessBoard::is_move_legal(Square from, Square to) const {
+//     auto piece_info = get_piece_on_square(from);
+//     if (piece_info.first == NO_COLOR)
+//         return false;
+
+//     // Optionally enforce moving only the side to move:
+//     if (piece_info.first != side_to_move)
+//         return false;
+
+//     // First: must be a pseudo-legal move.
+//     auto targets = pseudo_legal_targets(from);
+//     bool found = false;
+//     for (Square target : targets) {
+//         if (target == to) {
+//             found = true;
+//             break;
+//         }
+//     }
+//     if (!found)
+//         return false;
+
+
+//     // Second: simulate the move and check king safety.
+//     ChessBoard board_copy = *this;
+//     board_copy.move_piece(from, to, false);
+//     board_copy.check_control();
+//     bool next_white_check = board_copy.get_check(WHITE);
+//     bool next_black_check = board_copy.get_check(BLACK);
+
+//     // The move is legal if it does not leave the mover's king in check.
+//     if (side_to_move == WHITE)
+//         return !next_white_check;
+//     else
+//         return !next_black_check;
+    
+
+
+//     return true;
+// }
+
+bool ChessBoard::is_move_legal(Move move) const {
+    if (move.color == NO_COLOR)
         return false;
 
     // Optionally enforce moving only the side to move:
-    if (piece_info.first != side_to_move)
+    if (move.color != side_to_move)
         return false;
 
     // First: must be a pseudo-legal move.
-    auto targets = pseudo_legal_targets(from);
+    auto targets = pseudo_legal_targets(move.from);
     bool found = false;
     for (Square target : targets) {
-        if (target == to) {
+        if (target == move.to) {
             found = true;
             break;
         }
@@ -471,7 +511,7 @@ bool ChessBoard::is_move_legal(Square from, Square to) const {
 
     // Second: simulate the move and check king safety.
     ChessBoard board_copy = *this;
-    board_copy.move_piece(from, to, false);
+    board_copy.do_move(move);
     board_copy.check_control();
     bool next_white_check = board_copy.get_check(WHITE);
     bool next_black_check = board_copy.get_check(BLACK);
@@ -488,16 +528,38 @@ bool ChessBoard::is_move_legal(Square from, Square to) const {
 }
 
 // Generate all legal moves for the piece on square 'from', remember that it cannot leave the king in check the next state
-std::vector<std::pair<Square, Square>> ChessBoard::legal_moves(Square from) const {
-    std::vector<std::pair<Square, Square>> moves;
+// std::vector<std::pair<Square, Square>> ChessBoard::legal_moves(Square from) const {
+//     std::vector<std::pair<Square, Square>> moves;
+//     auto piece_info = get_piece_on_square(from);
+//     if (piece_info.first == NO_COLOR)
+//         return moves;
+
+//     auto targets = pseudo_legal_targets(from);
+//     for (Square target : targets) {
+//         if (is_move_legal(from, target))
+//             moves.push_back({from, target});
+//     }
+//     return moves;
+// }
+
+std::vector<Move> ChessBoard::legal_moves(Square from) const {
+    std::vector<Move> moves;
     auto piece_info = get_piece_on_square(from);
     if (piece_info.first == NO_COLOR)
         return moves;
 
     auto targets = pseudo_legal_targets(from);
+
     for (Square target : targets) {
-        if (is_move_legal(from, target))
-            moves.push_back({from, target});
+        
+        Move move{};
+        move.from = from;
+        move.color = piece_info.first;
+        move.piece = piece_info.second;
+        move.to = target;
+
+        if (is_move_legal(move))
+            moves.push_back(move);
     }
     return moves;
 }
@@ -548,32 +610,39 @@ bool ChessBoard::is_game_over() {
     return false;
 }
 
-void ChessBoard::undo_move(Square from, Square to, Piece captured_piece, bool interactive) {
+void ChessBoard::undo_move(Square from, Square to, Piece captured_piece, Piece promoted_piece, bool interactive) {
     auto piece_info = get_piece_on_square(to);
     Color mover = piece_info.first;
     Piece p = piece_info.second;
+
+    // Undo promotion: If the piece was promoted, revert it back to a pawn
+    if (promoted_piece != NO_PIECE) {
+        p = PAWN;
+    }
+
+    // Restore captured piece (if there was one)
+    if (captured_piece != NO_PIECE) {
+        Color captured_color = (mover == WHITE) ? BLACK : WHITE;
+        add_piece(captured_color, captured_piece, to);
+    }
 
     // Undo castling
     if (p == KING && std::abs(static_cast<int>(to) % 8 - static_cast<int>(from) % 8) == 2) {
         if (mover == WHITE) {
             if (to == G1) {
-                // White kingside castling: King E1->G1; move rook F1->H1.
                 remove_piece(F1);
-                add_piece(mover, ROOK, H1);
+                add_piece(WHITE, ROOK, H1);
             } else if (to == C1) {
-                // White queenside castling: King E1->C1; move rook D1->A1.
                 remove_piece(D1);
-                add_piece(mover, ROOK, A1);
+                add_piece(WHITE, ROOK, A1);
             }
         } else if (mover == BLACK) {
             if (to == G8) {
-                // Black kingside castling: King E8->G8; move rook F8->H8.
                 remove_piece(F8);
-                add_piece(mover, ROOK, H8);
+                add_piece(BLACK, ROOK, H8);
             } else if (to == C8) {
-                // Black queenside castling: King E8->C8; move rook D8->A8.
                 remove_piece(D8);
-                add_piece(mover, ROOK, A8);
+                add_piece(BLACK, ROOK, A8);
             }
         }
     }
@@ -581,25 +650,82 @@ void ChessBoard::undo_move(Square from, Square to, Piece captured_piece, bool in
     // Undo en passant
     if (p == PAWN && to == en_passant_square) {
         if (mover == WHITE) {
-            add_piece(BLACK, PAWN, static_cast<Square>(to - 8));
+            add_piece(BLACK, PAWN, static_cast<Square>(to - 8)); // Restore Black pawn
         } else {
-            add_piece(WHITE, PAWN, static_cast<Square>(to + 8));
+            add_piece(WHITE, PAWN, static_cast<Square>(to + 8)); // Restore White pawn
         }
     }
 
-    // Undo promotion
-    if (p == PAWN && (to / 8 == 0 || to / 8 == 7)) {
-        p = PAWN;
-    }
-
-    // Undo capture
-    if (captured_piece != NO_PIECE) {
-        add_piece(mover == WHITE ? BLACK : WHITE, captured_piece, to);
-    }
-
-    // Undo the move
+    // Move the piece back to its original square
     remove_piece(to);
     add_piece(mover, p, from);
+
+    // Switch turns
+    side_to_move = (side_to_move == WHITE) ? BLACK : WHITE;
+}
+
+void ChessBoard::do_move(const Move& move) {
+    Square from = move.from;
+    Square to = move.to;
+    Piece p = move.piece;
+    MoveType type = move.type;
+
+    // Ensure the move is legal
+    if (p == NO_PIECE) {
+        std::cerr << "Error: No piece on the selected square!\n";
+        return;
+    }
+
+    // Capture handling (if any)
+    if (is_occupied(to) && type != CASTLING) {
+        remove_piece(to);
+    }
+
+    // Handle en passant
+    if (type == EN_PASSANT) {
+        Square captured_pawn_square = static_cast<Square>(to + (side_to_move == WHITE ? -8 : 8));
+        remove_piece(captured_pawn_square);
+    }
+
+    // Reset en passant square
+    en_passant_square = NO_SQUARE;
+
+    // Handle pawn-specific logic
+    if (p == PAWN) {
+        int from_row = from / 8;
+        int to_row = to / 8;
+
+        // Handle double pawn push
+        if (type == DOUBLE_PAWN_PUSH) {
+            en_passant_square = static_cast<Square>(((from_row + to_row) / 2) * 8 + (from % 8));
+        }
+
+        // Handle promotion
+        if (type == PROMOTION) {
+            p = choose_promotion_piece();
+            // TODO: move.promoted_to = p;
+        }
+    }
+
+    // Handle castling
+    if (type == CASTLING) {
+        if (to == G1) { remove_piece(H1); add_piece(WHITE, ROOK, F1); }
+        if (to == C1) { remove_piece(A1); add_piece(WHITE, ROOK, D1); }
+        if (to == G8) { remove_piece(H8); add_piece(BLACK, ROOK, F8); }
+        if (to == C8) { remove_piece(A8); add_piece(BLACK, ROOK, D8); }
+    }
+
+    // Update castling rights if a rook moves or is captured
+    if (p == ROOK || (is_occupied(to) && get_piece_on_square(to).second == ROOK)) {
+        if (from == A1 || to == A1) castling_rights[WHITE][0] = false;
+        if (from == H1 || to == H1) castling_rights[WHITE][1] = false;
+        if (from == A8 || to == A8) castling_rights[BLACK][0] = false;
+        if (from == H8 || to == H8) castling_rights[BLACK][1] = false;
+    }
+
+    // Move the piece
+    remove_piece(from);
+    add_piece(side_to_move, p, to);
 
     // Switch turns
     side_to_move = (side_to_move == WHITE) ? BLACK : WHITE;
