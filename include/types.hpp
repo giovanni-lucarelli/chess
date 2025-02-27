@@ -53,5 +53,37 @@ inline std::string piece_to_string(Piece p) {
   }
 }
 
-// convert number to position
 
+// Flags for special moves
+enum MoveType {
+  NORMAL,
+  CASTLING,
+  EN_PASSANT,
+  PROMOTION,
+  DOUBLE_PAWN_PUSH
+};
+
+struct Move {
+  Square from;       // Starting square
+  Square to;         // Target square
+  Piece promoted_to; // For pawn promotions (e.g., QUEEN)
+  Piece piece;       // Piece moved
+  MoveType type;     // Flags for special moves (en passant, castling, etc.)
+  Color color;       // Color of the piece moved
+  // Store captured piece (for undoing moves)?
+  Piece captured_piece;
+
+  // Default constructor
+  Move() : from(NO_SQUARE), to(NO_SQUARE), piece(NO_PIECE), promoted_to(NO_PIECE), 
+           type(NORMAL), color(NO_COLOR), captured_piece(NO_PIECE) {};
+
+  Move(Color color, Piece piece, Square from, Square to, MoveType type) : from(from), to(to), 
+                                 piece(piece), promoted_to(Piece::NO_PIECE), type(type), 
+                                 color(color), captured_piece(Piece::NO_PIECE) {};
+
+  // Overload == operator for move comparison
+  bool operator==(const Move& other) const {
+      return from == other.from && to == other.to && 
+             promoted_to == other.promoted_to && type == other.type;
+  }
+};

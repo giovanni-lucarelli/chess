@@ -1,4 +1,4 @@
-#include "movegen.hpp"
+#include "search.hpp"
 #include "types.hpp"
 #include <iostream>
 #include <map>

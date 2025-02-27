@@ -1,7 +1,5 @@
 #pragma once
 #include "chessboard.hpp"
-#include "move.hpp"
-#include "movegen.hpp"
 #include <string>
 #include <stack>
 

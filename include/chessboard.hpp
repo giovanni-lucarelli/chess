@@ -1,7 +1,6 @@
 #pragma once
 #include "types.hpp"
 #include "bitboard.hpp"
-#include "move.hpp"
 #include <array>
 #include <string>
 #include <vector>
@@ -19,6 +18,8 @@ private:
     bool castling_rights[2][2]; // [Color][Queenside, Kingside]
     bool white_check = false;
     bool black_check = false;
+
+    // ? is this triggered by is_game_over ?
     bool checkmate = false;
 
     bool DEBUG = true;
@@ -26,6 +27,7 @@ private:
 
 public:
     friend class Game;
+    friend struct Move;
     ChessBoard();
     ChessBoard(const ChessBoard& other);
     std::vector<std::vector<std::string>> get_board() const;
@@ -59,39 +61,39 @@ public:
 
     void set_side_to_move(Color color) { side_to_move = color; }
     void set_en_passant_square(Square sq) { en_passant_square = sq; }
-    void set_castling_rights(Color color, bool kingside, bool value) { castling_rights[color][kingside] = value; }
-
-
-/* -------------------------------------------------------------------------- */
-/*                           Piece Movement on Board                          */
-/* -------------------------------------------------------------------------- */
-
-    void remove_piece(Square sq);
-    void add_piece(Color color, Piece piece, Square sq);
-    // void move_piece(Square from, Square to, bool interactive = true);
-    void do_move(const Move& move);
-    
-    // remove from "to" square and add to "from" square 
-    void undo_move(Square from, Square to, Piece captured_piece, Piece promoted_piece, bool interactive);
+    void set_castling_rights(Color color, bool kingside, bool value) { castling_rights[color][kingside] = value; };
+    Piece choose_promotion_piece() const;
 
 /* -------------------------------------------------------------------------- */
-/*                          Elementary Rules Checking                         */
+/*                             Checkers and Rules                             */
 /* -------------------------------------------------------------------------- */
 
     bool is_path_clear(Square from, Square to) const;
     bool is_occupied(Square sq) const;
-    // ? bool is_move_legal(Square from, Square to) const;
     bool is_move_legal(Move move) const;
+    // ? is_checkmate = is_game_over ?
     bool is_game_over();
-    // ? check setters for both colors
+    // ? what is this doing ?
     void check_control();
 
-    Piece choose_promotion_piece() const;
-    
-    // ? Re-styling: should be just a filter of movegen or a property of the chessboard?
-    std::set<Square> pseudo_legal_targets(Square from) const;
-    // std::vector<std::pair<Square, Square>> legal_moves(Square from) const;
-    std::vector<std::pair<Square, Square>> legal_moves(Color color) const;
+    std::vector<Move> pseudo_legal_moves(Square from) const;
     std::vector<Move> legal_moves(Square from) const;
+    std::vector<Move> legal_moves(Color color) const;
 
+    // bool is_move_legal(Square from, Square to) const;
+    // std::set<Square> pseudo_legal_targets(Square from) const;
+    // std::vector<std::pair<Square, Square>> legal_moves(Square from) const;
+    // std::vector<std::pair<Square, Square>> legal_moves(Color color) const;
+    
+    
+/* -------------------------------------------------------------------------- */
+/*                               Piece Movement                               */
+/* -------------------------------------------------------------------------- */
+
+    void remove_piece(Square sq);
+    void add_piece(Color color, Piece piece, Square sq);
+
+    void do_move(const Move& move);
+    void undo_move(const Move& move, bool interactive);
+    
 };
