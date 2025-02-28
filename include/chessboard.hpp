@@ -12,72 +12,36 @@ private:
     // Bitboards for [Color][Piece]
     std::array<std::array<U64, 6>, 2> pieces;
 
-    // Game state
-    Color side_to_move;
-    Square en_passant_square; // Use Square::H8 or similar as "no square"
-    bool castling_rights[2][2]; // [Color][Queenside, Kingside]
-    bool white_check = false;
-    bool black_check = false;
-    bool checkmate = false;
-
-    bool DEBUG = true;
-
-
 public:
-    friend class Game;
     ChessBoard();
     ChessBoard(const ChessBoard& other);
     std::vector<std::vector<std::string>> get_board() const;
     void print() const;
     void reset();
 
-//     /* --------------------------------- */
-//     /*              Getters              */
-//     /* --------------------------------- */
+/* --------------------------------- Getter --------------------------------- */
 
     // Get all pieces of a type/color
     U64 get_pieces(Color color, Piece piece) const;
 
     // return the piece and the color on a square
     std::pair<Color, Piece> get_piece_on_square(Square sq) const;
-    Color get_side_to_move() const { return side_to_move; }
-    Square get_en_passant_square() const { return en_passant_square; }
-    bool get_castling_rights(Color color, bool kingside) const { return castling_rights[color][kingside]; }
-    bool get_check(Color color) {
-        if (color == WHITE) {
-            return white_check;
-        } else {
-            return black_check;
-        }
-    }
 
-
-//     /* --------------------------------- */
-//     /*              Setters              */
-//     /* --------------------------------- */
-
-    void set_side_to_move(Color color) { side_to_move = color; }
-    void set_en_passant_square(Square sq) { en_passant_square = sq; }
-    void set_castling_rights(Color color, bool kingside, bool value) { castling_rights[color][kingside] = value; }
-
-
-//     /* --------------------------------- */
-//     /*              Other                */
-//     /* --------------------------------- */
-
-    void remove_piece(Square sq);
-    void add_piece(Color color, Piece piece, Square sq);
-    void move_piece(Square from, Square to, bool interactive = true);
+/* -------------------------------- Utilities ------------------------------- */
 
     bool is_path_clear(Square from, Square to) const;
     bool is_occupied(Square sq) const;
+
+    // A helper: convert a square index to row and column.
+    void square_to_coord(Square sq, int &row, int &col) const {
+        row = sq / 8;
+        col = sq % 8;
+    }
     
-    std::set<Square> pseudo_legal_targets(Square from) const;
-    bool is_move_legal(Square from, Square to) const;
-    std::vector<std::pair<Square, Square>> legal_moves(Square from) const;
-    std::vector<std::pair<Square, Square>> legal_moves(Color color) const;
-
-    void check_control();
-
-    Piece choose_promotion_piece() const;
+/* --------------------------------- Setter --------------------------------- */
+    
+    void add_piece(Color color, Piece piece, Square sq);
+    
+    void remove_piece(Square sq);
+   
 };

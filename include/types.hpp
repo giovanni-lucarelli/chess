@@ -1,6 +1,8 @@
 #pragma once
 #include <cstdint>
 #include <string>
+#include <iostream>
+#include "chessboard.hpp"
 
 // 64-bit unsigned integer (represents a chessboard)
 using U64 = uint64_t;
@@ -52,6 +54,3 @@ inline std::string piece_to_string(Piece p) {
     default: return "INVALID";
   }
 }
-
-// convert number to position
-

@@ -180,3 +180,26 @@ TEST_F(ChessBoardCustomTest, EnPassantCapture) {
     EXPECT_EQ(epPiece.first, WHITE);
     EXPECT_EQ(epPiece.second, PAWN);
 }
+
+// Test move and undo move
+TEST_F(ChessBoardCustomTest, MoveAndUndo) {
+    // Set up a custom state.
+    set_piece(E2, WHITE, PAWN);
+    set_piece(E4, WHITE, PAWN);
+    
+    // Move the white pawn from E2 to E4.
+    board.move_piece(E2, E4);
+    
+    // Verify that the pawn is now on E4.
+    auto movedPiece = board.get_piece_on_square(E4);
+    EXPECT_EQ(movedPiece.first, WHITE);
+    EXPECT_EQ(movedPiece.second, PAWN);
+    
+    // Undo the move.
+    board.undo_move(E2, E4);
+    
+    // Verify that the pawn is back on E2.
+    auto undonePiece = board.get_piece_on_square(E2);
+    EXPECT_EQ(undonePiece.first, WHITE);
+    EXPECT_EQ(undonePiece.second, PAWN);
+}   

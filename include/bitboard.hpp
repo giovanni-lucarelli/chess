@@ -1,8 +1,6 @@
-// bitboard.hpp
 #pragma once
 #include "types.hpp"
 #include <iostream>
-
 #include <string>
 
 class Bitboard {
