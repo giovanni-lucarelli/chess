@@ -46,8 +46,9 @@ public:
     
     // Parametrized with custom MoveType
 
-    Move(Color color, Piece piece, Square from, Square to, MoveType type) : 
-    color(color), piece(piece), from(from), to(to), type(type) {};
+    Move(Color color, Piece piece, Square from, Square to, MoveType type, Piece captured_piece = NO_PIECE, Piece promoted_to = NO_PIECE) 
+        : color(color), piece(piece), from(from), to(to), type(type), 
+          captured_piece(captured_piece), promoted_to(promoted_to) {}
 
     // Parametrized with automatic MoveType
     Move(Color color, Piece piece, Square from, Square to, const Game& game);

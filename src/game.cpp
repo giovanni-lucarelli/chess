@@ -82,59 +82,6 @@ void Game::check_control() {
     }
 }
 
-
-// Generate all legal moves for a given color
-std::vector<Move> Game::legal_moves(Color color) const {
-    std::vector<Move> moves;
-    for (int sq = 0; sq < 64; ++sq) {
-        auto piece_info = board.get_piece_on_square(static_cast<Square>(sq));
-        if (piece_info.first == color) {
-            auto piece_moves = legal_moves(static_cast<Square>(sq));
-            moves.insert(moves.end(), piece_moves.begin(), piece_moves.end());
-        }
-    }
-    return moves;
-}
-
-bool Game::is_move_legal(Move input_move) const {
-    if (input_move.color == NO_COLOR)
-        return false;
-
-    // Optionally enforce moving only the side to move:
-    if (input_move.color != side_to_move)
-        return false;
-
-    // First: must be a pseudo-legal move.
-    auto moves = pseudo_legal_moves(input_move.from);
-    bool found = false;
-    for (auto target : moves) {
-        if (target.to == input_move.to) {
-            found = true;
-            break;
-        }
-    }
-    if (!found)
-        return false;
-
-    // ? should it be a copy of the Game object ?
-    // Second: simulate the move and check king safety.
-//     ChessBoard board_copy = board;
-//     board_copy.do_move(input_move);
-//     board_copy.check_control();
-//     bool next_white_check = board_copy.get_check(WHITE);
-//     bool next_black_check = board_copy.get_check(BLACK);
-
-//     // The move is legal if it does not leave the mover's king in check.
-//     if (side_to_move == WHITE)
-//         return !next_white_check;
-//     else
-//         return !next_black_check;
-    
-
-
-    return true;
-}
-
 std::vector<Move> Game::pseudo_legal_moves(Square from) const {
     std::vector<Move> moves{};
 
@@ -148,6 +95,29 @@ std::vector<Move> Game::pseudo_legal_moves(Square from) const {
     Piece p = piece_info.second;
     int from_row, from_col;
     board.square_to_coord(from, from_row, from_col);
+
+    // Handle castling separately to avoid multiple entries
+    if (p == KING && (from == E1 || from == E8)) {  
+        if (mover == WHITE) {
+            if (castling_rights[WHITE][1] && !board.is_occupied(F1) && !board.is_occupied(G1) &&
+                board.is_path_clear(E1, G1)) {
+                moves.push_back({mover, p, from, G1, CASTLING});
+            }
+            if (castling_rights[WHITE][0] && !board.is_occupied(B1) && !board.is_occupied(C1) &&
+                !board.is_occupied(D1) && board.is_path_clear(E1, C1)) {
+                moves.push_back({mover, p, from, C1, CASTLING});
+            }
+        } else if (mover == BLACK) {
+            if (castling_rights[BLACK][1] && !board.is_occupied(F8) && !board.is_occupied(G8) &&
+                board.is_path_clear(E8, G8)) {
+                moves.push_back({mover, p, from, G8, CASTLING});
+            }
+            if (castling_rights[BLACK][0] && !board.is_occupied(B8) && !board.is_occupied(C8) &&
+                !board.is_occupied(D8) && board.is_path_clear(E8, C8)) {
+                moves.push_back({mover, p, from, C8, CASTLING});
+            }
+        }
+    }
 
     // Loop over all destination squares
     for (int to = 0; to < 64; ++to) {
@@ -230,61 +200,57 @@ std::vector<Move> Game::pseudo_legal_moves(Square from) const {
                 if ((std::abs(dr) == std::abs(dc)) || (dr == 0 || dc == 0))
                     valid = board.is_path_clear(from, static_cast<Square>(to));
                 break;
-
+            
             case KING:
                 if (std::abs(dr) <= 1 && std::abs(dc) <= 1)
                     valid = true;
-                // Castling (only if king's normal one-square moves aren’t used)
-                // Kingside castling for WHITE, for example:
-                if (mover == WHITE && castling_rights[WHITE][1]) { // kingside right
-                    // For white, squares F1 and G1 must be empty and not attacked.
-                    if (!board.is_occupied(F1) && !board.is_occupied(G1) &&
-                        board.is_path_clear(E1, G1)) { 
-                        // Optionally: also ensure E1, F1, G1 are not under enemy attack.
-                        // Add target square G1
-                        Move move{mover, p, from, G1, CASTLING};
-                        moves.push_back(move);
-                    }
-                } 
-                if (mover == WHITE && castling_rights[WHITE][0]) { // queenside left
-                    // For white, squares B1, C1, D1 must be empty and not attacked.
-                    if (!board.is_occupied(B1) && !board.is_occupied(C1) && !board.is_occupied(D1) &&
-                        board.is_path_clear(E1, C1)) {
-                        // Optionally: also ensure E1, D1, C1 are not under enemy attack.
-                        // Add target square C1
-                        Move move{mover, p, from, C1, CASTLING};
-                        moves.push_back(move);
-                    }
-                }
-                if (mover == BLACK && castling_rights[BLACK][1]) { // kingside right
-                    // For black, squares F8 and G8 must be empty and not attacked.
-                    if (!board.is_occupied(F8) && !board.is_occupied(G8) &&
-                        board.is_path_clear(E8, G8)) {
-                        // Optionally: also ensure E8, F8, G8 are not under enemy attack.
-                        // Add target square G8
-                        Move move{mover, p, from, G8, CASTLING};
-                        moves.push_back(move);
-                    }
-                }
-                if (mover == BLACK && castling_rights[BLACK][0]) { // queenside left
-                    // For black, squares B8, C8, D8 must be empty and not attacked.
-                    if (!board.is_occupied(B8) && !board.is_occupied(C8) && !board.is_occupied(D8) &&
-                        board.is_path_clear(E8, C8)) {
-                        // Optionally: also ensure E8, D8, C8 are not under enemy attack.
-                        // Add target square C8
-                        Move move{mover, p, from, C8, CASTLING};
-                        moves.push_back(move);
-                    }
-                }
-                break;
 
+                break; 
             default:
                 break;
         }
-        if (valid)
-            moves.push_back({mover, p, from, static_cast<Square>(to), NORMAL});
+        if (valid) {
+            MoveType moveType = (target_info.first != NO_COLOR) ? CAPTURE : NORMAL;
+            moves.push_back({mover, p, from, static_cast<Square>(to), moveType, target_info.second});
+        }
     }
     return moves;
+}
+
+bool Game::is_move_legal(Move input_move) const {
+    if (input_move.color == NO_COLOR)
+        return false;
+
+    // Optionally enforce moving only the side to move:
+    if (input_move.color != side_to_move)
+        return false;
+
+    // First: must be a pseudo-legal move.
+    auto moves = pseudo_legal_moves(input_move.from);
+    bool found = false;
+    for (auto target : moves) {
+        if (target.to == input_move.to) {
+            found = true;
+            break;
+        }
+    }
+    if (!found)
+        return false;
+
+    // Second: simulate the move and check king safety.
+    Game game_copy = *this;
+    game_copy.do_move(input_move);
+    game_copy.check_control();
+    bool next_white_check = game_copy.get_check(WHITE);
+    bool next_black_check = game_copy.get_check(BLACK);
+
+    // The move is legal if it does not leave the mover's king in check.
+    if (side_to_move == WHITE)
+        return !next_white_check;
+    else
+        return !next_black_check;
+    
+    return true;
 }
 
 std::vector<Move> Game::legal_moves(Square from) const {
@@ -295,23 +261,30 @@ std::vector<Move> Game::legal_moves(Square from) const {
 
     for (auto move : pseudo_legal_moves(from)) {
         if (is_move_legal(move))
+            // std::cout << "Debug: Legal move: " << square_to_string(move.from) << " -> " << square_to_string(move.to) << std::endl;
             moves.push_back(move);
     }
     return moves;
 }
 
+// Generate all legal moves for a given color
+std::vector<Move> Game::legal_moves(Color color) const {
+    std::vector<Move> moves;
+    for (int sq = 0; sq < 64; ++sq) {
+        auto piece_info = board.get_piece_on_square(static_cast<Square>(sq));
+        if (piece_info.first == color) {
+            auto piece_moves = legal_moves(static_cast<Square>(sq));
+            moves.insert(moves.end(), piece_moves.begin(), piece_moves.end());
+        }
+    }
+    return moves;
+}
 
-
-void Game::do_move(const Move& move) {
+void Game::do_move(Move& move) {
     Square from = move.from;
     Square to = move.to;
     Piece p = move.piece;
     MoveType type = move.type;
-
-    // std::cout << "Applying move: " << square_to_string(move.from) << " -> " 
-    //           << square_to_string(move.to) << std::endl;
-    
-    //           print();
 
     // Ensure the move is legal
     if (p == NO_PIECE) {
@@ -319,14 +292,17 @@ void Game::do_move(const Move& move) {
         return;
     }
 
-    // Capture handling (if any)
+    // Store captured piece before removing it
+    move.captured_piece = NO_PIECE;  // Default to no piece captured
     if (board.is_occupied(to) && type != CASTLING) {
+        move.captured_piece = board.get_piece_on_square(to).second;  // Store captured piece
         board.remove_piece(to);
     }
 
     // Handle en passant
     if (type == EN_PASSANT) {
         Square captured_pawn_square = static_cast<Square>(to + (side_to_move == WHITE ? -8 : 8));
+        move.captured_piece = PAWN;  // Store captured pawn
         board.remove_piece(captured_pawn_square);
     }
 
@@ -346,7 +322,7 @@ void Game::do_move(const Move& move) {
         // Handle promotion
         if (type == PROMOTION) {
             p = choose_promotion_piece();
-            // TODO: move.promoted_to = p;
+            move.promoted_to = p;  // Store promoted piece
         }
     }
 
@@ -372,33 +348,33 @@ void Game::do_move(const Move& move) {
 
     // Switch turns
     side_to_move = (side_to_move == WHITE) ? BLACK : WHITE;
-
-    // std::cout << "Board after move:\n";
-    // print();
 }
 
 
-void Game::undo_move(const Move& move) {
-    // Get the moved piece and its color
-    Color mover = (side_to_move == WHITE) ? BLACK : WHITE; // Undoing move, so switch turn back
+void Game::undo_move(Move& move) {
+    // Determine who made the move
+    Color mover = (side_to_move == WHITE) ? BLACK : WHITE; // Previous turn
     Piece p = move.piece;
 
-    // Undo promotion: If the piece was promoted, revert it back to a pawn
-    if (move.type == PROMOTION) {
-        board.remove_piece(move.to);  // Remove promoted piece
-        board.add_piece(mover, PAWN, move.from);  // Restore pawn
-    } else {
-        board.remove_piece(move.to);  // Remove moved piece
-        board.add_piece(mover, p, move.from);
-    }
+    // Remove the moved piece from the destination square
+    board.remove_piece(move.to);
 
-    // Restore captured piece (if there was one)
+    // Restore the moved piece back to its original square
+    board.add_piece(mover, p, move.from);
+
+    // Restore captured piece (if any)
     if (move.captured_piece != NO_PIECE) {
         Color captured_color = (mover == WHITE) ? BLACK : WHITE;
-        board.add_piece(captured_color, move.captured_piece, move.to);
+        board.add_piece(captured_color, move.captured_piece, move.to);  // Restore captured piece
     }
 
-    // Undo castling
+    // Undo promotion (restore the original pawn)
+    if (move.type == PROMOTION) {
+        board.remove_piece(move.from);  // Remove promoted piece
+        board.add_piece(mover, PAWN, move.from);  // Restore pawn
+    }
+
+    // Undo castling (restore the rook)
     if (move.type == CASTLING) {
         if (mover == WHITE) {
             if (move.to == G1) { // Kingside
@@ -417,29 +393,28 @@ void Game::undo_move(const Move& move) {
                 board.add_piece(BLACK, ROOK, A8);
             }
         }
-        // Restore king position
-        board.add_piece(mover, KING, move.from);
     }
 
-    // Undo en passant
+    // Undo en passant (restore captured pawn)
     if (move.type == EN_PASSANT) {
-        if (mover == WHITE) {
-            board.add_piece(BLACK, PAWN, static_cast<Square>(move.to - 8)); // Restore Black pawn
-        } else {
-            board.add_piece(WHITE, PAWN, static_cast<Square>(move.to + 8)); // Restore White pawn
-        }
+        Color captured_color = (mover == WHITE) ? BLACK : WHITE;
+        Square captured_pawn_square = (mover == WHITE) ? static_cast<Square>(move.to - 8) : static_cast<Square>(move.to + 8);
+        board.add_piece(captured_color, PAWN, captured_pawn_square); // Restore captured pawn
     }
 
-    // Switch turns back
+    // Switch turns back **AFTER** move is undone
     side_to_move = mover;
 }
 
-std::pair<Square, Square> Game::parse_input(const std::string& from, const std::string& to) const {
-    Square from_sq = static_cast<Square>(8 * (from[1] - '1') + (from[0] - 'a'));
-    Square to_sq = static_cast<Square>(8 * (to[1] - '1') + (to[0] - 'a'));
 
-    return {from_sq, to_sq};
-}
+
+
+// std::pair<Square, Square> Game::parse_input(const std::string& from, const std::string& to) const {
+//     Square from_sq = static_cast<Square>(8 * (from[1] - '1') + (from[0] - 'a'));
+//     Square to_sq = static_cast<Square>(8 * (to[1] - '1') + (to[0] - 'a'));
+
+//     return {from_sq, to_sq};
+// }
 
 Move Game::parse_move(const std::string& from, const std::string& to) const {
     Square from_sq = static_cast<Square>(8 * (from[1] - '1') + (from[0] - 'a'));
@@ -519,91 +494,102 @@ void Game::play() {
         // Make the move
         do_move(move);
         move.print();
+        board.print();
+
+        char undo_bool;
+        std::cout << "Undo move? (y/n): ";
+        std::cin >> undo_bool;
+        if(undo_bool == 'y') {
+            undo_move(move);
+            std::cout << "Move undone\n";
+            board.print();
+
+        }
         
     }
 
 }
 
 
-// void Game::play_vs_pc(const int search_depth) {
-//     while(true) {
-//         turn += 1;
-//         board.print();
-//         board.check_control();
-//         if(board.get_check(WHITE)) {
-//             std::cout << "\033[1;31mWhite in check!\033[0m" << std::endl;
-//         } else if(board.get_check(BLACK)) {
-//             std::cout << "\033[1;31mBlack in check!\033[0m" << std::endl;
-//         }
+void Game::play_vs_pc(const int search_depth) {
+    while(true) {
+        turn += 1;
+        board.print();
+        check_control();
+        if(get_check(WHITE)) {
+            std::cout << "\033[1;31mWhite in check!\033[0m" << std::endl;
+        } else if(get_check(BLACK)) {
+            std::cout << "\033[1;31mBlack in check!\033[0m" << std::endl;
+        }
 
-//         if(board.legal_moves(board.get_side_to_move()).size() == 0 && board.get_check(board.get_side_to_move())) {
-//             Color color = board.get_side_to_move() == WHITE ? BLACK : WHITE;
-//             std::cout << "\033[1;31mCheckmate!\033[0m" << color << " wins!" << std::endl;
-//             break;
-//         }
+        if(legal_moves(get_side_to_move()).size() == 0 && get_check(get_side_to_move())) {
+            Color color = get_side_to_move() == WHITE ? BLACK : WHITE;
+            std::cout << "\033[1;31mCheckmate!\033[0m" << color << " wins!" << std::endl;
+            break;
+        }
 
-//         if(board.get_side_to_move() == WHITE) {
-//             std::cout << "\033[1;34mWhite to move (\033[0m" << (turn / 2) + 1 << "\033[1;34m)\033[0m" << std::endl;
-//         } else {
-//             std::cout << "\033[1;34mBlack to move (\033[0m" << (turn / 2) << "\033[1;34m)\033[0m" << std::endl;
-//         }
+        if(get_side_to_move() == WHITE) {
+            std::cout << "\033[1;34mWhite to move (\033[0m" << (turn / 2) + 1 << "\033[1;34m)\033[0m" << std::endl;
+        } else {
+            std::cout << "\033[1;34mBlack to move (\033[0m" << (turn / 2) << "\033[1;34m)\033[0m" << std::endl;
+        }
 
-//         std::string inputPiece;
-//         std::string inputMove;
-//         std::cout << "Enter piece to move (only its square): ";
-//         std::cin >> inputPiece;
-//         if(inputPiece == "exit") {
-//             break;
-//         }
+        std::string inputPiece;
+        std::string inputMove;
+        std::cout << "Enter piece to move (only its square): ";
+        std::cin >> inputPiece;
+        if(inputPiece == "exit") {
+            break;
+        }
 
-//         Square from = static_cast<Square>(8 * (inputPiece[1] - '1') + (inputPiece[0] - 'a'));
+        Square from = static_cast<Square>(8 * (inputPiece[1] - '1') + (inputPiece[0] - 'a'));
 
-//         // printing legal moves
-//         std::vector<Move> moves = board.legal_moves(from);
-//         std::cout << "Legal moves: ";
+        // printing legal moves
+        std::vector<Move> moves = legal_moves(from);
+        std::cout << "Legal moves: ";
 
-//         for (const auto& move : moves) {
-//             std::cout << square_to_string(move.to) << " ";
-//         }
+        for (const auto& move : moves) {
+            std::cout << square_to_string(move.to) << " ";
+        }
 
-//         std::cout << std::endl;
+        std::cout << std::endl;
         
-//         std::cout << "Enter move (only its square): ";
-//         std::cin >> inputMove;
-//         if(inputMove == "exit") {
-//             break;
-//         }
+        std::cout << "Enter move (only its square): ";
+        std::cin >> inputMove;
+        if(inputMove == "exit") {
+            break;
+        }
 
-//         // ? std::pair<Square, Square> move = parse_input(inputPiece, inputMove);
+        // ? std::pair<Square, Square> move = parse_input(inputPiece, inputMove);
 
-//         Move move = parse_move(inputPiece, inputMove);
+        Move move = parse_move(inputPiece, inputMove);
 
-//         // Check if the move is legal
-//         if (!board.is_move_legal(move)) {
-//             std::cout << "\033[1;31mIllegal move\033[0m\n";
-//             continue;
-//         }
+        // Check if the move is legal
+        if (!is_move_legal(move)) {
+            std::cout << "\033[1;31mIllegal move\033[0m\n";
+            continue;
+        }
 
-//         // Make the move
-//         board.do_move(move);
+        // Make the move
+        do_move(move);
 
-//         // Evaluate the position
-//         int score = evaluate(board);
-//         std::cout << "Position score: " << score << std::endl;
+        // Evaluate the position
+        int score = evaluate(*this);
+        std::cout << "Position score: " << score << std::endl;
 
-//         std::cout << "Looking for best move...\n";
+        std::cout << "Looking for best move...\n";
 
-//         // Measure time taken to find best move & find best move
-//         auto start = std::chrono::high_resolution_clock::now();
-//         Move best_move = find_best_move(board, search_depth);
-//         auto end = std::chrono::high_resolution_clock::now();
-//         std::chrono::duration<double> elapsed = end - start;
-//         std::cout << "Time taken to find best move: " << elapsed.count() << " seconds" << std::endl;
+        // Measure time taken to find best move & find best move
+        auto start = std::chrono::high_resolution_clock::now();
+        Move best_move = find_best_move(*this, search_depth);
+        auto end = std::chrono::high_resolution_clock::now();
+        std::chrono::duration<double> elapsed = end - start;
+        std::cout << "Time taken to find best move: " << elapsed.count() << " seconds" << std::endl;
         
-//         // Print best move
-//         std::cout << "Best move: " << square_to_string(best_move.from) 
-//                   << " to " << square_to_string(best_move.to) << std::endl;
+        // Print best move
+        std::cout << "Best move: "<< std::endl;
+        best_move.print();
 
-//     }
-// }
+    }
+}
 

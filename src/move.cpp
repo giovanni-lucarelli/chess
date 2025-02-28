@@ -44,11 +44,15 @@ Move::Move(Color color, Piece piece, Square from, Square to, const Game& game) :
     // Determine captured piece (only if it's a capture)
     if (type == MoveType::CAPTURE) {
         captured_piece = board.get_piece_on_square(to).second;
+    } else {
+        captured_piece = NO_PIECE;
     }
 
     // Determine promoted piece
     if (type == MoveType::PROMOTION) {
         promoted_to = game.choose_promotion_piece();
+    } else {
+        promoted_to = NO_PIECE;
     }
 
 };

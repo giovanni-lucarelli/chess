@@ -10,8 +10,8 @@ class Game {
 private:
 
     ChessBoard board;
-    std::vector<ChessBoard> board_history;
-    std::stack<std::set<Square>> move_history;
+    // std::vector<ChessBoard> board_history;
+    // std::stack<std::set<Square>> move_history;
 
     int turn;
     
@@ -52,7 +52,7 @@ public:
 
     /* ------------------------------- Parse Input ------------------------------ */
     
-    std::pair<Square, Square> parse_input(const std::string& from, const std::string& to) const;
+    // std::pair<Square, Square> parse_input(const std::string& from, const std::string& to) const;
     Move parse_move(const std::string& from, const std::string& to) const;
     
     /* --------------------------------- Utility -------------------------------- */
@@ -65,8 +65,8 @@ public:
     
     /* --------------------------------- Actions -------------------------------- */
     
-    void do_move(const Move& move);
-    void undo_move(const Move& move);
+    void do_move(Move& move);
+    void undo_move(Move& move);
     Piece choose_promotion_piece() const;
 
     std::vector<Move> pseudo_legal_moves(Square from) const;
