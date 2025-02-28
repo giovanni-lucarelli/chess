@@ -13,7 +13,8 @@ include_directories(${PROJECT_SOURCE_DIR}/include)
 
 # Source files
 set(SOURCES
-    src/search.cpp
+    # src/search.cpp
+    src/move.cpp
     src/chessboard.cpp
     src/game.cpp
 )

@@ -1,24 +1,27 @@
 #include "search.hpp"
+#include "types.hpp"
+#include "chessboard.hpp"
 #include <vector>
 #include <algorithm>
 #include <map>
 
 // Generates all legal moves for the current position
-std::vector<Move> generate_legal_moves(const ChessBoard& board) {
-    std::vector<Move> moves;
-    for (int i = 0; i < 64; i++) {
-        Square from = static_cast<Square>(i);
-        if (board.is_occupied(from) && board.get_piece_on_square(from).first == board.get_side_to_move()) {
-            std::vector<Move> targets = board.legal_moves(from);
-            for (const Move& target : targets) { // Use const reference to avoid copies
-                if (board.is_move_legal(target)) {
-                    moves.push_back(target); // Push the original target move
-                }
-            }
-        }
-    }
-    return moves;
-}
+// ??? Maybe not necessay, since there is legal_moves() in ChessBoard class with both from and colors
+// std::vector<Move> generate_legal_moves(const ChessBoard& board) {
+//     std::vector<Move> moves;
+//     for (int i = 0; i < 64; i++) {
+//         Square from = static_cast<Square>(i);
+//         if (board.is_occupied(from) && board.get_piece_on_square(from).first == board.get_side_to_move()) {
+//             std::vector<Move> targets = board.legal_moves(from);
+//             for (const Move& target : targets) { // Use const reference to avoid copies
+//                 if (board.is_move_legal(target)) {
+//                     moves.push_back(target); // Push the original target move
+//                 }
+//             }
+//         }
+//     }
+//     return moves;
+// }
 
 // print all moves: for debugging purposes
 void print_moves(const std::vector<Move>& moves) {
@@ -54,11 +57,12 @@ int evaluate(const ChessBoard& board) {
 
 // --- Alpha-Beta Pruning Search ---
 int alpha_beta(ChessBoard& board, int depth, int alpha, int beta, bool maximizingPlayer) {
-    if (depth == 0 || board.is_game_over()) {
+    // if (depth == 0 || board.is_game_over()) {
+    if (depth == 0) {
         return evaluate(board);
     }
 
-    std::vector<Move> legal_moves = generate_legal_moves(board);
+    std::vector<Move> legal_moves = board.legal_moves(board.get_side_to_move());
 
     if (maximizingPlayer) {
         int maxEval = -100000;
@@ -102,7 +106,7 @@ Move find_best_move(ChessBoard& board, int depth) {
     int alpha = -100000;
     int beta = 100000;
 
-    std::vector<Move> legal_moves = generate_legal_moves(board);
+    std::vector<Move> legal_moves = board.legal_moves(board.get_side_to_move());
 
     for (Move move : legal_moves) {
         Piece captured_piece = board.get_piece_on_square(move.to).second;

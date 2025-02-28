@@ -5,7 +5,7 @@
 
 
 // Generate legal moves (filter out moves that leave king in check)
-std::vector<Move> generate_legal_moves(const ChessBoard& board);
+// std::vector<Move> generate_legal_moves(const ChessBoard& board);
 
 // helper: print all moves
 static void print_moves(const std::vector<Move>& moves);

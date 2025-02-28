@@ -2,6 +2,6 @@
 
 int main() {
     Game game;
-    game.play_vs_pc(3);
+    game.play();
     return 0;
 }
