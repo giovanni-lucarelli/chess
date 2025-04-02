@@ -56,6 +56,11 @@ A C++ chess engine with Python bindings and a testing suite using Google Test. T
     make play
     ```
 
+- Play using Streamlit
+    ```sh
+    streamlit run streamlit_app.py
+    ```
+
 ## Python Bindings
 
 The Python module is built using pybind11 and is named **chessengine_py**. To use it from Python:
@@ -70,11 +75,6 @@ The Python module is built using pybind11 and is named **chessengine_py**. To us
     import chessengine_py
     game = chessengine_py.Game()
     # Use game.play(), game.is_game_over(), etc.
-    ```
-
-## Playing using Streamlit UI
-     ```sh
-    streamlit run streamlit_app.py
     ```
 
 ## Dependencies
