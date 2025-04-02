@@ -79,10 +79,6 @@ The Python module is built using pybind11 and is named **chessengine_py**. To us
 - [pybind11](https://github.com/pybind/pybind11)
 - [Google Test](https://github.com/google/googletest)
 
-## License
-
-*Include license information here if applicable.*
-
 ## Contributing
 
 Contributions and suggestions are welcome! Please open an issue or submit a pull request.

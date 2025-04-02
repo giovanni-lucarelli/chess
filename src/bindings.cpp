@@ -1,5 +1,8 @@
 #include <pybind11/pybind11.h>
-#include "game.hpp" // Assuming Game is defined in include/game.hpp
+#include <pybind11/stl.h>
+#include "game.hpp"
+#include "move.hpp"
+#include "chessboard.hpp"
 
 namespace py = pybind11;
 
