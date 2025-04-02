@@ -72,6 +72,11 @@ The Python module is built using pybind11 and is named **chessengine_py**. To us
     # Use game.play(), game.is_game_over(), etc.
     ```
 
+## Playing using Streamlit UI
+     ```sh
+    streamlit run streamlit_app.py
+    ```
+
 ## Dependencies
 
 - C++17 compiler
