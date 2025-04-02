@@ -3,11 +3,57 @@
 #include "game.hpp"
 #include "move.hpp"
 #include "chessboard.hpp"
+#include "types.hpp"  // Assuming Color is defined here
 
 namespace py = pybind11;
 
 PYBIND11_MODULE(chessengine_py, m) {
     m.doc() = "Python bindings for the Chess Engine project"; // Module documentation
+
+    // Bind the Color enum.
+    py::enum_<Color>(m, "Color")
+        .value("NO_COLOR", NO_COLOR)
+        .value("WHITE", WHITE)
+        .value("BLACK", BLACK)
+        .export_values();
+    
+    py::enum_<Piece>(m, "Piece")
+        .value("PAWN", PAWN)
+        .value("KNIGHT", KNIGHT)
+        .value("BISHOP", BISHOP)
+        .value("ROOK", ROOK)
+        .value("QUEEN", QUEEN)
+        .value("KING", KING)
+        .value("NO_PIECE", NO_PIECE)
+        .export_values();
+
+    py::enum_<Square>(m, "Square")
+        .value("A1", A1)
+        .value("B1", B1)
+        .value("C1", C1)
+        .value("D1", D1)
+        .value("E1", E1)
+        .value("F1", F1)
+        .value("G1", G1)
+        .value("H1", H1)
+        .value("A2", A2)
+        .value("B2", B2)
+        .value("C2", C2)
+        .value("D2", D2)
+        .value("E2", E2)
+        .value("F2", F2)
+        .value("G2", G2)
+        .value("H2", H2)
+        // ... add all squares up to H8
+        .value("H8", H8)
+        .value("NO_SQUARE", NO_SQUARE)
+        .export_values();
+
+    // square to string
+    m.def("square_to_string", &square_to_string);
+
+    // piece to string
+    m.def("piece_to_string", &piece_to_string);
 
     py::class_<Game>(m, "Game")
         .def(py::init<>()) // Constructor
@@ -21,8 +67,11 @@ PYBIND11_MODULE(chessengine_py, m) {
         .def("choose_promotion_piece", &Game::choose_promotion_piece, "Choose a piece for pawn promotion")
         .def("is_move_legal", &Game::is_move_legal, "Check if a move is legal")
         .def("do_move", &Game::do_move, "Make a move on the board")
-        .def("undo_move", &Game::undo_move, "Undo the last move");
-    // Add other methods and properties as needed
+        .def("undo_move", &Game::undo_move, "Undo the last move")
+        .def("legal_moves", py::overload_cast<Square>(&Game::legal_moves, py::const_), "Get legal moves from a square")
+        .def("legal_moves_color", py::overload_cast<Color>(&Game::legal_moves, py::const_), "Get legal moves for a color")  
+        .def("get_check", &Game::get_check, "Check if a color is in check")
+        .def("check_control", &Game::check_control, "Check control of the board");
 
     py::class_<Move>(m, "Move")
         .def(py::init<>()) // Default constructor
