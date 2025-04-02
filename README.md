@@ -1,78 +1,92 @@
-## How to run
+# Chess Engine
 
-```bash
+A C++ chess engine with Python bindings and a testing suite using Google Test. This project uses CMake as its build system and pybind11 to expose a Python module for gameplay.
 
-cmake -B build
-cmake --build build
-cd build
-./ChessEngine
+## Project Structure
 
-```
+- **CMakeLists.txt**: Main CMake configuration; sets up build targets, tests, and Python module generation.
+- **include/**: Header files.
+  - `bitboard.hpp`: Contains the definition of the `Bitboard` class.
+  - `chessboard.hpp`: Contains the definition of the `Chessboard` class.
+  - `game.hpp`: Contains the definition of the `Game` class (main game logic).
+  - `move.hpp`: Contains the definition of the `Move` class, representing a move.
+  - *... other headers (e.g., types, movegen)*.
+- **src/**: Source files.
+  - `main.cpp`: Entry point of the chess engine.
+  - `game.cpp`, `move.cpp`, `chessboard.cpp`, `search.cpp`: Implementation files.
+  - `bindings.cpp`: Pybind11 bindings exposing the engine functionality to Python.
+- **build/**: CMake build directory with compiled binaries, shared libraries, and test executables.
+- **test/**: Tests using Google Test.
+- **assets/**: SVG assets for rendering chess pieces.
+- **streamlit_app.py**: A possible interface for running the chess engine as a web app.
+- **todo.md**: List of upcoming features and tasks.
 
-## How to test
+## Build Instructions
 
-```bash
+1. Create a build directory and navigate into it:
+    ```sh
+    mkdir build
+    cd build
+    ```
 
-cmake -B build
-cmake --build build
-cd build
-./ChessEngineTest
+2. Configure the project using CMake:
+    ```sh
+    cmake ..
+    ```
 
-```
+3. Build the project:
+    ```sh
+    make
+    ```
 
-```C++
-// to exit game loop type "exit" instead of a piece or move
-```
+## Running the Engine
 
-## Roadmap
+- To run the chess engine executable:
+    ```sh
+    ./ChessEngine
+    ```
 
-1. Setup the game in order to play one vs one
-   1. C++
-   2. Python bindings and interface
-2. Create the MoveGenerator class for all the pieces. It should be able to generate all the possible moves for a given position. This will be used to implement the AI.
-3. Implement the AI using the minimax algorithm with alpha-beta pruning.
-4. Implement the UI in python using the bindings created in step 1.
-5. Play online
+- To run the tests:
+    ```sh
+    ctest
+    ```
 
-## Project structure
+- Custom targets are available (e.g., `play`) as defined in the CMake file:
+    ```sh
+    make play
+    ```
 
-```
-myChess_Engine/
-├── .gitignore
-├── chess.md
-├── CMakeLists.txt
-├── include/
-│   ├── bitboard.hpp
-│   ├── chessboard.hpp
-│   ├── game.hpp
-│   ├── move.hpp
-│   ├── movegen.hpp
-│   └── types.hpp
-├── README.md
-├── src/
-│   ├── chessboard.cpp
-│   ├── game.cpp
-│   ├── main.cpp
-│   └── movegen.cpp
-├── test/
-│   └── test.cpp
-└── todo.md
-```
+## Python Bindings
 
-The chess program is structured in the following way:
+The Python module is built using pybind11 and is named **chessengine_py**. To use it from Python:
 
-- `types.hpp` contains the definition of the `Piece` and `Color` enums, which are used to represent the pieces and colors in the game.
-- `bitboard.hpp` contains the definition of the `Bitboard` class, which is used to represent the state of the board.
-- `chessboard.hpp` contains the definition of the `Chessboard` class, which is used to represent the state of the game and the rules of chess.
-- `game.hpp` contains the definition of the `Game` class, which is used to manage the game.
-- `move.hpp` contains the definition of the `Move` class, which is used to represent a move.
-- `movegen.hpp` contains the definition of the `MoveGenerator` class, which is used to generate all the possible moves for a given position. This will be used to implement the AI.
+1. Ensure the build directory is in your `PYTHONPATH` (or copy the module to your project directory):
+    ```sh
+    export PYTHONPATH=$PYTHONPATH:/path/to/build
+    ```
 
-In particular, each position on the board is represented by a 64-bit integer, which is used as a bitboard to store the state of the board. The `Bitboard` class provides methods to set and get the state of a given square, as well as to perform bitwise operations on the bitboards (e.g., adding, removing, or checking pieces). 
+2. Import the module in Python:
+    ```python
+    import chessengine_py
+    game = chessengine_py.Game()
+    # Use game.play(), game.is_game_over(), etc.
+    ```
 
-The `Chessboard` class uses an 3 dimensional array to represent the state of the board, with the first dimension representing the color of the piece (white or black), the second dimension representing the type of the piece (pawn, knight, bishop, rook, queen, king), and the third dimension representing the position of the piece on the board. In this class are also stored the chess rules through `is_legal_move` method.
+## Dependencies
 
-The `Game` class manages the game, including the current state of the board, the current player, and the history of the moves. The `Move` class represents a move, including the starting and ending squares, the piece that is moved, and any captured piece. The `MoveGenerator` class generates all the possible moves for a given position, including pawn moves, knight moves, bishop moves, rook moves, queen moves, and king moves.
+- C++17 compiler
+- CMake (>= 3.10)
+- [pybind11](https://github.com/pybind/pybind11)
+- [Google Test](https://github.com/google/googletest)
 
+## License
 
+*Include license information here if applicable.*
 
+## Contributing
+
+Contributions and suggestions are welcome! Please open an issue or submit a pull request.
+
+---
+
+This README provides a basic overview of the project structure, build steps, and usage. For more detailed documentation, refer to individual source file comments and developer notes.

@@ -26,10 +26,7 @@ add_executable(ChessEngine src/main.cpp ${SOURCES})
 enable_testing()
 find_package(GTest REQUIRED)
 
-# Add test sources
-set(TEST_SOURCES
-    test/test.cpp
-)
+
 
 #Compiler flags for optimization and warnings
 if(CMAKE_CXX_COMPILER_ID MATCHES "GNU|Clang")
@@ -45,6 +42,7 @@ target_link_libraries(ChessEngineTests GTest::GTest GTest::Main pthread)
 # Add test to CTest framework
 add_test(NAME ChessEngineTests COMMAND ChessEngineTests)
 
+cmake_policy(SET CMP0148 NEW)
 # Pybind11 setup
 find_package(pybind11 REQUIRED)
 
@@ -62,12 +60,6 @@ add_custom_target(play
     WORKING_DIRECTORY ${CMAKE_PROJECT_DIR}
 )
 
-# Testing
-add_custom_target(run_tests
-    COMMAND ChessEngineTests
-    DEPENDS ChessEngineTests
-    WORKING_DIRECTORY ${CMAKE_PROJECT_DIR}
-)
 
 # Cleaning
 add_custom_target(clean_all
