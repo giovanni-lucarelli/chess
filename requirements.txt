@@ -1,0 +1,6 @@
+streamlit
+Pillow
+pybind11
+scikit-build-core
+# Add a line for your local package build (see step 3)
+.

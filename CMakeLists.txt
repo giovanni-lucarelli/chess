@@ -49,9 +49,10 @@ find_package(pybind11 REQUIRED)
 # Add python module
 pybind11_add_module(chessengine_py MODULE src/bindings.cpp ${SOURCES})
 
-
-
-
+# Add install rule so that scikit-build can call the install target
+install(TARGETS chessengine_py
+    LIBRARY DESTINATION .
+)
 
 # Running executable
 add_custom_target(play

@@ -1,0 +1,15 @@
+[build-system]
+requires = ["scikit-build-core>=0.7", "pybind11"] # Add pybind11 here too
+build-backend = "scikit_build_core.build"
+
+[project]
+name = "chessengine_py"
+version = "0.1.0" # Or your desired version
+requires-python = ">=3.8" # Adjust if needed
+
+[tool.scikit-build]
+# This tells scikit-build-core where your CMakeLists.txt is
+cmake.source-dir = "."
+# This ensures the built module is placed correctly for import
+wheel.packages = ["."] # Check if your CMake install moves the .so file correctly
+                        # Your CMakeLists.txt installs to '.'[cite: 2, 3], which should be okay.

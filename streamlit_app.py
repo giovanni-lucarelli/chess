@@ -1,8 +1,6 @@
 import streamlit as st
 from PIL import Image, ImageDraw
-import sys
-sys.path.append("build")
-import chessengine_py  # type: ignore
+import chessengine_py # type: ignore
 
 # Constants for chessboard
 ROWS, COLS = 8, 8
