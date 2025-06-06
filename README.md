@@ -91,3 +91,16 @@ Contributions and suggestions are welcome! Please open an issue or submit a pull
 ---
 
 This README provides a basic overview of the project structure, build steps, and usage. For more detailed documentation, refer to individual source file comments and developer notes.
+
+
+## RL project presentation
+
+- Describe and motivate the problem
+- How did you translate the problem into a RL framework?
+- How did you try to solve it? Why did you use one algorithm or another?
+- Is there something else you could have done?
+- Did it work? (Can you interpret the optimal policy?)
+- Are the results consistent with your expectation?
+
+**More theory, less practice**
+
