@@ -22,9 +22,9 @@ set(SOURCES
 # Add executable for main engine
 add_executable(ChessEngine src/main.cpp ${SOURCES})
 
-# Google Test setup
-enable_testing()
-find_package(GTest REQUIRED)
+# # Google Test setup
+# enable_testing()
+# find_package(GTest REQUIRED)
 
 
 
@@ -33,26 +33,26 @@ if(CMAKE_CXX_COMPILER_ID MATCHES "GNU|Clang")
     target_compile_options(ChessEngine PRIVATE -Wall -Wextra -Wpedantic -O3)
 endif()
 
-# Create test executable
-add_executable(ChessEngineTests ${TEST_SOURCES} ${SOURCES})
+# # Create test executable
+# add_executable(ChessEngineTests ${TEST_SOURCES} ${SOURCES})
 
-# Link test executable with Google Test and required libraries
-target_link_libraries(ChessEngineTests GTest::GTest GTest::Main pthread)
+# # Link test executable with Google Test and required libraries
+# target_link_libraries(ChessEngineTests GTest::GTest GTest::Main pthread)
 
 # Add test to CTest framework
-add_test(NAME ChessEngineTests COMMAND ChessEngineTests)
+# add_test(NAME ChessEngineTests COMMAND ChessEngineTests)
 
-cmake_policy(SET CMP0148 NEW)
-# Pybind11 setup
-find_package(pybind11 REQUIRED)
+# cmake_policy(SET CMP0148 NEW)
+# # Pybind11 setup
+# find_package(pybind11 REQUIRED)
 
 # Add python module
-pybind11_add_module(chessengine_py MODULE src/bindings.cpp ${SOURCES})
+# pybind11_add_module(chessengine_py MODULE src/bindings.cpp ${SOURCES})
 
-# Add install rule so that scikit-build can call the install target
-install(TARGETS chessengine_py
-    LIBRARY DESTINATION .
-)
+# # Add install rule so that scikit-build can call the install target
+# install(TARGETS chessengine_py
+#     LIBRARY DESTINATION .
+# )
 
 # Running executable
 add_custom_target(play

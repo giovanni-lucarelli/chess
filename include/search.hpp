@@ -3,8 +3,6 @@
 #include "move.hpp"
 #include <vector>
 
-
-
 // Generate legal moves (filter out moves that leave king in check)
 std::vector<Move> generate_legal_moves(const ChessBoard& board);
 
