@@ -23,15 +23,13 @@ chess/                              # Root directory
 │   ├── chessboard.hpp             # Chessboard class for game state management
 │   ├── game.hpp                   # Game class (main game logic & interface)
 │   ├── move.hpp                   # Move class for representing chess moves
-│   ├── search.hpp                 # Search algorithms and evaluation functions
 │   └── types.hpp                  # Common type definitions and enums
 │
 ├── 📁 src/                        # Source files (C++ implementations)
 │   ├── main.cpp                   # Entry point for standalone chess engine
 │   ├── game.cpp                   # Game logic implementation
 │   ├── chessboard.cpp             # Board state and move validation
-│   ├── move.cpp                   # Move generation and utilities
-│   └── search.cpp                 # AI search algorithms (minimax, alpha-beta)
+│   └── move.cpp                   # Move generation and utilities
 │
 ├── 📁 test/                       # Testing suite
 │   ├── test_chessboard.cpp
