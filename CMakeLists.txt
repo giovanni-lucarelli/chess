@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.10)
+cmake_minimum_required(VERSION 3.14)
 
 # Project name
 project(ChessEngine)
@@ -6,7 +6,6 @@ project(ChessEngine)
 # Set C++ standard
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED True)
-
 
 # Include directories
 include_directories(${PROJECT_SOURCE_DIR}/include)
@@ -22,45 +21,46 @@ set(SOURCES
 # Add executable for main engine
 add_executable(ChessEngine src/main.cpp ${SOURCES})
 
-# # Google Test setup
-# enable_testing()
-# find_package(GTest REQUIRED)
-
-#Compiler flags for optimization and warnings
+# Compiler flags for optimization and warnings
 if(CMAKE_CXX_COMPILER_ID MATCHES "GNU|Clang")
     target_compile_options(ChessEngine PRIVATE -Wall -Wextra -Wpedantic -O3)
 endif()
 
-# # Create test executable
-# add_executable(ChessEngineTests ${TEST_SOURCES} ${SOURCES})
+# Google Test setup via FetchContent
+include(FetchContent)
 
-# # Link test executable with Google Test and required libraries
-# target_link_libraries(ChessEngineTests GTest::GTest GTest::Main pthread)
+FetchContent_Declare(
+  googletest
+  URL https://github.com/google/googletest/archive/refs/heads/main.zip
+)
+FetchContent_MakeAvailable(googletest)
+
+enable_testing()
+
+# Test sources
+set(TEST_SOURCES
+    test/test_chessboard.cpp
+    test/test_move.cpp
+    test/test_game.cpp
+)
+
+# Create test executable
+add_executable(ChessEngineTests ${TEST_SOURCES} ${SOURCES})
+
+# Link test executable with Google Test and required libraries
+target_link_libraries(ChessEngineTests gtest gtest_main pthread)
 
 # Add test to CTest framework
-# add_test(NAME ChessEngineTests COMMAND ChessEngineTests)
+add_test(NAME ChessEngineTests COMMAND ChessEngineTests)
 
-# cmake_policy(SET CMP0148 NEW)
-# # Pybind11 setup
-# find_package(pybind11 REQUIRED)
-
-# Add python module
-# pybind11_add_module(chessengine_py MODULE src/bindings.cpp ${SOURCES})
-
-# # Add install rule so that scikit-build can call the install target
-# install(TARGETS chessengine_py
-#     LIBRARY DESTINATION .
-# )
-
-# Running executable
+# Custom target to run the chess engine
 add_custom_target(play
     COMMAND ChessEngine
     DEPENDS ChessEngine
     WORKING_DIRECTORY ${CMAKE_PROJECT_DIR}
 )
 
-
-# Cleaning
+# Custom clean target
 add_custom_target(clean_all
     COMMAND ${CMAKE_BUILD_TOOL} clean
     COMMAND rm -rf CMakeFiles CMakeCache.txt cmake_install.cmake Makefile

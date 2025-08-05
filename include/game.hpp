@@ -48,6 +48,7 @@ public:
     void set_side_to_move(Color color) { side_to_move = color; }
     void set_en_passant_square(Square sq) { en_passant_square = sq; }
     void set_castling_rights(Color color, bool kingside, bool value) { castling_rights[color][kingside] = value; };
+    void set_board(ChessBoard board){ this->board = board; }
     
 
     /* ------------------------------- Parse Input ------------------------------ */
@@ -67,7 +68,7 @@ public:
     
     void do_move(Move& move);
     void undo_move(Move& move);
-    Piece choose_promotion_piece() const;
+    virtual Piece choose_promotion_piece() const;
 
     std::vector<Move> pseudo_legal_moves(Square from) const;
     std::vector<Move> legal_moves(Square from) const;

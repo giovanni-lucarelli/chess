@@ -356,56 +356,60 @@ void Game::undo_move(Move& move) {
     Color mover = (side_to_move == WHITE) ? BLACK : WHITE; // Previous turn
     Piece p = move.piece;
 
-    // Remove the moved piece from the destination square
-    board.remove_piece(move.to);
-
-    // Restore the moved piece back to its original square
-    board.add_piece(mover, p, move.from);
-
-    // Restore captured piece (if any)
-    if (move.captured_piece != NO_PIECE) {
-        Color captured_color = (mover == WHITE) ? BLACK : WHITE;
-        board.add_piece(captured_color, move.captured_piece, move.to);  // Restore captured piece
-    }
-
-    // Undo promotion (restore the original pawn)
-    if (move.type == PROMOTION) {
-        board.remove_piece(move.from);  // Remove promoted piece
-        board.add_piece(mover, PAWN, move.from);  // Restore pawn
-    }
-
-    // Undo castling (restore the rook)
-    if (move.type == CASTLING) {
-        if (mover == WHITE) {
-            if (move.to == G1) { // Kingside
-                board.remove_piece(F1);
-                board.add_piece(WHITE, ROOK, H1);
-            } else if (move.to == C1) { // Queenside
-                board.remove_piece(D1);
-                board.add_piece(WHITE, ROOK, A1);
-            }
-        } else if (mover == BLACK) {
-            if (move.to == G8) { // Kingside
-                board.remove_piece(F8);
-                board.add_piece(BLACK, ROOK, H8);
-            } else if (move.to == C8) { // Queenside
-                board.remove_piece(D8);
-                board.add_piece(BLACK, ROOK, A8);
-            }
-        }
-    }
-
-    // Undo en passant (restore captured pawn)
     if (move.type == EN_PASSANT) {
+        // Remove the pawn from move.to (D6)
+        board.remove_piece(move.to);
+
+        // Restore moved pawn to move.from (E5)
+        board.add_piece(mover, p, move.from);
+
+        // Restore captured pawn on the correct square (D5)
         Color captured_color = (mover == WHITE) ? BLACK : WHITE;
         Square captured_pawn_square = (mover == WHITE) ? static_cast<Square>(move.to - 8) : static_cast<Square>(move.to + 8);
-        board.add_piece(captured_color, PAWN, captured_pawn_square); // Restore captured pawn
+        board.add_piece(captured_color, PAWN, captured_pawn_square);
+
+    } else {
+        // Normal moves (including capture, promotion, castling) undo logic
+        board.remove_piece(move.to);
+        board.add_piece(mover, p, move.from);
+
+        // Restore captured piece (if any)
+        if (move.captured_piece != NO_PIECE) {
+            Color captured_color = (mover == WHITE) ? BLACK : WHITE;
+            board.add_piece(captured_color, move.captured_piece, move.to);
+        }
+
+        // Undo promotion (restore pawn)
+        if (move.type == PROMOTION) {
+            board.remove_piece(move.from);  // Remove promoted piece
+            board.add_piece(mover, PAWN, move.from);
+        }
+
+        // Undo castling (restore rook)
+        if (move.type == CASTLING) {
+            if (mover == WHITE) {
+                if (move.to == G1) { // Kingside
+                    board.remove_piece(F1);
+                    board.add_piece(WHITE, ROOK, H1);
+                } else if (move.to == C1) { // Queenside
+                    board.remove_piece(D1);
+                    board.add_piece(WHITE, ROOK, A1);
+                }
+            } else if (mover == BLACK) {
+                if (move.to == G8) { // Kingside
+                    board.remove_piece(F8);
+                    board.add_piece(BLACK, ROOK, H8);
+                } else if (move.to == C8) { // Queenside
+                    board.remove_piece(D8);
+                    board.add_piece(BLACK, ROOK, A8);
+                }
+            }
+        }
     }
 
     // Switch turns back **AFTER** move is undone
     side_to_move = mover;
 }
-
 
 
 

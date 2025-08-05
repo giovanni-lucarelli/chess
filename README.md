@@ -31,11 +31,12 @@ chess/                              # Root directory
 │   ├── game.cpp                   # Game logic implementation
 │   ├── chessboard.cpp             # Board state and move validation
 │   ├── move.cpp                   # Move generation and utilities
-│   ├── search.cpp                 # AI search algorithms (minimax, alpha-beta)
-│   └── bindings.cpp               # Pybind11 bindings for Python integration
+│   └── search.cpp                 # AI search algorithms (minimax, alpha-beta)
 │
 ├── 📁 test/                       # Testing suite
-│   └── test.cpp                   # Google Test unit tests
+│   ├── test_chessboard.cpp
+│   ├── test_game.cpp              
+│   └── test_move.cpp                   
 │
 ├── 📁 assets/                     # Chess piece graphics (SVG format)
 │   ├── w_pawn.svg, w_rook.svg, w_knight.svg, w_bishop.svg
@@ -43,16 +44,12 @@ chess/                              # Root directory
 │   ├── b_pawn.svg, b_rook.svg, b_knight.svg, b_bishop.svg
 │   └── b_queen.svg, b_king.svg   # Black pieces
 │
-├── 📁 docs/                       # Documentation
+├── 📁 doc/                       # Documentation
 │   ├── implementation.md         # Technical implementation details
 │   ├── theory.md                 # Chess engine theory and algorithms
 │   └── garry-kasparov-deep-blue-ibm.jpg
 │
 ├── 🔧 CMakeLists.txt              # Build system configuration
-├── 🔧 pyproject.toml              # Python package configuration
-├── 📋 requirements.txt            # Python dependencies
-├── 📋 packages.txt                # System package dependencies
-├── 🌐 streamlit_app.py            # Web interface for interactive gameplay
 ├── 📝 todo.md                     # Development roadmap and tasks
 └── 📖 README.md                   # Project documentation (this file)
 ```
@@ -64,13 +61,7 @@ chess/                              # Root directory
 - `build/ChessEngine`: Standalone executable for command-line play
 - `test/`: Unit tests for engine validation
 
-**Python Integration**
-- `src/bindings.cpp`: Exposes C++ engine to Python via pybind11
-- `build/chessengine_py.so`: Compiled Python module
-- `pyproject.toml`: Python packaging configuration
-
 **User Interfaces**
-- `streamlit_app.py`: Web-based GUI using Streamlit framework
 - `assets/`: Visual chess piece representations
 
 **Build & Development**
@@ -112,39 +103,16 @@ chess/                              # Root directory
     make play
     ```
 
-- Play using Streamlit
-    ```sh
-    streamlit run streamlit_app.py
-    ```
-
-## Python Bindings
-
-The Python module is built using pybind11 and is named **chessengine_py**. To use it from Python:
-
-1. Ensure the build directory is in your `PYTHONPATH` (or copy the module to your project directory):
-    ```sh
-    export PYTHONPATH=$PYTHONPATH:/path/to/build
-    ```
-
-2. Import the module in Python:
-    ```python
-    import chessengine_py
-    game = chessengine_py.Game()
-    # Use game.play(), game.is_game_over(), etc.
-    ```
 
 ## Dependencies
 
 - C++17 compiler
 - CMake (>= 3.10)
-- [pybind11](https://github.com/pybind/pybind11)
 - [Google Test](https://github.com/google/googletest)
 
 ## Contributing
 
 Contributions and suggestions are welcome! Please open an issue or submit a pull request.
-
-
 
 ## RL project presentation
 
