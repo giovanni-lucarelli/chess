@@ -10,7 +10,7 @@ Project goals:
 2. **Reinforcement Learning Algorithms** — Design and train RL agents to play and solve specific endgame scenarios.
 
 
-> **Note:** This README provides a high-level summary of the project structure, build instructions, and usage guidelines. For detailed documentation and design notes, please refer to the [`docs/`](./docs/) directory.
+> **Note:** This README provides a high-level summary of the project structure, build instructions, and usage guidelines. For detailed documentation and design notes, please refer to the [`doc/`](./doc/) directory.
 
 
 
