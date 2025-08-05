@@ -26,8 +26,6 @@ add_executable(ChessEngine src/main.cpp ${SOURCES})
 # enable_testing()
 # find_package(GTest REQUIRED)
 
-
-
 #Compiler flags for optimization and warnings
 if(CMAKE_CXX_COMPILER_ID MATCHES "GNU|Clang")
     target_compile_options(ChessEngine PRIVATE -Wall -Wextra -Wpedantic -O3)

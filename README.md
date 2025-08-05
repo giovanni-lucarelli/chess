@@ -1,25 +1,81 @@
-# Chess Engine
+# Chess RL Project
 
-A C++ chess engine with Python bindings and a testing suite using Google Test. This project uses CMake as its build system and pybind11 to expose a Python module for gameplay.
+This repository contains the final project for the **Reinforcement Learning** exam at the **University of Trieste**.
+
+The objective is to develop a chess game environment and implement various **Reinforcement Learning (RL) algorithms** to solve simplified chess scenarios with a limited number of pieces, commonly known in chess terminology as **endgames**.
+
+Project goals:
+
+1. **Chess Environment Implementation** — A custom environment to simulate chess positions and moves.
+2. **Reinforcement Learning Algorithms** — Design and train RL agents to play and solve specific endgame scenarios.
+
+
+> **Note:** This README provides a high-level summary of the project structure, build instructions, and usage guidelines. For detailed documentation and design notes, please refer to the [`docs/`](./docs/) directory.
+
+
 
 ## Project Structure
 
-- **CMakeLists.txt**: Main CMake configuration; sets up build targets, tests, and Python module generation.
-- **include/**: Header files.
-  - `bitboard.hpp`: Contains the definition of the `Bitboard` class.
-  - `chessboard.hpp`: Contains the definition of the `Chessboard` class.
-  - `game.hpp`: Contains the definition of the `Game` class (main game logic).
-  - `move.hpp`: Contains the definition of the `Move` class, representing a move.
-  - *... other headers (e.g., types, movegen)*.
-- **src/**: Source files.
-  - `main.cpp`: Entry point of the chess engine.
-  - `game.cpp`, `move.cpp`, `chessboard.cpp`, `search.cpp`: Implementation files.
-  - `bindings.cpp`: Pybind11 bindings exposing the engine functionality to Python.
-- **build/**: CMake build directory with compiled binaries, shared libraries, and test executables.
-- **test/**: Tests using Google Test.
-- **assets/**: SVG assets for rendering chess pieces.
-- **streamlit_app.py**: A possible interface for running the chess engine as a web app.
-- **todo.md**: List of upcoming features and tasks.
+```
+chess/                              # Root directory
+├── 📁 include/                     # Header files (C++ API definitions)
+│   ├── bitboard.hpp               # Bitboard class for efficient board representation
+│   ├── chessboard.hpp             # Chessboard class for game state management
+│   ├── game.hpp                   # Game class (main game logic & interface)
+│   ├── move.hpp                   # Move class for representing chess moves
+│   ├── search.hpp                 # Search algorithms and evaluation functions
+│   └── types.hpp                  # Common type definitions and enums
+│
+├── 📁 src/                        # Source files (C++ implementations)
+│   ├── main.cpp                   # Entry point for standalone chess engine
+│   ├── game.cpp                   # Game logic implementation
+│   ├── chessboard.cpp             # Board state and move validation
+│   ├── move.cpp                   # Move generation and utilities
+│   ├── search.cpp                 # AI search algorithms (minimax, alpha-beta)
+│   └── bindings.cpp               # Pybind11 bindings for Python integration
+│
+├── 📁 test/                       # Testing suite
+│   └── test.cpp                   # Google Test unit tests
+│
+├── 📁 assets/                     # Chess piece graphics (SVG format)
+│   ├── w_pawn.svg, w_rook.svg, w_knight.svg, w_bishop.svg
+│   ├── w_queen.svg, w_king.svg   # White pieces
+│   ├── b_pawn.svg, b_rook.svg, b_knight.svg, b_bishop.svg
+│   └── b_queen.svg, b_king.svg   # Black pieces
+│
+├── 📁 docs/                       # Documentation
+│   ├── implementation.md         # Technical implementation details
+│   ├── theory.md                 # Chess engine theory and algorithms
+│   └── garry-kasparov-deep-blue-ibm.jpg
+│
+├── 🔧 CMakeLists.txt              # Build system configuration
+├── 🔧 pyproject.toml              # Python package configuration
+├── 📋 requirements.txt            # Python dependencies
+├── 📋 packages.txt                # System package dependencies
+├── 🌐 streamlit_app.py            # Web interface for interactive gameplay
+├── 📝 todo.md                     # Development roadmap and tasks
+└── 📖 README.md                   # Project documentation (this file)
+```
+
+### Component Overview
+
+**Core Engine (C++)**
+- `include/` + `src/`: Core chess engine implementation
+- `build/ChessEngine`: Standalone executable for command-line play
+- `test/`: Unit tests for engine validation
+
+**Python Integration**
+- `src/bindings.cpp`: Exposes C++ engine to Python via pybind11
+- `build/chessengine_py.so`: Compiled Python module
+- `pyproject.toml`: Python packaging configuration
+
+**User Interfaces**
+- `streamlit_app.py`: Web-based GUI using Streamlit framework
+- `assets/`: Visual chess piece representations
+
+**Build & Development**
+- `CMakeLists.txt`: Cross-platform build configuration
+- `docs/`: Technical documentation and research materials
 
 ## Build Instructions
 
@@ -88,9 +144,6 @@ The Python module is built using pybind11 and is named **chessengine_py**. To us
 
 Contributions and suggestions are welcome! Please open an issue or submit a pull request.
 
----
-
-This README provides a basic overview of the project structure, build steps, and usage. For more detailed documentation, refer to individual source file comments and developer notes.
 
 
 ## RL project presentation
