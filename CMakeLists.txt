@@ -1,7 +1,7 @@
 cmake_minimum_required(VERSION 3.14)
 
 # Project name
-project(ChessEngine)
+project(Chess)
 
 # Set C++ standard
 set(CMAKE_CXX_STANDARD 17)
@@ -12,18 +12,17 @@ include_directories(${PROJECT_SOURCE_DIR}/include)
 
 # Source files
 set(SOURCES
-    src/search.cpp
     src/move.cpp
     src/chessboard.cpp
     src/game.cpp
 )
 
 # Add executable for main engine
-add_executable(ChessEngine src/main.cpp ${SOURCES})
+add_executable(Chess src/main.cpp ${SOURCES})
 
 # Compiler flags for optimization and warnings
 if(CMAKE_CXX_COMPILER_ID MATCHES "GNU|Clang")
-    target_compile_options(ChessEngine PRIVATE -Wall -Wextra -Wpedantic -O3)
+    target_compile_options(Chess PRIVATE -Wall -Wextra -Wpedantic -O3)
 endif()
 
 # Google Test setup via FetchContent
@@ -45,18 +44,18 @@ set(TEST_SOURCES
 )
 
 # Create test executable
-add_executable(ChessEngineTests ${TEST_SOURCES} ${SOURCES})
+add_executable(ChessTests ${TEST_SOURCES} ${SOURCES})
 
 # Link test executable with Google Test and required libraries
-target_link_libraries(ChessEngineTests gtest gtest_main pthread)
+target_link_libraries(ChessTests gtest gtest_main pthread)
 
 # Add test to CTest framework
-add_test(NAME ChessEngineTests COMMAND ChessEngineTests)
+add_test(NAME ChessTests COMMAND ChessTests)
 
-# Custom target to run the chess engine
+# Custom target to run the chess 
 add_custom_target(play
-    COMMAND ChessEngine
-    DEPENDS ChessEngine
+    COMMAND Chess
+    DEPENDS Chess
     WORKING_DIRECTORY ${CMAKE_PROJECT_DIR}
 )
 

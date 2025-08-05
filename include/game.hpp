@@ -74,7 +74,5 @@ public:
     std::vector<Move> legal_moves(Square from) const;
     std::vector<Move> legal_moves(Color color) const;
     
-    void play();
-    void play_vs_pc(const int search_depth);
-    
+    void play();    
 };

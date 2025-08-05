@@ -3,21 +3,9 @@
 #include <iostream>
 
 
-// Constructor
-ChessBoard::ChessBoard() {
-    reset();
-}
-
-// Copy constructor
-ChessBoard::ChessBoard(const ChessBoard& other) {
-    pieces = other.pieces;
-}
-
 void ChessBoard::reset() {
     // Clear all pieces
-    for (auto& color_pieces : pieces) {
-        color_pieces.fill(0);
-    }
+    ChessBoard::clear();
 
     // White pieces
     pieces[WHITE][PAWN]   = 0x000000000000FF00ULL; // Rank 2
