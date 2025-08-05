@@ -55,9 +55,9 @@ chess/                              # Root directory
 ### Component Overview
 
 **Core Engine (C++)**
-- `include/` + `src/`: Core chess engine implementation
+- `include/` + `src/`: Core chess implementation
 - `build/ChessEngine`: Standalone executable for command-line play
-- `test/`: Unit tests for engine validation
+- `test/`: Unit tests for validation
 
 **User Interfaces**
 - `assets/`: Visual chess piece representations
@@ -86,19 +86,23 @@ chess/                              # Root directory
 
 ## Running the Engine
 
-- To run the chess engine executable:
+- To run the chess game executable:
     ```sh
-    ./ChessEngine
+    ./Chess
+    # or
+    make play
     ```
 
 - To run the tests:
     ```sh
-    ctest
+    ./ChessTests
+    # or
+    ctest --verbose
     ```
 
-- Custom targets are available (e.g., `play`) as defined in the CMake file:
+- To clean the build dir:
     ```sh
-    make play
+    make clean_all
     ```
 
 
