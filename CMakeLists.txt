@@ -41,6 +41,7 @@ set(TEST_SOURCES
     test/test_chessboard.cpp
     test/test_move.cpp
     test/test_game.cpp
+    test/test_check.cpp
 )
 
 # Create test executable
