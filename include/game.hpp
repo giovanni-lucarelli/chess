@@ -60,9 +60,43 @@ public:
     
     bool is_move_legal(Move move) const;
     // ? is_checkmate = is_game_over ?
-    bool is_game_over();
+    // bool is_game_over();
     // ? what is this doing ?
     void check_control();
+
+    /// Returns true if *side_to_move()* is currently in check
+    bool in_check() {
+        // make sure your check_control() has been called most recently
+        // or call it here if it doesn’t mutate anything else
+        check_control();  
+        return (get_side_to_move() == WHITE ? white_check : black_check);
+    }
+
+    /// True if side to move is in check and has no legal moves
+    bool is_checkmate()  {
+        return in_check() && legal_moves(get_side_to_move()).empty();
+    }
+
+    /// True if side to move is *not* in check but has no legal moves
+    bool is_stalemate()  {
+        return !in_check() && legal_moves(get_side_to_move()).empty();
+    }
+
+    /// Game is over if it’s a checkmate *or* a stalemate
+    bool is_game_over()  {
+        return is_checkmate() || is_stalemate();
+    }
+
+    /// +1 for White win, -1 for Black win, 0 otherwise
+    double result()  {
+        if (!is_game_over()) 
+            return 0.0;
+        if (is_checkmate()) 
+            // if it’s checkmate, the *side to move* just lost
+            return (get_side_to_move() == WHITE ? -1.0 : +1.0);
+        // stalemate ⇒ draw
+        return 0.0;
+    }
     
     /* --------------------------------- Actions -------------------------------- */
     

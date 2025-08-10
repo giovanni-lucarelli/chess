@@ -31,23 +31,23 @@ Piece Game::choose_promotion_piece() const {
     }
 }
 
-bool Game::is_game_over() {
-    // Check if the side to move is in checkmate
-    check_control();
-    if (side_to_move == WHITE && white_check) {
-        return true;
-    } else if (side_to_move == BLACK && black_check) {
-        return true;
-    }
+// bool Game::is_game_over() {
+//     // Check if the side to move is in checkmate
+//     check_control();
+//     if (side_to_move == WHITE && white_check) {
+//         return true;
+//     } else if (side_to_move == BLACK && black_check) {
+//         return true;
+//     }
 
-    // Check if the side to move has no legal moves
+//     // Check if the side to move has no legal moves
 
-    if (legal_moves(side_to_move).empty()) {
-        return true;
-    }
+//     if (legal_moves(side_to_move).empty()) {
+//         return true;
+//     }
 
-    return false;
-}
+//     return false;
+// }
 
 void Game::check_control() {
     // Clear previous check status
