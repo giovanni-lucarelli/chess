@@ -49,12 +49,15 @@ public:
     void set_en_passant_square(Square sq) { en_passant_square = sq; }
     void set_castling_rights(Color color, bool kingside, bool value) { castling_rights[color][kingside] = value; };
     void set_board(ChessBoard board){ this->board = board; }
+    void update_check();
     
-
     /* ------------------------------- Parse Input ------------------------------ */
     
     // std::pair<Square, Square> parse_input(const std::string& from, const std::string& to) const;
     Move parse_move(const std::string& from, const std::string& to) const;
+
+    void reset_from_fen(const std::string& fen);
+    std::string to_fen() const;
     
     /* --------------------------------- Utility -------------------------------- */
     
@@ -62,33 +65,32 @@ public:
     // ? is_checkmate = is_game_over ?
     // bool is_game_over();
     // ? what is this doing ?
-    void check_control();
-
+    
     /// Returns true if *side_to_move()* is currently in check
-    bool in_check() {
+    bool in_check() const {
         // make sure your check_control() has been called most recently
         // or call it here if it doesn’t mutate anything else
-        check_control();  
+        // check_control();  
         return (get_side_to_move() == WHITE ? white_check : black_check);
     }
 
     /// True if side to move is in check and has no legal moves
-    bool is_checkmate()  {
+    bool is_checkmate() const {
         return in_check() && legal_moves(get_side_to_move()).empty();
     }
 
     /// True if side to move is *not* in check but has no legal moves
-    bool is_stalemate()  {
+    bool is_stalemate() const {
         return !in_check() && legal_moves(get_side_to_move()).empty();
     }
 
     /// Game is over if it’s a checkmate *or* a stalemate
-    bool is_game_over()  {
+    bool is_game_over() const {
         return is_checkmate() || is_stalemate();
     }
 
     /// +1 for White win, -1 for Black win, 0 otherwise
-    double result()  {
+    double result() const {
         if (!is_game_over()) 
             return 0.0;
         if (is_checkmate()) 

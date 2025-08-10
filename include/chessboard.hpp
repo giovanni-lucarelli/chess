@@ -30,7 +30,7 @@ public:
         
 /* --------------------------------- Setter --------------------------------- */
     
-    void add_piece(Color color, Piece piece, Square sq);
+    bool add_piece(Color color, Piece piece, Square sq);
     void remove_piece(Square sq);
 
     void clear() {

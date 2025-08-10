@@ -4,6 +4,9 @@
 #include "chessboard.hpp"
 #include <iostream>
 #include <chrono>
+#include <sstream>
+#include <cctype>
+#include <algorithm>
 
 Game::Game() {
     board.reset();
@@ -31,25 +34,7 @@ Piece Game::choose_promotion_piece() const {
     }
 }
 
-// bool Game::is_game_over() {
-//     // Check if the side to move is in checkmate
-//     check_control();
-//     if (side_to_move == WHITE && white_check) {
-//         return true;
-//     } else if (side_to_move == BLACK && black_check) {
-//         return true;
-//     }
-
-//     // Check if the side to move has no legal moves
-
-//     if (legal_moves(side_to_move).empty()) {
-//         return true;
-//     }
-
-//     return false;
-// }
-
-void Game::check_control() {
+void Game::update_check() {
     // Clear previous check status
     white_check = black_check = false;
 
@@ -239,7 +224,7 @@ bool Game::is_move_legal(Move input_move) const {
     // Second: simulate the move and check king safety.
     Game game_copy = *this;
     game_copy.do_move(input_move);
-    game_copy.check_control();
+    game_copy.update_check();
     bool next_white_check = game_copy.get_check(WHITE);
     bool next_black_check = game_copy.get_check(BLACK);
 
@@ -347,6 +332,7 @@ void Game::do_move(Move& move) {
 
     // Switch turns
     side_to_move = (side_to_move == WHITE) ? BLACK : WHITE;
+    update_check();  // Update check status after the move
 }
 
 
@@ -419,6 +405,9 @@ Move Game::parse_move(const std::string& from, const std::string& to) const {
     Piece piece = board.get_piece_on_square(from_sq).second;
     
     Move move(color, piece, from_sq, to_sq, *this);
+
+    if (!is_move_legal(move))
+        throw std::runtime_error("parse_move: illegal move");
     
     return move;
 }
@@ -431,7 +420,7 @@ void Game::play() {
         board.print();
 
         // Check if the king is in check
-        check_control();
+        update_check();
         if(get_check(WHITE)) {
             std::cout << "\033[1;31mWhite in check!\033[0m" << std::endl;
         } else if(get_check(BLACK)) {
@@ -502,4 +491,173 @@ void Game::play() {
         
     }
 
+}
+
+
+namespace {
+    inline Square sq_of(int file, int rank) {  // file,rank are 0..7; rank 0=a1.. rank 7=a8
+        return static_cast<Square>(rank * 8 + file);
+    }
+    inline int file_of(Square s) { return static_cast<int>(s) % 8; }
+    inline int rank_of(Square s) { return static_cast<int>(s) / 8; }
+
+    inline bool fen_to_square(const std::string& s, Square& out) {
+        if (s.size() != 2) return false;
+        char f = s[0], r = s[1];
+        if (f < 'a' || f > 'h' || r < '1' || r > '8') return false;
+        int file = f - 'a';
+        int rank = r - '1';
+        out = sq_of(file, rank);
+        return true;
+    }
+    inline std::string square_to_fen(Square sq) {
+        char f = 'a' + file_of(sq);
+        char r = '1' + rank_of(sq);
+        return std::string{f, r};
+    }
+
+    inline bool char_to_piece(char c, Color& col, Piece& pt) {
+        col = std::isupper(static_cast<unsigned char>(c)) ? WHITE : BLACK;
+        char u = static_cast<char>(std::toupper(static_cast<unsigned char>(c)));
+        switch (u) {
+            case 'P': pt = PAWN;   return true;
+            case 'N': pt = KNIGHT; return true;
+            case 'B': pt = BISHOP; return true;
+            case 'R': pt = ROOK;   return true;
+            case 'Q': pt = QUEEN;  return true;
+            case 'K': pt = KING;   return true;
+            default: return false;
+        }
+    }
+    inline char piece_to_char(Color col, Piece pt) {
+        char c = '?';
+        switch (pt) {
+            case PAWN:   c = 'p'; break;
+            case KNIGHT: c = 'n'; break;
+            case BISHOP: c = 'b'; break;
+            case ROOK:   c = 'r'; break;
+            case QUEEN:  c = 'q'; break;
+            case KING:   c = 'k'; break;
+            default:     c = '?'; break;
+        }
+        return (col == WHITE) ? static_cast<char>(std::toupper(c)) : c;
+    }
+}
+
+void Game::reset_from_fen(const std::string& fen) {
+    // Clear state
+    board.clear();
+    white_check = black_check = false;
+    checkmate = false;
+
+    // Split FEN into fields
+    std::istringstream iss(fen);
+    std::string placement, stm, castling, ep, halfmove, fullmove;
+    iss >> placement >> stm >> castling >> ep >> halfmove >> fullmove;
+    if (placement.empty() || stm.empty()) {
+        throw std::runtime_error("Invalid FEN: missing fields");
+    }
+
+    // 1) Piece placement (ranks 8 -> 1)
+    int rank = 7, file = 0;
+    for (char c : placement) {
+        if (c == '/') {
+            if (file != 8) throw std::runtime_error("Invalid FEN: rank too short");
+            rank--; file = 0;
+            continue;
+        }
+        if (std::isdigit(static_cast<unsigned char>(c))) {
+            file += (c - '0');
+            if (file > 8) throw std::runtime_error("Invalid FEN: too many files in rank");
+        } else {
+            Color col; Piece pt;
+            if (!char_to_piece(c, col, pt))
+                throw std::runtime_error("Invalid FEN: bad piece char");
+            if (file >= 8 || rank < 0) throw std::runtime_error("Invalid FEN: coord overflow");
+            board.add_piece(col, pt, sq_of(file, rank));  // <-- adapt if your API differs
+            file++;
+        }
+    }
+    if (rank != 0 || file != 8) {
+        // After parsing, we should be at end of rank 1
+        // (rank==0 and file==8, because the loop stops after finishing last rank)
+        // Many engines allow rank==0,file==8 or rank==-1,file==0; adjust if you prefer.
+    }
+
+    // 2) Side to move
+    side_to_move = (stm == "w" || stm == "W") ? WHITE : BLACK;
+
+    // 3) Castling rights (your layout is [Color][Queenside, Kingside])
+    castling_rights[WHITE][0] = castling_rights[WHITE][1] = false;
+    castling_rights[BLACK][0] = castling_rights[BLACK][1] = false;
+    if (!castling.empty() && castling != "-") {
+        for (char c : castling) {
+            if (c == 'K') castling_rights[WHITE][1] = true;   // White kingside
+            if (c == 'Q') castling_rights[WHITE][0] = true;   // White queenside
+            if (c == 'k') castling_rights[BLACK][1] = true;   // Black kingside
+            if (c == 'q') castling_rights[BLACK][0] = true;   // Black queenside
+        }
+    }
+
+    // 4) En passant square
+    if (!ep.empty() && ep != "-") {
+        Square epsq;
+        if (!fen_to_square(ep, epsq)) throw std::runtime_error("Invalid FEN: bad en-passant square");
+        en_passant_square = epsq;
+    } else {
+        // If you have a NO_SQUARE enum, use it. Otherwise pick a sentinel you never treat as real.
+        en_passant_square = NO_SQUARE; // sentinel "no square" as you noted
+    }
+
+    // Optionally: parse halfmove/fullmove if you later add those fields.
+    // We ignore them here.
+
+    // Update check flags based on the new position
+    update_check();
+}
+
+std::string Game::to_fen() const {
+    // 1) Piece placement (ranks 8 -> 1)
+    std::string placement;
+    for (int rank = 7; rank >= 0; --rank) {
+        int empty = 0;
+        for (int file = 0; file < 8; ++file) {
+            Square sq = sq_of(file, rank);
+            Color c; Piece p;
+            if (board.is_occupied(sq)) {
+                std::tie(c, p) = board.get_piece_on_square(sq);
+                // piece_at(...) should fill (c,p) and return true; adapt if your API differs
+                // if (!board.add_piece(c, p,sq)) {
+                //     throw std::runtime_error("Board says occupied but piece_at failed");
+                // }
+                if (empty > 0) { placement += char('0' + empty); empty = 0; }
+                placement += piece_to_char(c, p);
+            } else {
+                empty++;
+            }
+        }
+        if (empty > 0) placement += char('0' + empty);
+        if (rank > 0) placement += '/';
+    }
+
+    // 2) Side to move
+    std::string stm = (side_to_move == WHITE) ? "w" : "b";
+
+    // 3) Castling rights
+    std::string cast;
+    if (castling_rights[WHITE][1]) cast += 'K';
+    if (castling_rights[WHITE][0]) cast += 'Q';
+    if (castling_rights[BLACK][1]) cast += 'k';
+    if (castling_rights[BLACK][0]) cast += 'q';
+    if (cast.empty()) cast = "-";
+
+    // 4) En passant
+    std::string ep = "-";
+    // If you have a NO_SQUARE constant, check that instead of H8.
+    if (en_passant_square != NO_SQUARE) {
+        ep = square_to_fen(en_passant_square);
+    }
+
+    // 5) Halfmove/fullmove – if you don’t track them, emit "0 1"
+    return placement + " " + stm + " " + cast + " " + ep + " 0 1";
 }

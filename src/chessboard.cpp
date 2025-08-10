@@ -96,8 +96,9 @@ std::pair<Color, Piece> ChessBoard::get_piece_on_square(Square sq) const {
 /* --------------------------------- Setter --------------------------------- */
 
 // add a piece
-void ChessBoard::add_piece(Color color, Piece piece, Square sq) {
+bool ChessBoard::add_piece(Color color, Piece piece, Square sq) {
     Bitboard::set_bit(pieces[color][piece], sq);
+    return true;
 }
 
 // remove a piece

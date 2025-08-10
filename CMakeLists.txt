@@ -16,7 +16,6 @@ set(SOURCES
     src/chessboard.cpp
     src/game.cpp
     src/mcts.cpp
-    src/mcts_solver.cpp
 )
 
 # Add executable for main engine

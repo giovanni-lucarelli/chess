@@ -8,6 +8,24 @@
 #include <algorithm>
 #include <assert.h>
 #include "move.hpp"
+#include "environment.hpp"
+#include <random>
+
+// void random_walk_roundtrip(int steps, uint64_t seed=42) {
+//     std::mt19937 rng(seed);
+//     Game g; g.reset_from_fen("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1");
+//     for (int i=0;i<steps;++i) {
+//         auto moves = g.legal_moves(g.get_side_to_move());
+//         if (moves.empty()) break;
+//         std::uniform_int_distribution<size_t> d(0, moves.size()-1);
+//         auto m = moves[d(rng)];
+//         g.do_move(m);
+//     }
+//     std::string fen = g.to_fen();
+//     Game h; h.reset_from_fen(fen);
+//     // Cheap equivalence: FENs should match (since you emit canonical stm/castling/ep fields)
+//     assert(fen == h.to_fen());
+// }
 
 // Simple O(n²) vote‐tally, needs only operator==
 static Move vote_best(const std::vector<Move>& votes) {
@@ -71,35 +89,36 @@ int main() {
     game.set_castling_rights(BLACK,true, false);
     game.set_castling_rights(BLACK,false, false);
 
-    
-    while(!game.is_game_over()){
-        MCTS_Simple mcts(10.0, 10000);
-        Move best = mcts.search(game);
-        // Move best = parallel_mcts(game, 5, 10.0, 50000);
-        best.print();
-        game.do_move(best);
-        auto updated_brd = game.get_board();
-        updated_brd.print();
-    }
-
-
-    /* ---------------------------------- TEST ---------------------------------- */
-    // auto moves = game.legal_moves(game.get_side_to_move());
-    // //print moves
-    // for (auto& m : moves) {
-    //     m.print();
+   
+    // while(!game.is_game_over()){
+    //     // MCTS_Simple mcts(10.0, 10000);
+    //     // Move best = mcts.search(game);
+    //     Move best = parallel_mcts(game, 5, 10.0, 50000);
+    //     best.print();
+    //     game.do_move(best);
+    //     auto updated_brd = game.get_board();
+    //     updated_brd.print();
     // }
 
+    /* ------------------------------- TESTING ENV ------------------------------ */
 
-
-    // auto mv = game.parse_move(std::string("a7"),std::string("g7"));
-    // game.do_move(mv);
-
-    // std::cout << "After move: " << std::endl;
-    // game.get_board().print();
-
-    // std::cout << "Is game over? " << (game.is_game_over() ? "Yes" : "No") << std::endl;
-    // std::cout << "Result: " << game.result() << std::endl;
+    Env env(game, 0.99, 0.01);
+    env.state().get_board().print();
+    Move move = env.state().parse_move("h1", "h7");
+    StepResult result = env.step(move);
+    std::cout << "After move: " << std::endl;
+    env.state().get_board().print();
+    std::cout << "Reward: " << result.reward << ", Done: " << (result.done ? "Yes" : "No") << std::endl;
+    move = env.state().parse_move("e8", "f8");
+    result = env.step(move);
+    std::cout << "After move: " << std::endl;
+    env.state().get_board().print();
+    std::cout << "Reward: " << result.reward << ", Done: " << (result.done ? "Yes" : "No") << std::endl;
+    move = env.state().parse_move("d1", "d8");
+    result = env.step(move);
+    std::cout << "After move: " << std::endl;
+    env.state().get_board().print();
+    std::cout << "Reward: " << result.reward << ", Done: " << (result.done ? "Yes" : "No") << std::endl;
 
     return 0;
 }
