@@ -50,7 +50,7 @@ TEST(LegalMoves, PinnedPieceCannotMove)
     g.board.add_piece(BLACK, ROOK, E8);
 
     g.side_to_move = WHITE;
-    g.check_control();
+    g.update_check();
 
     auto pseudo = g.pseudo_legal_moves(A1);
     EXPECT_GT(pseudo.size(), 0u);            // rook has *some* moves in theory
@@ -67,7 +67,7 @@ TEST(GameOver, SimpleCheckmate)
     g.board.add_piece(WHITE, QUEEN, G7);
 
     g.side_to_move = BLACK;            // it’s Black’s turn and he’s mated
-    g.check_control();
+    g.update_check();
 
     EXPECT_TRUE(g.get_check(BLACK));
     EXPECT_TRUE(g.legal_moves(BLACK).empty());
@@ -81,7 +81,7 @@ TEST(GameOver, SimpleStalemate)
     g.board.add_piece(WHITE, QUEEN, G6);
 
     g.side_to_move = BLACK;            // Black to move – no legal moves but not in check
-    g.check_control();
+    g.update_check();
 
     EXPECT_FALSE(g.get_check(BLACK));
     EXPECT_TRUE(g.legal_moves(BLACK).empty());
@@ -95,7 +95,7 @@ TEST(LegalMovesByColor, SumMatchesPerPieceEnumeration)
     g.board.add_piece(WHITE, ROOK, A1);
 
     g.side_to_move = WHITE;
-    g.check_control();
+    g.update_check();
 
     // Sum legal moves per‑piece and compare with the aggregated call.
     size_t sum = g.legal_moves(A1).size() + g.legal_moves(E1).size();

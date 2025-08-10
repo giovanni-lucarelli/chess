@@ -30,7 +30,7 @@ public:
         
 /* --------------------------------- Setter --------------------------------- */
     
-    void add_piece(Color color, Piece piece, Square sq);
+    bool add_piece(Color color, Piece piece, Square sq);
     void remove_piece(Square sq);
 
     void clear() {
@@ -52,7 +52,7 @@ public:
         row = sq / 8;
         col = sq % 8;
     }
-    void print() const;
+    std::string print() const;
 
    
 };

@@ -54,5 +54,18 @@ public:
     Move(Color color, Piece piece, Square from, Square to, const Game& game);
 
     void print();
+
+    bool operator==(Move const& o) const noexcept {
+        return from      == o.from
+            &&  to        == o.to
+            &&  type      == o.type
+            &&  promoted_to == o.promoted_to;
+    }
+
+    std::string to_string() const {
+    // This assumes your Square enum can be converted to a string,
+    // which is likely the case for your board printing to work.
+    return square_to_string(from) + square_to_string(to);
+    }
   
 };
