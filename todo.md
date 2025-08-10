@@ -8,6 +8,8 @@
 ## RL Project
 
 - [ ] Problem statement: endgame? how many pieces? which RL algos?
+- [ ] add docs about `from/to_fen()`, `env` class (similar to openai gym)
+- [ ] pybinding
 
 ### Chess Programming
 - [ ] write working heuristic value function (domain knowledge)
