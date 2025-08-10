@@ -17,39 +17,41 @@ Project goals:
 ## Project Structure
 
 ```
-chess/                              # Root directory
-├── 📁 include/                     # Header files (C++ API definitions)
+chess/                              
+├── 📁 include/                    
 │   ├── bitboard.hpp               # Bitboard class for efficient board representation
 │   ├── chessboard.hpp             # Chessboard class for game state management
 │   ├── game.hpp                   # Game class (main game logic & interface)
+│   ├── mcts.hpp                   # Monte Carlo Tree Search implementation
 │   ├── move.hpp                   # Move class for representing chess moves
 │   └── types.hpp                  # Common type definitions and enums
 │
-├── 📁 src/                        # Source files (C++ implementations)
+├── 📁 src/                       
 │   ├── main.cpp                   # Entry point for standalone chess engine
 │   ├── game.cpp                   # Game logic implementation
 │   ├── chessboard.cpp             # Board state and move validation
+│   ├── mcts.cpp                   # MCTS algorithm implementation
 │   └── move.cpp                   # Move generation and utilities
 │
+├── 📁 binding/                    
+│   └── env_binding.cpp            
+│
 ├── 📁 test/                       # Testing suite
-│   ├── test_chessboard.cpp
+│   ├── test_chessboard.cpp        
 │   ├── test_game.cpp              
-│   └── test_move.cpp                   
+│   ├── test_move.cpp              
+│   └── test_check.cpp             
 │
-├── 📁 assets/                     # Chess piece graphics (SVG format)
-│   ├── w_pawn.svg, w_rook.svg, w_knight.svg, w_bishop.svg
-│   ├── w_queen.svg, w_king.svg   # White pieces
-│   ├── b_pawn.svg, b_rook.svg, b_knight.svg, b_bishop.svg
-│   └── b_queen.svg, b_king.svg   # Black pieces
+├── 📁 doc/                        
+│   ├── implementation.md          # Technical implementation details
+│   ├── theory.md                  # Intro to chess programming
+│   ├── demo.ipynb                 # Simple demo of the chess library 
+│   └── project.md                 # RL project docs
 │
-├── 📁 doc/                       # Documentation
-│   ├── implementation.md         # Technical implementation details
-│   ├── theory.md                 # Chess engine theory and algorithms
-│   └── garry-kasparov-deep-blue-ibm.jpg
-│
-├── 🔧 CMakeLists.txt              # Build system configuration
-├── 📝 todo.md                     # Development roadmap and tasks
-└── 📖 README.md                   # Project documentation (this file)
+├── 🔧 CMakeLists.txt              
+├── 🚫 .gitignore                  
+├── 📝 todo.md                    
+└── 📖 README.md                   
 ```
 
 ### Component Overview

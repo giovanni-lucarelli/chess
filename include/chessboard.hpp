@@ -52,7 +52,7 @@ public:
         row = sq / 8;
         col = sq % 8;
     }
-    void print() const;
+    std::string print() const;
 
    
 };

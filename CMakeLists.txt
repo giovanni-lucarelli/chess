@@ -1,43 +1,56 @@
 cmake_minimum_required(VERSION 3.14)
 
-# Project name
-project(Chess)
+project(Chess LANGUAGES CXX)
 
-# Set C++ standard
+# C++ standard
 set(CMAKE_CXX_STANDARD 17)
-set(CMAKE_CXX_STANDARD_REQUIRED True)
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
-# Include directories
-include_directories(${PROJECT_SOURCE_DIR}/include)
+set(CMAKE_POSITION_INDEPENDENT_CODE ON)
 
-# Source files
-set(SOURCES
+
+set(CHESS_SOURCES
     src/move.cpp
     src/chessboard.cpp
     src/game.cpp
     src/mcts.cpp
 )
 
-# Add executable for main engine
-add_executable(Chess src/main.cpp ${SOURCES})
 
-# Compiler flags for optimization and warnings
+# Core library 
+
+add_library(chess_core ${CHESS_SOURCES})
+target_include_directories(chess_core
+    PUBLIC ${PROJECT_SOURCE_DIR}/include
+)
 if(CMAKE_CXX_COMPILER_ID MATCHES "GNU|Clang")
-    target_compile_options(Chess PRIVATE -Wall -Wextra -Wpedantic -O3)
+    target_compile_options(chess_core PRIVATE -Wall -Wextra -Wpedantic -O3)
 endif()
 
-# Google Test setup via FetchContent
-include(FetchContent)
+# main cpp executable for dev
+add_executable(Chess src/main.cpp)
+target_link_libraries(Chess PRIVATE chess_core)
 
+
+find_package(pybind11 REQUIRED)  
+
+pybind11_add_module(chess
+    binding/env_binding.cpp
+)
+target_link_libraries(chess PRIVATE chess_core)
+target_include_directories(chess PRIVATE ${PROJECT_SOURCE_DIR}/include)
+
+# tests
+include(FetchContent)
 FetchContent_Declare(
   googletest
-  URL https://github.com/google/googletest/archive/refs/heads/main.zip
+  URL https://github.com/google/googletest/archive/refs/tags/v1.14.0.zip
 )
+set(gtest_force_shared_crt ON CACHE BOOL "" FORCE)
 FetchContent_MakeAvailable(googletest)
 
 enable_testing()
 
-# Test sources
 set(TEST_SOURCES
     test/test_chessboard.cpp
     test/test_move.cpp
@@ -45,26 +58,23 @@ set(TEST_SOURCES
     test/test_check.cpp
 )
 
-# Create test executable
-add_executable(ChessTests ${TEST_SOURCES} ${SOURCES})
-
-# Link test executable with Google Test and required libraries
-target_link_libraries(ChessTests gtest gtest_main pthread)
-
-# Add test to CTest framework
+add_executable(ChessTests ${TEST_SOURCES})
+target_link_libraries(ChessTests
+    PRIVATE
+        chess_core
+        GTest::gtest
+        GTest::gtest_main
+)
 add_test(NAME ChessTests COMMAND ChessTests)
 
-# Custom target to run the chess 
+
 add_custom_target(play
     COMMAND Chess
     DEPENDS Chess
-    WORKING_DIRECTORY ${CMAKE_PROJECT_DIR}
+    WORKING_DIRECTORY ${PROJECT_SOURCE_DIR}
 )
 
-# Custom clean target
+# Safe clean that only touches this build tree
 add_custom_target(clean_all
-    COMMAND ${CMAKE_BUILD_TOOL} clean
-    COMMAND rm -rf CMakeFiles CMakeCache.txt cmake_install.cmake Makefile
-    COMMAND rm -rf ../build/*
-    WORKING_DIRECTORY ${CMAKE_PROJECT_DIR}
+    COMMAND ${CMAKE_COMMAND} -E rm -rf "${CMAKE_BINARY_DIR}"
 )

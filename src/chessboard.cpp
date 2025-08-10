@@ -29,14 +29,42 @@ void ChessBoard::reset() {
 }
 
 // Print board (for debugging)
-void ChessBoard::print() const {
+// void ChessBoard::print() const {
+//     const char piece_symbols[2][6] = {
+//         {'P', 'N', 'B', 'R', 'Q', 'K'}, // White pieces
+//         {'p', 'n', 'b', 'r', 'q', 'k'}  // Black pieces
+//     };
+
+//     for (int rank = 7; rank >= 0; rank--) {
+//         std::cout << (rank + 1) << " ";
+//         for (int file = 0; file < 8; file++) {
+//             int sq = rank * 8 + file;
+//             char piece_char = ' ';
+//             for (int color = 0; color < 2; color++) {
+//                 for (int piece = 0; piece < 6; piece++) {
+//                     if (Bitboard::get_bit(pieces[color][piece], static_cast<Square>(sq))) {
+//                         piece_char = piece_symbols[color][piece];
+//                     }
+//                 }
+//             }
+//             std::cout << piece_char << " ";
+//         }
+//         std::cout << "\n";
+//     }
+
+//     std::cout << "  a b c d e f g h\n\n";
+// }
+// write on a string instead of printing to console
+
+std::string ChessBoard::print() const {
+    std::string output;
     const char piece_symbols[2][6] = {
         {'P', 'N', 'B', 'R', 'Q', 'K'}, // White pieces
         {'p', 'n', 'b', 'r', 'q', 'k'}  // Black pieces
     };
 
     for (int rank = 7; rank >= 0; rank--) {
-        std::cout << (rank + 1) << " ";
+        output += std::to_string(rank + 1) + " ";
         for (int file = 0; file < 8; file++) {
             int sq = rank * 8 + file;
             char piece_char = ' ';
@@ -47,12 +75,14 @@ void ChessBoard::print() const {
                     }
                 }
             }
-            std::cout << piece_char << " ";
+            output += piece_char;
+            output += " ";
         }
-        std::cout << "\n";
+        output += "\n";
     }
 
-    std::cout << "  a b c d e f g h\n\n";
+    output += "  a b c d e f g h\n\n";
+    return output;
 }
 
 /* --------------------------------- Getter -------------------------------- */
