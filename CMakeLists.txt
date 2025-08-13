@@ -31,15 +31,6 @@ endif()
 add_executable(Chess src/main.cpp)
 target_link_libraries(Chess PRIVATE chess_core)
 
-
-find_package(pybind11 REQUIRED)  
-
-pybind11_add_module(chess
-    binding/env_binding.cpp
-)
-target_link_libraries(chess PRIVATE chess_core)
-target_include_directories(chess PRIVATE ${PROJECT_SOURCE_DIR}/include)
-
 # tests
 include(FetchContent)
 FetchContent_Declare(
@@ -67,6 +58,14 @@ target_link_libraries(ChessTests
 )
 add_test(NAME ChessTests COMMAND ChessTests)
 
+# Python bindings
+find_package(pybind11 REQUIRED)  
+
+pybind11_add_module(chess_py
+    binding/env_binding.cpp
+)
+target_link_libraries(chess_py PRIVATE chess_core)
+target_include_directories(chess_py PRIVATE ${PROJECT_SOURCE_DIR}/include)
 
 add_custom_target(play
     COMMAND Chess
