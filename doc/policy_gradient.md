@@ -43,47 +43,47 @@ Before, a policy was generated from the value function, which was approximated u
 How do we measure the quality of a policy?
 There are many methods, but usually an average reward per time-step is used:
 
-$
+$$
 J_{avR}(\theta) = \sum_s d^{\pi_{\theta}}(s)\sum_a \pi_{\theta}(s,a)\mathcal{R}_s^a
-$
+$$
 
 where $d^{\pi_{\theta}}$ is a **stationary distribution** of Markov chain for $\pi_{\theta}$.
 
 This is an **optimisation** problem, meaning that we have to find the best parameters $\theta$ that maximise the objective function $J(\theta)$. There are many algorithms for this, but we will focus on SGD.
 
-$
+$$
 \Delta \theta = \overbrace{\alpha}^{\text{step-size param}} \cdot \underbrace{\nabla_{\theta}J(\theta)}_{\text{policy gradient}}
-$
+$$
 
 >**Important**
 >To compute policy gradient analytically (so without using **Finite Differences**), we assume policy $\pi_{\theta}$ is differentiable whenever >it is non-zero an we know the gradient $\Delta_{\theta}\pi_{\theta}(s,a)$. >It is useful to exploit the following identity for later use:
->$\nabla{\theta}\pi_{\theta}(s,a) = \pi_{\theta}\frac{\nabla{\theta}\pi_{\theta}(s,a)}{\pi_{\theta}(s,a)} = \pi_{\theta}(s,a)\underbrace{\nabla_{\theta}\log\pi_{\theta}(s,a)}_{\text{score function}}$.
+>$$\nabla{\theta}\pi_{\theta}(s,a) = \pi_{\theta}\frac{\nabla{\theta}\pi_{\theta}(s,a)}{\pi_{\theta}(s,a)} = \pi_{\theta}(s,a)\underbrace{\nabla_{\theta}\log\pi_{\theta}(s,a)}_{\text{score function}}$$.
 
 Now one has to choose how to represent features and how to weight them, then choose the distribution for the policy (can be Softmax, Gaussian, ...).
 
-Considering as exaple a one-step MDP:
+Considering as example a one-step MDP:
 
-$
+$$
 J(\theta) = \mathbb{E}_{\pi_{\theta}}\left[r\right] = \sum_s d(s) \sum_a \pi_{\theta}(s,a)\mathcal{R}_{s,a}
-$
-$
+$$
+$$
 \nabla_{\theta}J(\theta) = \sum_s d(s) \sum_a \pi_{\theta}(s,a)\nabla_{\theta}\log\pi_{\theta}(s,a)\mathcal{R}_{s,a} = \mathbb{E}_{\pi_{\theta}}\left[\nabla_{\theta}\log\pi_{\theta}(s,a)r\right]
-$
+$$
 
 For multi-step MDP instead:
 
-$
+$$
 \nabla_{\theta} J(\theta) = \mathbb{E}_{\pi_{\theta}}\left[\nabla_{\theta}\log\pi_{\theta}(s,a)\underbrace{Q^{\pi_{\theta}}(s,a)}_{\text{replace R with Q}}\right]
-$
+$$
 
 ##### REINFORCE algorithm
 
 - Update parameters by SGA
 - Using policy gradient theorem
 - Using return $v_t$ as an unbiased sample of $Q^{\pi_{\theta}}(s_t,a_t)$
-$
+$$
 \Delta\theta_t = \alpha\nabla_{\theta}\log\pi_{\theta}(s_t,a_t)v_t
-$
+$$
 
 ```
 REINFORCE
