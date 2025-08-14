@@ -8,9 +8,9 @@ Recalling that the **objective** of this project is to study learning optimal pl
 
 We enter here in the subset of RL called **Policy-Based RL**, where we do not consider value functions but instead we try to approximate a policy function with parameters. 
 
-$
+$$
 \pi_{\theta}(s,a) = \mathbb{P}\left[a | s,\theta\right]
-$
+$$
 
 We focus on **model-free RL**.
 
@@ -57,23 +57,21 @@ $$
 
 >**Important**
 >To compute policy gradient analytically (so without using **Finite Differences**), we assume policy $\pi_{\theta}$ is differentiable whenever >it is non-zero an we know the gradient $\Delta_{\theta}\pi_{\theta}(s,a)$. >It is useful to exploit the following identity for later use:
->$$\nabla{\theta}\pi_{\theta}(s,a) = \pi_{\theta}\frac{\nabla{\theta}\pi_{\theta}(s,a)}{\pi_{\theta}(s,a)} = \pi_{\theta}(s,a)\underbrace{\nabla_{\theta}\log\pi_{\theta}(s,a)}_{\text{score function}}$$.
+>$$\nabla{\theta}\pi_{\theta}(s,a) = \pi_{\theta}\frac{\nabla{\theta}\pi_{\theta}(s,a)}{\pi_{\theta}(s,a)} = \pi_{\theta}(s,a)\underbrace{\nabla_{\theta}\log\pi_{\theta}(s,a)}_{\text{score function}}$$
 
 Now one has to choose how to represent features and how to weight them, then choose the distribution for the policy (can be Softmax, Gaussian, ...).
 
 Considering as example a one-step MDP:
 
 $$
-J(\theta) = \mathbb{E}_{\pi_{\theta}}\left[r\right] = \sum_s d(s) \sum_a \pi_{\theta}(s,a)\mathcal{R}_{s,a}
-$$
-$$
+J(\theta) = \mathbb{E}_{\pi_{\theta}}\left[r\right] = \sum_s d(s) \sum_a \pi_{\theta}(s,a)\mathcal{R}_{s,a}\\
 \nabla_{\theta}J(\theta) = \sum_s d(s) \sum_a \pi_{\theta}(s,a)\nabla_{\theta}\log\pi_{\theta}(s,a)\mathcal{R}_{s,a} = \mathbb{E}_{\pi_{\theta}}\left[\nabla_{\theta}\log\pi_{\theta}(s,a)r\right]
 $$
 
 For multi-step MDP instead:
 
 $$
-\nabla_{\theta} J(\theta) = \mathbb{E}_{\pi_{\theta}}\left[\nabla_{\theta}\log\pi_{\theta}(s,a)\underbrace{Q^{\pi_{\theta}}(s,a)}_{\text{replace R with Q}}\right]
+\nabla_{\theta} J(\theta) = \mathbb{E}_{\pi_{\theta}}\left[\nabla_{\theta}\log\pi_{\theta}(s,a)\underbrace{Q^{\pi_{\theta}}(s,a)}_{\mathrm{replace\ R\ with\ Q}}\right]
 $$
 
 ##### REINFORCE algorithm
@@ -81,6 +79,7 @@ $$
 - Update parameters by SGA
 - Using policy gradient theorem
 - Using return $v_t$ as an unbiased sample of $Q^{\pi_{\theta}}(s_t,a_t)$
+
 $$
 \Delta\theta_t = \alpha\nabla_{\theta}\log\pi_{\theta}(s_t,a_t)v_t
 $$
