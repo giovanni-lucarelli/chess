@@ -63,16 +63,13 @@ Now one has to choose how to represent features and how to weight them, then cho
 
 Considering as example a one-step MDP:
 
-$$
-J(\theta) = \mathbb{E}_{\pi_{\theta}}\left[r\right] = \sum_s d(s) \sum_a \pi_{\theta}(s,a)\mathcal{R}_{s,a}\\
-\nabla_{\theta}J(\theta) = \sum_s d(s) \sum_a \pi_{\theta}(s,a)\nabla_{\theta}\log\pi_{\theta}(s,a)\mathcal{R}_{s,a} = \mathbb{E}_{\pi_{\theta}}\left[\nabla_{\theta}\log\pi_{\theta}(s,a)r\right]
-$$
+$$J(\theta) = \mathbb{E}_{\pi_{\theta}}\left[r\right] = \sum_s d(s) \sum_a \pi_{\theta}(s,a)\mathcal{R}_{s,a}$$
+
+$$\nabla_{\theta}J(\theta) = \sum_s d(s) \sum_a \pi_{\theta}(s,a)\nabla_{\theta}\log\pi_{\theta}(s,a)\mathcal{R}_{s,a} = \mathbb{E}_{\pi_{\theta}}\left[\nabla_{\theta}\log\pi_{\theta}(s,a)r\right]$$
 
 For multi-step MDP instead:
 
-$$
-\nabla_{\theta} J(\theta) = \mathbb{E}_{\pi_{\theta}}\left[\nabla_{\theta}\log\pi_{\theta}(s,a)\underbrace{Q^{\pi_{\theta}}(s,a)}_{\mathrm{replace\ R\ with\ Q}}\right]
-$$
+$$\nabla_{\theta} J(\theta) = \mathbb{E}_{\pi_{\theta}}\left[\nabla_{\theta}\log\pi_{\theta}(s,a)Q^{\pi_{\theta}}(s,a)\right] \quad \text{(replace R with Q)}$$
 
 ##### REINFORCE algorithm
 
