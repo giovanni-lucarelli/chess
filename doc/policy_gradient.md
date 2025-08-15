@@ -109,3 +109,55 @@ For the formalization of the chess game look [here](./project.md).
 > **Note**
 >Using a policy-gradient algorithm is enough for this work, meaning we >don't have to implement a minimax search since the opponen move is already >included in the environment and the policy is improved by **maximizing** >the best action rewards for the player taken into consideration and >**minimizing** the action rewards for the opponent. The policy-based >algorithm already does this when learning the best policy. 
 
+- state $s$ is reprented by the *Game* class
+- action $a$ is represented by the *Move* class
+- reward $r$ is wither $+1,-1,0$
+
+```math
+\nabla_{\theta}J(\theta) = \sum_s d(s) \sum_a \pi_{\theta}(s,a)\nabla_{\theta}\log\pi_{\theta}(s_t,a_t)v_t
+```
+>**Remember** that $v_t$ is an unbiased sample of $Q^{\pi_{\theta}}(s_t,a_t)$
+
+Practically speaking, starting from an endgame position the reasoning of the algorithm is:
+
+- I am in this state with this features defining the state
+- I can do some actions, which lead to a reward (0 for most cases) and bring me to another state $s'$
+- So I will use a Monte Carlo method to sample trajectories
+- For each trajectory I will update parameters of the policy function at each step
+- I will repeat this procedure until convergence
+
+The reset_from_fen function at src/game.cpp:547 is used to initialize a
+chess game from a FEN (Forsyth-Edwards Notation) string, which is the
+standard notation for describing a chess position.
+
+Here's what the function does:
+
+1. Clears the current game state - Resets the board, check flags, and
+checkmate status
+2. Parses the FEN string into 6 fields:
+- placement: Piece positions on the board
+- stm: Side to move (w/b)
+- castling: Castling rights (KQkq)
+- ep: En passant target square
+- halfmove: Halfmove clock (ignored)
+- fullmove: Fullmove number (ignored)
+3. Sets up piece placement - Processes the placement string rank by rank
+(8→1), handling:
+- / as rank separators
+- Numbers as empty squares count
+- Letters as pieces (uppercase=white, lowercase=black)
+4. Sets side to move - "w"/"W" for white, otherwise black
+5. Sets castling rights - Parses KQkq characters for white/black
+kingside/queenside rights
+6. Sets en passant square - Parses algebraic notation or sets to
+NO_SQUARE if "-"
+7. Updates check status - Calls update_check() to determine if either
+king is in check
+
+The function is used throughout the codebase to reset games to specific
+positions, as seen in the notebooks and test code that use the standard
+starting position FEN: "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w
+KQkq - 0 1"
+
+> **IMPORTANT**: 
+> For the internal state representation, we will use here a neural network, since hand-crafted features are inefficient and hard to obtain.
