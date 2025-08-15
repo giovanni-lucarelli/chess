@@ -8,7 +8,7 @@
 namespace py = pybind11;
 
 
-PYBIND11_MODULE(chess, m) {
+PYBIND11_MODULE(chess_py, m) {
     m.doc() = "Bindings for Env RL wrapper around Game";
 
     // --- StepResult ---
@@ -36,9 +36,31 @@ PYBIND11_MODULE(chess, m) {
         .value("KING",   Piece::KING)
         .export_values();
 
+    py::enum_<Square>(m, "Square")
+        .value("A1", Square::A1).value("B1", Square::B1).value("C1", Square::C1).value("D1", Square::D1)
+        .value("E1", Square::E1).value("F1", Square::F1).value("G1", Square::G1).value("H1", Square::H1)
+        .value("A2", Square::A2).value("B2", Square::B2).value("C2", Square::C2).value("D2", Square::D2)
+        .value("E2", Square::E2).value("F2", Square::F2).value("G2", Square::G2).value("H2", Square::H2)
+        .value("A3", Square::A3).value("B3", Square::B3).value("C3", Square::C3).value("D3", Square::D3)
+        .value("E3", Square::E3).value("F3", Square::F3).value("G3", Square::G3).value("H3", Square::H3)
+        .value("A4", Square::A4).value("B4", Square::B4).value("C4", Square::C4).value("D4", Square::D4)
+        .value("E4", Square::E4).value("F4", Square::F4).value("G4", Square::G4).value("H4", Square::H4)
+        .value("A5", Square::A5).value("B5", Square::B5).value("C5", Square::C5).value("D5", Square::D5)
+        .value("E5", Square::E5).value("F5", Square::F5).value("G5", Square::G5).value("H5", Square::H5)
+        .value("A6", Square::A6).value("B6", Square::B6).value("C6", Square::C6).value("D6", Square::D6)
+        .value("E6", Square::E6).value("F6", Square::F6).value("G6", Square::G6).value("H6", Square::H6)
+        .value("A7", Square::A7).value("B7", Square::B7).value("C7", Square::C7).value("D7", Square::D7)
+        .value("E7", Square::E7).value("F7", Square::F7).value("G7", Square::G7).value("H7", Square::H7)
+        .value("A8", Square::A8).value("B8", Square::B8).value("C8", Square::C8).value("D8", Square::D8)
+        .value("E8", Square::E8).value("F8", Square::F8).value("G8", Square::G8).value("H8", Square::H8)
+        .value("NO_SQUARE", Square::NO_SQUARE)
+        .export_values();
+
     py::class_<Move>(m, "Move")
         .def(py::init<>())
         .def("__repr__", [](const Move&) { return "<Move>"; })
+        .def_readonly("from_square", &Move::from)
+        .def_readonly("to_square", &Move::to)
 
         // Python-friendly constructors that *delegate to Game::parse_move*.
         // This keeps parsing in Game (context-aware), but is ergonomic from Python.
@@ -83,6 +105,7 @@ PYBIND11_MODULE(chess, m) {
 
         // --- Parse / FEN ---
         .def("parse_move", &Game::parse_move, "from"_a, "to"_a)
+        .def("parse_action_to_move", &Game::parse_action_to_move, "action"_a)
         .def("reset_from_fen", &Game::reset_from_fen, "fen"_a)
         .def("to_fen", &Game::to_fen)
 

@@ -55,6 +55,7 @@ public:
     
     // std::pair<Square, Square> parse_input(const std::string& from, const std::string& to) const;
     Move parse_move(const std::string& from, const std::string& to) const;
+    Move parse_action_to_move(int action) const;
 
     void reset_from_fen(const std::string& fen);
     std::string to_fen() const;

@@ -412,6 +412,36 @@ Move Game::parse_move(const std::string& from, const std::string& to) const {
     return move;
 }
 
+Move Game::parse_action_to_move(int action) const {
+    // Action encoding: action = from_square * 64 + to_square
+    // With action range 0-4095 (64*64)
+    if (action < 0 || action >= 4096) {
+        throw std::runtime_error("parse_action_to_move: action out of range [0, 4095]");
+    }
+    
+    Square from_sq = static_cast<Square>(action / 64);
+    Square to_sq = static_cast<Square>(action % 64);
+    
+    // Check if from square has a piece
+    if (!board.is_occupied(from_sq)) {
+        throw std::runtime_error("parse_action_to_move: no piece on from square");
+    }
+    
+    // Get the moving piece
+    Color color = board.get_piece_on_square(from_sq).first;
+    Piece piece = board.get_piece_on_square(from_sq).second;
+    
+    // Create the move
+    Move move(color, piece, from_sq, to_sq, *this);
+    
+    // Check if the move is legal
+    if (!is_move_legal(move)) {
+        throw std::runtime_error("parse_action_to_move: illegal move");
+    }
+    
+    return move;
+}
+
 void Game::play() {
     
     while (true) {
