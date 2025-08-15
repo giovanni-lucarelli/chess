@@ -5,13 +5,25 @@ import sys
 sys.path.insert(0, '../../')
 
 # utils
+import json
 import numpy as np
 import torch # type: ignore
 from torch import nn # type: ignore
+import logging
 from utils.fen_parsing import *
+from utils.load_config import load_config
 
 # chess
 from build.chess_py import Game, Env
+
+def load_config(config_path = 'config.json'):
+    logger.info('Loading config file...')
+    with open(config_path, 'r') as f:
+        return json.load(f)
+    
+config = load_config()
+logging.basicConfig(level=config['log_level'], format = '%(asctime)s - %(levelname)s - %(message)s')
+logger = logging.getLogger(__name__)
 
 class policy(nn.Module):
     """
@@ -56,8 +68,7 @@ class policy(nn.Module):
 
     def forward(self, fen):
         board_tensor, game_state = parse_fen_to_features(fen)
-        # Transpose from [8, 8, 12] to [12, 8, 8] for CNN
-        board_tensor = board_tensor.permute(2, 0, 1)
+        board_tensor = board_tensor.permute(2, 0, 1) # Transpose from [8, 8, 12] to [12, 8, 8] for CNN
         board_features = self.board_conv(board_tensor.unsqueeze(0)) # add batch dim
         board_flat = board_features.view(-1) # flatten
         game_features = self.game_state_fc(game_state)
@@ -75,6 +86,7 @@ class policy(nn.Module):
         # Get legal moves for current player
         legal_moves = game_state.legal_moves(game_state.get_side_to_move())
         if len(legal_moves) == 0:
+            logger.info('!!! GAME OVER !!!')
             return None  # Game over
         
         # Convert legal moves to action indices
@@ -111,9 +123,18 @@ class policy(nn.Module):
                 return legal_moves_list[0]
 
 class REINFORCE:
-    def __init__(self, n_episodes: int = 10000, max_steps: int = 40, lr: float = 0.001):
+    def __init__(
+            self,
+            n_episodes=config['n_episodes'],
+            max_steps=config['max_steps'],
+            lr=config['lr'],
+            step_penalty=config['step_penalty'],
+            gamma=config['gamma']
+    ):
         self.n_episodes = n_episodes
         self.max_steps = max_steps
+        self.step_penalty = step_penalty
+        self.gamma = gamma
         self.policy = policy()
         self.optimizer = torch.optim.Adam(self.policy.parameters(), lr=lr)
 
@@ -126,16 +147,19 @@ class REINFORCE:
         The output should be a List of tuples:
             episode = [(s_t,a_t,r_{t+1})]
         """
+        logger.info('Sampling episode...')
         episode = []
         game = Game()
         game.reset_from_fen(fen)
-        environment = Env(game, gamma = 0.99, step_penalty = 0.0)
+        environment = Env(game, gamma = self.gamma, step_penalty = self.step_penalty)
         for time_step in range(self.max_steps):
+            logger.info(f'Time step number {time_step} / {self.max_steps}')
             state = environment.state().to_fen()
             
             # Get legal moves for current player
             legal_moves = environment.state().legal_moves(environment.state().get_side_to_move())
             if len(legal_moves) == 0:
+                logger.info('!!! GAME OVER !!!')
                 break  # Game over (checkmate or stalemate)
             
             # Convert legal moves to action indices
@@ -160,11 +184,13 @@ class REINFORCE:
                 legal_probs = legal_probs / legal_probs.sum()
             else:
                 # Fallback: uniform distribution over legal actions
+                logger.info('Fallback: using uniform distribution')
                 legal_probs = torch.zeros_like(probs)
                 for action in legal_actions:
                     legal_probs[action] = 1.0 / len(legal_actions)
             
             # Sample from legal actions only
+            logger.info('Sampling...')
             action = torch.multinomial(legal_probs, 1).item()
             
             # Find the corresponding move (we already validated it's legal)
@@ -175,6 +201,7 @@ class REINFORCE:
             reward = step_result.reward
             episode.append((state,action,reward))
             if step_result.done == True:
+                logger.info(f'Stopping episode at time step {time_step}')
                 break
         return episode
 
@@ -183,13 +210,18 @@ class REINFORCE:
         """
         Function that calculates the cumulative reward of a step.
         """
+        logger.info('Calculating return...')
         reward = 0
-        gamma = 0.99
+        gamma = self.gamma
         for t in range(len(episode) - step):
             reward += gamma**t * episode[step + t][2]
         return reward
     
     def calculate_loss(self, state, action, return_value):
+        """
+        Loss Function
+        """
+        logger.info('Calculating loss...')
         logits = self.policy(state)
         log_probs = torch.log_softmax(logits, dim=-1)
         log_prob_action = log_probs[action]
@@ -197,9 +229,12 @@ class REINFORCE:
         return loss
 
     def train(self, fen):
+        logger.info('Starting training...')
         for n in range(self.n_episodes):
+            logger.debug(f'Episode number {n}')
             episode = self.sample_episode(fen, self.policy) 
             for step in range(len(episode)):
+                logger.debug(f'Step number {step} of episode {n}')
                 state = episode[step][0] # take state at time t 
                 action = episode[step][1] # take action at time t
                 return_value = self.calculate_return(episode, step) # calculate return value (v_t)
@@ -207,40 +242,44 @@ class REINFORCE:
                 self.optimizer.zero_grad() # clear previous gradients
                 loss.backward() # calculate gradients
                 self.optimizer.step() # update weights
+        self.save_model()
         return self.policy
     
-    def save_model(self, filepath='weights.pth'):
+    def save_model(self, filepath=config['filepath']):
         """
         Save the trained policy weights to a file.
         """
+        logger.info(f'Saving model with filepath {filepath}')
         torch.save(self.policy.state_dict(), filepath)
     
-    def load_model(self, filepath='weights.pth'):
+    def load_model(self, filepath=config['filepath']):
         """
         Load trained policy weights from a file.
         """
+        logger.info(f'Loading model with filepath {filepath}')
         try:
             self.policy.load_state_dict(torch.load(filepath))
             self.policy.eval()
         except FileNotFoundError:
-            print(f"File {filepath} not found. Using randomly initialized weights.")
+            logger.error(f"File {filepath} not found. Using randomly initialized weights.")
         except Exception as e:
-            print(f"Error loading model: {e}")
+            logger.error(f"Error loading model: {e}")
     
     @staticmethod
-    def load_policy_for_prediction(filepath='weights.pth'):
+    def load_policy_for_prediction(filepath=config['log_level']):
         """
         Static method to load a trained policy for prediction only.
         Returns a policy instance ready for prediction.
         """
+        logger.info(f'Loading model with filepath {filepath}')
         try:
             loaded_policy = policy()
             loaded_policy.load_state_dict(torch.load(filepath))
             loaded_policy.eval()
             return loaded_policy
         except FileNotFoundError:
-            print(f"File {filepath} not found. Returning randomly initialized policy.")
+            logger.error(f"File {filepath} not found. Returning randomly initialized policy.")
             return policy()
         except Exception as e:
-            print(f"Error loading policy: {e}")
+            logger.error(f"Error loading policy: {e}")
             return policy()
