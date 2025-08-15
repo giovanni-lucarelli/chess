@@ -8,12 +8,10 @@ sys.path.insert(0, '../../')
 import numpy as np
 import torch # type: ignore
 from torch import nn # type: ignore
-from torch.utils.data import DataLoader # type: ignore
-from torchvision import datasets, transforms #type: ignore
 from utils.fen_parsing import *
 
 # chess
-from build.chess_py import StepResult, Color, Piece, Game, Move, Env
+from build.chess_py import Game, Env
 
 class policy(nn.Module):
     """
