@@ -1,12 +1,15 @@
 {
-    "n_episodes": 10000,
-    "max_steps": 40,
+    "n_episodes": 1000,
+    "max_steps": 20,
     "lr": 0.001,
     "step_penalty": 0.1,
     "gamma": 0.99,
     "log_level": "INFO",
-    "filepath": "output/weights.pth",
+    "filepath": "output/old_weights.pth",
     "endgames": [
+        "4k3/8/8/8/8/8/4Q3/4K2R b - - 0 1"
+    ],
+    "test_endgames": [
         "4k3/8/8/8/8/8/4Q3/4K2R b - - 0 1"
     ]
 }

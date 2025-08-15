@@ -52,6 +52,12 @@ def plot_fen(fen: str, ax=None, title=None, flipped=False):
     plt.tight_layout()
     return ax
 
-def plot_game(game, **kwargs):
+def plot_game(game, save_path=None, **kwargs):
     """Convenience: plot current position of a Game."""
-    return plot_fen(game.to_fen(), **kwargs)
+    ax = plot_fen(game.to_fen(), **kwargs)
+    if save_path:
+        plt.savefig(save_path, bbox_inches='tight', dpi=150)
+        plt.close()
+    else:
+        plt.show()
+    return ax

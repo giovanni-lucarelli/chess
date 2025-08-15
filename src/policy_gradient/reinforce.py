@@ -10,16 +10,12 @@ import numpy as np
 import torch # type: ignore
 from torch import nn # type: ignore
 import logging
+from tqdm import tqdm # type: ignore
 from utils.fen_parsing import *
 from utils.load_config import load_config
 
 # chess
 from build.chess_py import Game, Env
-
-def load_config(config_path = 'config.json'):
-    logger.info('Loading config file...')
-    with open(config_path, 'r') as f:
-        return json.load(f)
     
 config = load_config()
 logging.basicConfig(level=config['log_level'], format = '%(asctime)s - %(levelname)s - %(message)s')
@@ -147,19 +143,21 @@ class REINFORCE:
         The output should be a List of tuples:
             episode = [(s_t,a_t,r_{t+1})]
         """
-        logger.info('Sampling episode...')
+        logger.debug('Sampling episode...')
         episode = []
         game = Game()
         game.reset_from_fen(fen)
         environment = Env(game, gamma = self.gamma, step_penalty = self.step_penalty)
-        for time_step in range(self.max_steps):
-            logger.info(f'Time step number {time_step} / {self.max_steps}')
+        steps_pbar = tqdm(range(self.max_steps), desc="Episode Steps", unit="step", leave=False)
+        for time_step in steps_pbar:
+            logger.debug(f'Time step number {time_step} / {self.max_steps}')
             state = environment.state().to_fen()
             
             # Get legal moves for current player
             legal_moves = environment.state().legal_moves(environment.state().get_side_to_move())
             if len(legal_moves) == 0:
                 logger.info('!!! GAME OVER !!!')
+                steps_pbar.close()
                 break  # Game over (checkmate or stalemate)
             
             # Convert legal moves to action indices
@@ -184,13 +182,13 @@ class REINFORCE:
                 legal_probs = legal_probs / legal_probs.sum()
             else:
                 # Fallback: uniform distribution over legal actions
-                logger.info('Fallback: using uniform distribution')
+                logger.debug('Fallback: using uniform distribution')
                 legal_probs = torch.zeros_like(probs)
                 for action in legal_actions:
                     legal_probs[action] = 1.0 / len(legal_actions)
             
             # Sample from legal actions only
-            logger.info('Sampling...')
+            logger.debug('Sampling...')
             action = torch.multinomial(legal_probs, 1).item()
             
             # Find the corresponding move (we already validated it's legal)
@@ -200,9 +198,12 @@ class REINFORCE:
             step_result = environment.step(move) 
             reward = step_result.reward
             episode.append((state,action,reward))
+            steps_pbar.set_postfix({"Step": time_step+1, "Reward": reward, "Legal_moves": len(legal_moves)})
             if step_result.done == True:
                 logger.info(f'Stopping episode at time step {time_step}')
+                steps_pbar.close()
                 break
+        steps_pbar.close()
         return episode
 
 
@@ -210,7 +211,7 @@ class REINFORCE:
         """
         Function that calculates the cumulative reward of a step.
         """
-        logger.info('Calculating return...')
+        logger.debug('Calculating return...')
         reward = 0
         gamma = self.gamma
         for t in range(len(episode) - step):
@@ -221,7 +222,7 @@ class REINFORCE:
         """
         Loss Function
         """
-        logger.info('Calculating loss...')
+        logger.debug('Calculating loss...')
         logits = self.policy(state)
         log_probs = torch.log_softmax(logits, dim=-1)
         log_prob_action = log_probs[action]
@@ -230,9 +231,11 @@ class REINFORCE:
 
     def train(self, fen):
         logger.info('Starting training...')
-        for n in range(self.n_episodes):
+        episode_pbar = tqdm(range(self.n_episodes), desc="Training Episodes", unit="episode")
+        for n in episode_pbar:
             logger.debug(f'Episode number {n}')
             episode = self.sample_episode(fen, self.policy) 
+            episode_pbar.set_postfix({"Episode": n+1, "Steps": len(episode)})
             for step in range(len(episode)):
                 logger.debug(f'Step number {step} of episode {n}')
                 state = episode[step][0] # take state at time t 
@@ -242,6 +245,7 @@ class REINFORCE:
                 self.optimizer.zero_grad() # clear previous gradients
                 loss.backward() # calculate gradients
                 self.optimizer.step() # update weights
+        episode_pbar.close()
         self.save_model()
         return self.policy
     
