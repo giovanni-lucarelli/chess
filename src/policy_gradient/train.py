@@ -24,6 +24,6 @@ if __name__ == '__main__':
     game.reset_from_fen(config['endgames'][0])
     env = Env(game, gamma = config['gamma'], step_penalty = config['step_penalty'])
 
-    best_policy = reinforce.train(config['endgames'][0]) # TODO: train on multiple endgames
+    best_policy = reinforce.train(config['endgames'][0])
 
 

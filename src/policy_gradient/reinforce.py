@@ -11,8 +11,11 @@ import torch # type: ignore
 from torch import nn # type: ignore
 import logging
 from tqdm import tqdm # type: ignore
+import matplotlib.pyplot as plt # type: ignore
 from utils.fen_parsing import *
 from utils.load_config import load_config
+from utils.create_endgames import generate_endgame_positions
+import random
 
 # chess
 from build.chess_py import Game, Env
@@ -125,12 +128,17 @@ class REINFORCE:
             max_steps=config['max_steps'],
             lr=config['lr'],
             step_penalty=config['step_penalty'],
-            gamma=config['gamma']
+            gamma=config['gamma'],
+            batch_size=config['batch_size']
     ):
         self.n_episodes = n_episodes
         self.max_steps = max_steps
         self.step_penalty = step_penalty
         self.gamma = gamma
+        self.batch_size = batch_size
+        self.baseline = 0.0  # Running average baseline
+        self.baseline_decay = 0.95  # Decay factor for baseline update
+        self.dtm_history = []  # Track DTM (steps to completion) over training
         self.policy = policy()
         self.optimizer = torch.optim.Adam(self.policy.parameters(), lr=lr)
 
@@ -206,7 +214,6 @@ class REINFORCE:
         steps_pbar.close()
         return episode
 
-
     def calculate_return(self, episode, step):
         """
         Function that calculates the cumulative reward of a step.
@@ -220,43 +227,136 @@ class REINFORCE:
     
     def calculate_loss(self, state, action, return_value):
         """
-        Loss Function
+        Loss Function using advantage (return - baseline)
         """
         logger.debug('Calculating loss...')
         logits = self.policy(state)
         log_probs = torch.log_softmax(logits, dim=-1)
         log_prob_action = log_probs[action]
-        loss = -log_prob_action * return_value
+        advantage = return_value - self.baseline
+        loss = -log_prob_action * advantage
         return loss
 
     def train(self, fen):
         logger.info('Starting training...')
-        episode_pbar = tqdm(range(self.n_episodes), desc="Training Episodes", unit="episode")
-        for n in episode_pbar:
-            logger.debug(f'Episode number {n}')
-            episode = self.sample_episode(fen, self.policy) 
-            episode_pbar.set_postfix({"Episode": n+1, "Steps": len(episode)})
-            for step in range(len(episode)):
-                logger.debug(f'Step number {step} of episode {n}')
-                state = episode[step][0] # take state at time t 
-                action = episode[step][1] # take action at time t
-                return_value = self.calculate_return(episode, step) # calculate return value (v_t)
-                loss = self.calculate_loss(state, action, return_value)
-                self.optimizer.zero_grad() # clear previous gradients
-                loss.backward() # calculate gradients
+        
+        # Generate positions ONCE at start of training for efficiency
+        logger.info('Generating endgame positions...')
+        positions = generate_endgame_positions(fen, 100) # Generating 100 random (legal) positions from current endgame (maintaining same pieces, just permuting positions)
+        logger.info(f'Generated {len(positions)} endgame positions for training')
+        
+        n_batches = self.n_episodes // self.batch_size
+        batch_pbar = tqdm(range(n_batches), desc="Training Batches", unit="batch")
+        
+        for batch_idx in batch_pbar:
+            logger.debug(f'Batch number {batch_idx}')
+            
+            # Collect multiple episodes for this batch
+            all_episodes = []
+            batch_steps = 0
+            batch_dtm = []  # Track DTM (Distance to Mate) for this batch
+            for episode_in_batch in range(self.batch_size):
+                sample_fen = random.choice(positions) # sample random from the positions to ensure better generalisation for the endgame
+                episode = self.sample_episode(sample_fen, self.policy)
+                all_episodes.append(episode)
+                batch_steps += len(episode)
+                
+                # Calculate DTM: if episode ends with mate, DTM = episode length
+                # If episode times out, DTM = max_steps (failed to mate)
+                episode_length = len(episode)
+                if episode_length < self.max_steps:
+                    # Episode ended early (likely mate or game over)
+                    dtm = episode_length
+                else:
+                    # Episode hit time limit (failed to find mate)
+                    dtm = self.max_steps
+                batch_dtm.append(dtm)
+            
+            # Calculate returns for baseline update
+            all_returns = []
+            for episode in all_episodes:
+                for step in range(len(episode)):
+                    return_value = self.calculate_return(episode, step)
+                    all_returns.append(return_value)
+            
+            # Update baseline with average return from this batch
+            if len(all_returns) > 0:
+                batch_avg_return = sum(all_returns) / len(all_returns)
+                self.baseline = self.baseline_decay * self.baseline + (1 - self.baseline_decay) * batch_avg_return
+            
+            # Store DTM statistics for this batch
+            avg_dtm = sum(batch_dtm) / len(batch_dtm) if batch_dtm else self.max_steps
+            self.dtm_history.append(avg_dtm)
+            
+            # Calculate total loss across all episodes in batch
+            total_loss = 0
+            total_experiences = 0
+            
+            self.optimizer.zero_grad() # clear previous gradients
+            
+            for episode in all_episodes:
+                for step in range(len(episode)):
+                    state = episode[step][0] # take state at time t 
+                    action = episode[step][1] # take action at time t
+                    return_value = self.calculate_return(episode, step) # calculate return value (v_t)
+                    loss = self.calculate_loss(state, action, return_value)
+                    total_loss += loss
+                    total_experiences += 1
+            
+            # Average the loss and backpropagate
+            if total_experiences > 0:
+                avg_loss = total_loss / total_experiences
+                avg_loss.backward() # calculate gradients
                 self.optimizer.step() # update weights
-        episode_pbar.close()
+            
+            batch_pbar.set_postfix({
+                "Batch": batch_idx+1, 
+                "Avg_DTM": f"{avg_dtm:.1f}",
+                "Total_Exp": total_experiences,
+                "Baseline": f"{self.baseline:.3f}"
+            })
+        
+        batch_pbar.close()
         self.save_model()
+        self.plot_dtm_progress()
         return self.policy
     
-    def save_model(self, filepath=config['filepath']):
+    def plot_dtm_progress(self):
+        """
+        Plot DTM (Distance to Mate) progress over training batches
+        """
+        if not self.dtm_history:
+            logger.warning("No DTM history to plot")
+            return
+            
+        plt.figure(figsize=(10, 6))
+        plt.plot(range(1, len(self.dtm_history) + 1), self.dtm_history, 'b-', linewidth=2)
+        plt.xlabel('Training Batch')
+        plt.ylabel('Average DTM (Distance to Mate)')
+        plt.title('DTM Progress During Training')
+        plt.grid(True, alpha=0.3)
+        
+        # Add horizontal line for optimal DTM (3 for the simple endgame)
+        optimal_dtm = 3  # Known optimal for the simple endgame
+        plt.axhline(y=optimal_dtm, color='r', linestyle='--', alpha=0.7, label=f'Optimal DTM = {optimal_dtm}')
+        plt.legend()
+        
+        # Set y-axis to show reasonable range
+        plt.ylim(0, min(self.max_steps, max(self.dtm_history) * 1.1))
+        
+        plt.tight_layout()
+        plt.savefig('output/dtm_progress.png', dpi=300, bbox_inches='tight')
+        plt.show()
+        logger.info(f"DTM progress plot saved to output/dtm_progress.png")
+    
+    def save_model(self, filepath=config['filepath_train']):
         """
         Save the trained policy weights to a file.
         """
         logger.info(f'Saving model with filepath {filepath}')
         torch.save(self.policy.state_dict(), filepath)
     
-    def load_model(self, filepath=config['filepath']):
+    def load_model(self, filepath=config['filepath_train']):
         """
         Load trained policy weights from a file.
         """
@@ -270,7 +370,7 @@ class REINFORCE:
             logger.error(f"Error loading model: {e}")
     
     @staticmethod
-    def load_policy_for_prediction(filepath=config['log_level']):
+    def load_policy_for_prediction(filepath=config['filepath_test']):
         """
         Static method to load a trained policy for prediction only.
         Returns a policy instance ready for prediction.

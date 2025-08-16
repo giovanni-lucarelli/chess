@@ -1,5 +1,14 @@
-# utils/plot_chess.py
-import matplotlib.pyplot as plt
+#!/usr/bin/env python3 
+
+# sys
+import sys
+sys.path.insert(0, '../')
+
+# utils
+import matplotlib.pyplot as plt # type: ignore
+
+# chess
+from build.chess_py import Game, Env
 
 UNICODE = {
     'K':'♔','Q':'♕','R':'♖','B':'♗','N':'♘','P':'♙',
@@ -61,3 +70,9 @@ def plot_game(game, save_path=None, **kwargs):
     else:
         plt.show()
     return ax
+
+if __name__ == '__main__':
+    fen = input('Insert FEN: ')
+    game = Game()
+    game.reset_from_fen(fen)
+    plot_game(game)
