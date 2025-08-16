@@ -174,3 +174,36 @@ function SELF_PLAY_REINFORCE:
 
 > **IMPORTANT**: 
 > For the internal state representation, we will use here a neural network, since hand-crafted features are inefficient and hard to obtain.
+
+Another important concept that we have implemented in our REINFORCE algorithm is bias reduction using a **baseline**.
+Essentially we are subtracting a baseline function $B(s)$ from the return:
+```math
+\Delta\theta_t = \alpha\nabla_{\theta}\log\pi_{\theta}(s_t,a_t)\cdot\underbrace{(v_t - B(s_t))}_{\text{advantage function }A^{\pi_{\theta}}(s,a)}
+```
+The idea here is that *any baseline that depends only on the state (not the action) leaves the expectation unchanged*:
+```math
+\mathbb{E}_{\pi_{\theta}}\left[\nabla_{\theta}\log\pi_{\theta}(s,a)\cdot B(s)\right] = 0
+```
+The optimal baseline is the state value function:
+```math
+B(s) = V^{\pi_{\theta}}(s)
+```
+
+Intuitively,
+
+- $A(s,a) > 0$: action is better than average $\to$ increase probability
+- $A(s,a) < 0$: action worse than average $\to$ decrease probability
+- $A(s,a) = 0$: action is average $\to$ no update needed
+
+This leads to the **Actor-Critic** framework:
+```math
+\nabla_{\theta}J(\theta) = \mathbb{E}_{\pi_{\theta}}\left[\nabla_{\theta}\log\pi_{\theta}(s,a)\cdot A^{\pi_{\theta}}(s,a)\right]
+```
+
+where we learn:
+
+- **Actor**: $\pi_{\theta}(a|s)$
+- **Critic**: $V_{w}(s) \approx V^{\pi_{\theta}}(s)$
+
+> **IMPORTANT**
+>Finally, a **batch training** has been applied.
