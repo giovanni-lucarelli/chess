@@ -85,7 +85,7 @@ class policy(nn.Module):
         # Get legal moves for current player
         legal_moves = game_state.legal_moves(game_state.get_side_to_move())
         if len(legal_moves) == 0:
-            logger.info('!!! GAME OVER !!!')
+            logger.debug('!!! GAME OVER !!!')
             return None  # Game over
         
         # Convert legal moves to action indices
@@ -129,22 +129,25 @@ class REINFORCE:
             lr=config['lr'],
             step_penalty=config['step_penalty'],
             gamma=config['gamma'],
-            batch_size=config['batch_size']
+            batch_size=config['batch_size'],
+            baseline=config['baseline'],
+            baseline_decay=config['baseline_decay']
     ):
         self.n_episodes = n_episodes
         self.max_steps = max_steps
         self.step_penalty = step_penalty
         self.gamma = gamma
         self.batch_size = batch_size
-        self.baseline = 0.0  # Running average baseline
-        self.baseline_decay = 0.95  # Decay factor for baseline update
+        self.baseline = baseline
+        self.baseline_decay = baseline_decay  
         self.dtm_history = []  # Track DTM (steps to completion) over training
         self.policy = policy()
         self.optimizer = torch.optim.Adam(self.policy.parameters(), lr=lr)
 
     def sample_episode(self, fen, policy):
         """
-        Function that sample an episode using the current policy.
+        Function that sample an episode from an endgame using the current policy.
+        !!! REMEMBER !!!: in the self-play concept the policy is the same for both players at this stage. 
         Inputs:
             - initial board state (fen)
             - current policy
@@ -160,11 +163,11 @@ class REINFORCE:
         for time_step in steps_pbar:
             logger.debug(f'Time step number {time_step} / {self.max_steps}')
             state = environment.state().to_fen()
-            
+            color = environment.state().get_side_to_move()
             # Get legal moves for current player
-            legal_moves = environment.state().legal_moves(environment.state().get_side_to_move())
+            legal_moves = environment.state().legal_moves(color)
             if len(legal_moves) == 0:
-                logger.info('!!! GAME OVER !!!')
+                logger.debug('!!! GAME OVER !!!')
                 steps_pbar.close()
                 break  # Game over (checkmate or stalemate)
             
@@ -172,7 +175,7 @@ class REINFORCE:
             legal_actions = []
             legal_moves_list = []
             for move in legal_moves:
-                action = int(move.from_square) * 64 + int(move.to_square)  # Convert move to action index
+                action = int(move.from_square) * 64 + int(move.to_square)  # Encoding an action into a flat action space (0-4095)
                 legal_actions.append(action)
                 legal_moves_list.append(move)
             
@@ -205,10 +208,10 @@ class REINFORCE:
             
             step_result = environment.step(move) 
             reward = step_result.reward
-            episode.append((state,action,reward))
+            episode.append((state,action,reward,color))
             steps_pbar.set_postfix({"Step": time_step+1, "Reward": reward, "Legal_moves": len(legal_moves)})
             if step_result.done == True:
-                logger.info(f'Stopping episode at time step {time_step}')
+                logger.debug(f'Stopping episode at time step {time_step}')
                 steps_pbar.close()
                 break
         steps_pbar.close()
@@ -217,17 +220,21 @@ class REINFORCE:
     def calculate_return(self, episode, step):
         """
         Function that calculates the cumulative reward of a step.
+        Since we are in a self-play concept, there are white steps and black steps,
+        so if white starts it will have index 1,3,5,... and black 2,4,6,...
         """
         logger.debug('Calculating return...')
         reward = 0
         gamma = self.gamma
-        for t in range(len(episode) - step):
-            reward += gamma**t * episode[step + t][2]
+        counter = 0
+        for t in range(step, len(episode), 2):
+            reward += gamma**counter * episode[t][2]
+            counter += 1
         return reward
     
     def calculate_loss(self, state, action, return_value):
         """
-        Loss Function using advantage (return - baseline)
+        Loss Function using advantage (return - baseline).
         """
         logger.debug('Calculating loss...')
         logits = self.policy(state)
@@ -243,7 +250,7 @@ class REINFORCE:
         # Generate positions ONCE at start of training for efficiency
         logger.info('Generating endgame positions...')
         positions = generate_endgame_positions(fen, 100) # Generating 100 random (legal) positions from current endgame (maintaining same pieces, just permuting positions)
-        logger.info(f'Generated {len(positions)} endgame positions for training')
+        logger.debug(f'Generated {len(positions)} endgame positions for training')
         
         n_batches = self.n_episodes // self.batch_size
         batch_pbar = tqdm(range(n_batches), desc="Training Batches", unit="batch")
@@ -288,31 +295,27 @@ class REINFORCE:
             avg_dtm = sum(batch_dtm) / len(batch_dtm) if batch_dtm else self.max_steps
             self.dtm_history.append(avg_dtm)
             
-            # Calculate total loss across all episodes in batch
-            total_loss = 0
-            total_experiences = 0
-            
             self.optimizer.zero_grad() # clear previous gradients
             
             for episode in all_episodes:
                 for step in range(len(episode)):
                     state = episode[step][0] # take state at time t 
                     action = episode[step][1] # take action at time t
-                    return_value = self.calculate_return(episode, step) # calculate return value (v_t)
-                    loss = self.calculate_loss(state, action, return_value)
-                    total_loss += loss
-                    total_experiences += 1
-            
-            # Average the loss and backpropagate
-            if total_experiences > 0:
-                avg_loss = total_loss / total_experiences
-                avg_loss.backward() # calculate gradients
-                self.optimizer.step() # update weights
+
+                    if episode[step][3] == 'WHITE':
+                        return_value = all_returns[step]  # using v_t since is white player
+                        loss = self.calculate_loss(state, action, return_value)
+                        loss.backward() # calculate gradients
+                        self.optimizer.step() # update weights
+                    else:
+                        return_value = - all_returns[step] # using -v_t since is white player
+                        loss = self.calculate_loss(state, action, return_value)
+                        loss.backward() # calculate gradients
+                        self.optimizer.step() # update weights
             
             batch_pbar.set_postfix({
                 "Batch": batch_idx+1, 
                 "Avg_DTM": f"{avg_dtm:.1f}",
-                "Total_Exp": total_experiences,
                 "Baseline": f"{self.baseline:.3f}"
             })
         
