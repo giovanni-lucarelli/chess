@@ -1,10 +1,11 @@
 # Chess Endgame Solver
 
-The goal of this project is to study learning optimal play in deterministic, perfect-information chess endgames by comparing three RL approaches:
+The goal of this project is to study learning optimal play in deterministic, perfect-information chess endgames by comparing different RL approaches:
 
-* UCT-style Monte-Carlo Tree Search (with and without learned priors), 
-* REINFORCE, 
-* Q-learning
+* value iteration and policy iteration (model based algorithm)
+* Q-learning (value based model free algorithm)
+* REINFORCE (policy based model free algorithm)
+* UCT-style Monte-Carlo Tree Search (with and without learned priors) 
 
 on a fixed family of endgames (e.g., King and queen vs king, King and Rook vs King). We model each endgame as a finite discounted MDP with legal chess positions as states and legal moves as actions. 
 
@@ -18,12 +19,12 @@ We compare methods on optimality gap ($\Delta$ DTM), and computational cost unde
 
 ## MDP formalization
 
-
 While chess is inherently a two-player zero-sum **Markov game**, in this work we model it from the perspective of the White player only.
 The opponent’s moves are treated as part of the environment dynamics, and the state includes the side-to-move flag.
 This yields a finite, deterministic **Markov Decision Process** (MDP) with:
 
 * **States**: all legal KQK (or KRK) positions, augmented with side-to-move.
+* **Terminal State**: chessmate, once reached the game ends.
 * **Actions**: legal moves for the current player.
 * **Transition function**: deterministic update given current state and chosen action, followed by the opponent’s deterministic or stochastic reply.
 * **Rewards**: +1 for win, −1 for loss, 0 otherwise.
@@ -42,7 +43,6 @@ A chess game can be formalized as a finite, deterministic, turn-based, zero-sum 
 $\sum_{s\in\mathcal{S}}\mu(s)=1$ and $\forall s \in\bar{\mathcal{S}}:\mu(s)=0$
 
 ### More Details
-
   
 - $\mathcal{S}$ is the state space, every legally reachable board position plus: side-to-move, castling rights, en-passant square, half-move clock, full-move number. (All that information is needed to determine future legality.) Estimated size $|\mathcal{S}|=4.8 \times 10^{44}$ [(Tromp & Österlund 2022)](https://github.com/tromp/ChessPositionRanking)
 
