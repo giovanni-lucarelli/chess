@@ -131,7 +131,9 @@ class REINFORCE:
             gamma=config['gamma'],
             batch_size=config['batch_size'],
             baseline=config['baseline'],
-            baseline_decay=config['baseline_decay']
+            baseline_decay=config['baseline_decay'],
+            white_train_freq=config['white_train_freq'],
+            black_train_freq=config['black_train_freq']
     ):
         self.n_episodes = n_episodes
         self.max_steps = max_steps
@@ -139,7 +141,9 @@ class REINFORCE:
         self.gamma = gamma
         self.batch_size = batch_size
         self.baseline = baseline
-        self.baseline_decay = baseline_decay  
+        self.baseline_decay = baseline_decay
+        self.white_train_freq = white_train_freq
+        self.black_train_freq = black_train_freq
         self.dtm_history = []  # Track DTM (steps to completion) over training
         self.policy = policy()
         self.optimizer = torch.optim.Adam(self.policy.parameters(), lr=lr)
@@ -220,16 +224,24 @@ class REINFORCE:
     def calculate_return(self, episode, step):
         """
         Function that calculates the cumulative reward of a step.
-        Since we are in a self-play concept, there are white steps and black steps,
-        so if white starts it will have index 1,3,5,... and black 2,4,6,...
+        In self-play, we calculate returns from the perspective of the current player.
+        For the player at step t, we sum discounted rewards from t onwards.
         """
         logger.debug('Calculating return...')
         reward = 0
         gamma = self.gamma
-        counter = 0
-        for t in range(step, len(episode), 2):
-            reward += gamma**counter * episode[t][2]
-            counter += 1
+        current_player = episode[step][3]  # Color of player at this step
+        
+        for t in range(step, len(episode)):
+            step_reward = episode[t][2]
+            step_player = episode[t][3]
+            
+            # If it's the same player, add the reward; if opponent, subtract it
+            if step_player == current_player:
+                reward += (gamma ** (t - step)) * step_reward
+            else:
+                reward -= (gamma ** (t - step)) * step_reward
+                
         return reward
     
     def calculate_loss(self, state, action, return_value):
@@ -279,39 +291,46 @@ class REINFORCE:
                     dtm = self.max_steps
                 batch_dtm.append(dtm)
             
-            # Calculate returns for baseline update
+            # Calculate returns and prepare training data
+            episodes_with_returns = []
             all_returns = []
+            
             for episode in all_episodes:
+                episode_returns = []
                 for step in range(len(episode)):
                     return_value = self.calculate_return(episode, step)
+                    episode_returns.append(return_value)
                     all_returns.append(return_value)
+                episodes_with_returns.append((episode, episode_returns))
             
             # Update baseline with average return from this batch
             if len(all_returns) > 0:
                 batch_avg_return = sum(all_returns) / len(all_returns)
+                logger.info(f'Average return for this batch: {batch_avg_return}')
                 self.baseline = self.baseline_decay * self.baseline + (1 - self.baseline_decay) * batch_avg_return
             
             # Store DTM statistics for this batch
             avg_dtm = sum(batch_dtm) / len(batch_dtm) if batch_dtm else self.max_steps
+            logger.info(f'Average DTM for this batch: {avg_dtm}')
             self.dtm_history.append(avg_dtm)
             
-            self.optimizer.zero_grad() # clear previous gradients
+            # Clear gradients once before processing all episodes
+            self.optimizer.zero_grad()
             
-            for episode in all_episodes:
+            # Accumulate gradients from all episodes in the batch
+            for episode, returns in episodes_with_returns:
                 for step in range(len(episode)):
-                    state = episode[step][0] # take state at time t 
-                    action = episode[step][1] # take action at time t
-
-                    if episode[step][3] == 'WHITE':
-                        return_value = all_returns[step]  # using v_t since is white player
-                        loss = self.calculate_loss(state, action, return_value)
-                        loss.backward() # calculate gradients
-                        self.optimizer.step() # update weights
-                    else:
-                        return_value = - all_returns[step] # using -v_t since is white player
-                        loss = self.calculate_loss(state, action, return_value)
-                        loss.backward() # calculate gradients
-                        self.optimizer.step() # update weights
+                    state = episode[step][0]  # state at time t
+                    action = episode[step][1]  # action at time t
+                    return_value = returns[step]  # return for this step
+                    
+                    # Calculate loss and accumulate gradients
+                    loss = self.calculate_loss(state, action, return_value)
+                    logger.debug(f'Loss for step {step}: {loss}')
+                    loss.backward()  # accumulate gradients
+            
+            # Update weights once per batch after accumulating all gradients
+            self.optimizer.step()
             
             batch_pbar.set_postfix({
                 "Batch": batch_idx+1, 
