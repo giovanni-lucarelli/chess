@@ -1,0 +1,9 @@
+{
+    "alpha": 0.05,
+    "gamma": 0.95,
+    "epsilon": 0.003,
+    "endgames": [
+        "4k3/8/8/8/8/8/1RR5/4K3 b - - 0 1"
+    ],
+    "log_level": "INFO"
+}
