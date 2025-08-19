@@ -1,6 +1,6 @@
 # Introduction to Chess Programing 
 
-![Kasparov vs Deep Blue](/docs/garry-kasparov-deep-blue-ibm.jpg)
+![Kasparov vs Deep Blue](/doc/garry-kasparov-deep-blue-ibm.jpg)
 (*Garry Kasparov* versus Deep Blue (IBM) - Philadelphia, 1996)
 
 >*Chess has been used as a Rosetta Stone of both human and machine cognition for over a century.* - Garry Kasparov
