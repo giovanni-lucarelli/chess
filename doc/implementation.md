@@ -79,6 +79,9 @@ The game class represents a chess game, specifically:
 - check the validity of a move (passed as a `Move` object, see `move.hpp`)
 - do and undo the move
 - manage a game between two players or against the computer
+- initialize a new game based on the Forsyth–Edwards Notation (FEN)
+
+> **Remark:** the Forsyth–Edwards Notation (FEN) is a standard notation for describing a particular board position of a chess game.
 
 ## Move class
 

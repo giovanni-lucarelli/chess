@@ -6,6 +6,8 @@ sys.path.insert(0, '../')
 
 import random
 import json
+import numpy as np
+import itertools
 from build.chess_py import Game
 
 def parse_fen_pieces(fen):
@@ -230,3 +232,40 @@ def generate_endgame_positions(base_fen, num_positions):
     
     return positions
 
+def generate_all_endgame_positions(base_fen):
+    # Parse the base FEN
+    original_pieces = parse_fen_pieces(base_fen)
+    
+    # Always keep both kings
+    kings = [p for p in original_pieces if p[0].lower() == 'k']
+    others = [p for p in original_pieces if p[0].lower() != 'k']
+    
+    positions = []
+    state_to_idx = {}
+    
+    # Generate subsets of "others" (from size 0 up to all)
+    for r in range(len(others) + 1):
+        for subset in itertools.combinations(others, r):
+            # Piece pool = 2 kings + subset
+            piece_types = [piece for piece, _ in (kings + list(subset))]
+            n = len(piece_types)
+
+            # Generate all placements
+            for piece_perm in set(itertools.permutations(piece_types)):
+                for chosen_squares in itertools.combinations(range(64), n):
+                    state = tuple(zip(piece_perm, chosen_squares))  # make hashable
+                    if is_position_legal(state):
+                        if state not in state_to_idx:  # avoid duplicates
+                            idx = len(positions)
+                            positions.append(state)
+                            state_to_idx[state] = idx
+
+    values = np.zeros(len(positions), dtype=float)
+    
+    print(f"Total states: {len(positions)}")
+    if positions:
+        print("Example state:", positions[0])
+        print("Value of that state:", values[0])
+        print("Index of that state:", state_to_idx[positions[0]])
+    
+    return positions, state_to_idx, values
