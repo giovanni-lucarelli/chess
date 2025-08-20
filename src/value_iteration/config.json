@@ -1,0 +1,13 @@
+{
+    "tolerance": 0.0001,
+    "step_penalty": 0.01,
+    "gamma": 1,
+    "log_level": "INFO",
+    "savepath_value_iteration": "output/value_iteration_policy.pkl",
+    "endgames": [
+        "4k3/8/8/8/8/8/1R6/4K3 w - - 0 1"
+    ],
+    "test_endgames": [
+        "4k3/8/8/8/8/8/1R6/4K3 w - - 0 1"
+    ]
+}
