@@ -8,7 +8,6 @@ Move::Move(Color color, Piece piece, Square from, Square to, const Game& game) :
     auto board = game.get_board();
 
     // Debugging
-
     // std::cout << "Move from " << square_to_string(from) << " to " << square_to_string(to) << std::endl;
     // std::cout << "Board occupied at " << square_to_string(to) << ": " << board.is_occupied(to) << std::endl;
     // if (board.is_occupied(to)) {
@@ -22,6 +21,10 @@ Move::Move(Color color, Piece piece, Square from, Square to, const Game& game) :
         if ((from == E1 && to == G1) || (from == E1 && to == C1) || 
             (from == E8 && to == G8) || (from == E8 && to == C8)) { 
             type = MoveType::CASTLING;
+        } else if (board.is_occupied(to) && board.get_piece_on_square(to).first != color) {
+            type = MoveType::CAPTURE;  // King capturing another piece
+        } else {
+            type = MoveType::NORMAL;    // Regular king move
         }
     } else if (board.get_piece_on_square(from).second == PAWN) {
         if (to == game.get_en_passant_square()) {
@@ -54,7 +57,6 @@ Move::Move(Color color, Piece piece, Square from, Square to, const Game& game) :
     } else {
         promoted_to = NO_PIECE;
     }
-
 };
 
 void Move::print() {

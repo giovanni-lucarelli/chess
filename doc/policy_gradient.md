@@ -41,13 +41,16 @@ Before, a policy was generated from the value function, which was approximated u
 >- Usually inefficient and with high variance
 
 How do we measure the quality of a policy?
-There are many methods, but usually an average reward per time-step is used:
+There are many methods, but usually an expected return is used for episodic environments:
 
-$$
-J_{avR}(\theta) = \sum_s d^{\pi_{\theta}}(s)\sum_a \pi_{\theta}(s,a)\mathcal{R}_s^a
-$$
+```math
+J(\theta) = \mathbb{E}_{s\sim \rho^{\pi}}\left[V^{\pi}(s)\right]\\
+V^{\pi}(s) = \mathbb{E}_{\pi}\left[G_t|S_t=s\right] = \mathbb{E}\left[\sum_{k=0}^{\infty}\gamma^{k}R_{t+k+1}|S_t=s\right]
+```
 
-where $d^{\pi_{\theta}}$ is a **stationary distribution** of Markov chain for $\pi_{\theta}$.
+where $\rho^{\pi}$ is the state distribution under policy $\pi$.
+
+Naturally, since this is a model-free algorithm, we don't know the exact $V_t$ and so an estimation method is used. 
 
 This is an **optimisation** problem, meaning that we have to find the best parameters $\theta$ that maximise the objective function $J(\theta)$. There are many algorithms for this, but we will focus on SGD.
 
@@ -102,16 +105,30 @@ END
 >**To do**
 >exploit actor-critic algorithms to improve performance
 
-### How to apply theory to chess game
+### Reward Function
+
+For this project we want to use simple yet (probably) effective and intuitive reward function. Considering that the White player cannot loose in the subset of endgames we chose (Black does not have pieces to win), the reward should be just for WIN and for DRAW. We decided to keep their values equal in absolute terms but opposite in sign. Moreover, we decided to include a step penalty to encourage the agent to checkmate the fastest possible. Thus, mathematically speaking, the reward function is this:
+
+```math
+\begin{align*}
+    +10000 & \text{ for WIN}\\
+    -10000 & \text{ for DRAW}\\
+    -1 & \text{ otherwise}
+\end{align*}
+```
+
+### REINFORCE in our project
 
 For the formalization of the chess game look [here](./project.md).
 
-> **Note**
->Using a policy-gradient algorithm is enough for this work, meaning we >don't have to implement a minimax search since the opponen move is already >included in the environment and the policy is improved by **maximizing** >the best action rewards for the player taken into consideration and >**minimizing** the action rewards for the opponent. The policy-based >algorithm already does this when learning the best policy. 
-
 - state $s$ is reprented by the *Game* class
 - action $a$ is represented by the *Move* class
-- reward $r$ is either $+1,-1,0$
+- reward $r$ is either $+10000,-10000,-1$
+
+The first thing we have to do is to define the function for the policy. Here we consider a neural network, since it can represent complex functions even if it is less understandable. 
+The input for this neural network should be the current state $s_t$, but since it is defined by a FEN, it has to be converted in something the neural network can process. Remember that the policy is just a distribution over the actions given a state.
+
+FEN $\to$ tensor of numbers $\to$ NN $\to$ action probabilities
 
 Recalling that the REINFORCE update rule is
 
@@ -207,3 +224,8 @@ where we learn:
 
 > **IMPORTANT**
 >Finally, a **batch training** has been applied.
+
+### Choice of neural network for policy
+
+### Choice of reward function
+

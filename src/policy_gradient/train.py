@@ -12,18 +12,29 @@ logging.basicConfig(level=config['log_level'], format = '%(asctime)s - %(levelna
 logger = logging.getLogger(__name__)
 
 # chess
-from build.chess_py import Game, Env
+from build.chess_py import Game, Env # type: ignore
 from utils.plot_chess import plot_game, plot_fen
-from reinforce import policy, REINFORCE 
+from utils.create_endgames import generate_endgame_positions
+from reinforce import REINFORCE 
 
 if __name__ == '__main__':
-    game = Game()
-
+    logger.info("Starting REINFORCE training for chess endgames")
+    
+    # Initialize REINFORCE agent
     reinforce = REINFORCE()
-
-    game.reset_from_fen(config['endgames'][0])
-    env = Env(game, gamma = config['gamma'], step_penalty = config['step_penalty'])
-
-    best_policy = reinforce.train(config['endgames'][0])
+    
+    # Train the agent
+    logger.info(f"Starting training for {config['n_episodes']} episodes...")
+    reinforce.train()
+    logger.info("Training completed successfully")
+    
+    # Save the trained model
+    logger.info("Saving trained model...")
+    reinforce.save_model()
+    logger.info(f"Model saved to {config['filepath_train']}")
+    
+    # Plot training progress
+    #logger.info("Plotting DTM progress...")
+    #reinforce.plot_dtm_progress()
 
 

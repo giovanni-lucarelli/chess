@@ -7,39 +7,39 @@ sys.path.insert(0, '../../')
 # utils
 import json
 import numpy as np
-import torch # type: ignore
-from torch import nn # type: ignore
+import torch 
+from torch import nn 
 import logging
-from tqdm import tqdm # type: ignore
-import matplotlib.pyplot as plt # type: ignore
+from tqdm import tqdm 
+import matplotlib.pyplot as plt 
 from utils.fen_parsing import *
 from utils.load_config import load_config
 from utils.create_endgames import generate_endgame_positions
+from utils.opponent_move import get_black_move
 import random
+import requests
+from typing import List
 
-# chess
-from build.chess_py import Game, Env
-    
 config = load_config()
 logging.basicConfig(level=config['log_level'], format = '%(asctime)s - %(levelname)s - %(message)s')
 logger = logging.getLogger(__name__)
 
-class policy(nn.Module):
+# chess
+from build.chess_py import Game, Env, Move, Color # type: ignore
+
+class Policy(nn.Module):
     """
     Policy function. 
-    It is a neural network with input FEN decomposed in:
-        - Piece placement
-        - Active color
-        - Castling rights
-        - En passant
-        - Halfmove clock (not considered)
-        - Fullmove number (not considered)
-    and output:
-        - probability distribution over possible actions (4096)
+    Input:
+        - Piece placement (tensor)
+        - Whose turn it is (tensor)
+    Output: 
+        - Distribution over actions from that state
     """
     def __init__(self):
         super().__init__()
-        # Board processing (CNN for spatial patterns)
+        
+        # CNN layers
         self.board_conv = nn.Sequential(
             nn.Conv2d(12, 32, 3, padding=1),
             nn.ReLU(),
@@ -49,299 +49,293 @@ class policy(nn.Module):
             nn.ReLU()
         )
         
-        # Game state processing
-        self.game_state_fc = nn.Sequential(
-            nn.Linear(71, 128),
-            nn.ReLU(),
-            nn.Linear(128, 64)
-        )
+        # Global pooling
+        self.global_pool = nn.AdaptiveAvgPool2d((1, 1))
         
-        # Combined processing
-        self.combined_fc = nn.Sequential(
-            nn.Linear(128 * 8 * 8 + 64, 512),
+        # Dense layers
+        self.fc = nn.Sequential(
+            nn.Linear(128, 256),
             nn.ReLU(),
-            nn.Linear(512, 256), 
-            nn.ReLU(),
-            nn.Linear(256, 4096)  # All possible moves
+            nn.Dropout(0.3),
+            nn.Linear(256, 4096) # 4096 are the possible actions (for simple endgames)
         )
 
     def forward(self, fen):
-        board_tensor, game_state = parse_fen_to_features(fen)
-        board_tensor = board_tensor.permute(2, 0, 1) # Transpose from [8, 8, 12] to [12, 8, 8] for CNN
-        board_features = self.board_conv(board_tensor.unsqueeze(0)) # add batch dim
-        board_flat = board_features.view(-1) # flatten
-        game_features = self.game_state_fc(game_state)
-        combined = torch.cat([board_flat, game_features])
-        logits = self.combined_fc(combined)
-        return logits
+        # fen can be either a string or already a tensor
+        if isinstance(fen, str):
+            x = parse_fen(fen).unsqueeze(0)  # → [1, 8, 8, 12]
+        elif isinstance(fen, torch.Tensor):
+            x = fen  # Already a tensor with batch dimension
+        else:
+            raise ValueError(f"Expected str or torch.Tensor, got {type(fen)}")
+        x = x.permute(0, 3, 1, 2)  # → [batch, 12, 8, 8] for CNN
+        x = self.board_conv(x)     # → [batch, 128, 8, 8] 
+        x = self.global_pool(x)    # → [batch, 128, 1, 1]
+        x = x.view(x.size(0), -1)  # → [batch, 128]
+        x = self.fc(x)             # → [batch, 4096]
+        return x
     
-    def predict(self, game_state):
+    def get_action_probs(self, fen, legal_moves=None):
         """
-        Predict the best move for the given game state.
-        Returns the Move object that the policy thinks is best.
+        Get action probabilities, optionally masked for legal moves only.
         """
-        fen = game_state.to_fen()
+        logits = self.forward(fen)
         
-        # Get legal moves for current player
-        legal_moves = game_state.legal_moves(game_state.get_side_to_move())
-        if len(legal_moves) == 0:
-            logger.debug('!!! GAME OVER !!!')
-            return None  # Game over
+        # Apply legal move mask if provided
+        if legal_moves is not None:
+            mask = torch.full_like(logits, float('-inf'))
+            for move_idx in legal_moves:
+                mask[0, move_idx] = 0
+            logits = logits + mask
+            
+        return torch.softmax(logits, dim=-1)
+    
+    def get_log_probs(self, fen, legal_moves=None):
+        """
+        Get log probabilities for gradient computation.
+        """
+        logits = self.forward(fen)
         
-        # Convert legal moves to action indices
-        legal_actions = []
-        legal_moves_list = []
-        for move in legal_moves:
-            action = int(move.from_square) * 64 + int(move.to_square)
-            legal_actions.append(action)
-            legal_moves_list.append(move)
-        
-        # Get policy probabilities and mask illegal actions
-        with torch.no_grad():  # No gradients needed for prediction
-            logits = self.forward(fen)
-            probs = torch.softmax(logits, dim=-1)
+        # Apply legal move mask if provided
+        if legal_moves is not None:
+            mask = torch.full_like(logits, float('-inf'))
+            for move_idx in legal_moves:
+                mask[0, move_idx] = 0
+            logits = logits + mask
             
-            # Create masked probabilities (only legal actions)
-            legal_probs = torch.zeros_like(probs)
-            for action in legal_actions:
-                legal_probs[action] = probs[action]
-            
-            # Find the action with highest probability
-            if legal_probs.sum() > 0:
-                best_action_idx = torch.argmax(legal_probs).item()
-            else:
-                # Fallback: choose first legal move
-                best_action_idx = legal_actions[0]
-            
-            # Find the corresponding move
-            if best_action_idx in legal_actions:
-                move_idx = legal_actions.index(best_action_idx)
-                return legal_moves_list[move_idx]
-            else:
-                # Fallback: return first legal move
-                return legal_moves_list[0]
-
+        return torch.log_softmax(logits, dim=-1)
+    
 class REINFORCE:
     def __init__(
             self,
-            n_episodes=config['n_episodes'],
-            max_steps=config['max_steps'],
-            lr=config['lr'],
-            step_penalty=config['step_penalty'],
-            gamma=config['gamma'],
-            batch_size=config['batch_size'],
-            baseline=config['baseline'],
-            baseline_decay=config['baseline_decay'],
-            white_train_freq=config['white_train_freq'],
-            black_train_freq=config['black_train_freq']
+            lr: float = config['alpha'],
+            gamma: float = config['gamma'],
+            epsilon: float = config['epsilon'],
+            max_steps: int = config['max_steps']
     ):
-        self.n_episodes = n_episodes
-        self.max_steps = max_steps
-        self.step_penalty = step_penalty
-        self.gamma = gamma
-        self.batch_size = batch_size
-        self.baseline = baseline
-        self.baseline_decay = baseline_decay
-        self.white_train_freq = white_train_freq
-        self.black_train_freq = black_train_freq
-        self.dtm_history = []  # Track DTM (steps to completion) over training
-        self.policy = policy()
+        self.lr = lr 
+        self.gamma = gamma 
+        self.epsilon = epsilon
+        self.policy = Policy()
         self.optimizer = torch.optim.Adam(self.policy.parameters(), lr=lr)
+        
+        self.dtm_history = []
+        self.max_steps = max_steps
 
-    def sample_episode(self, fen, policy):
+        # For converting between moves and indices
+        self.move_to_idx = {}
+        self.idx_to_move = {}
+        self._build_move_mappings()
+
+    def _build_move_mappings(self):
         """
-        Function that sample an episode from an endgame using the current policy.
-        !!! REMEMBER !!!: in the self-play concept the policy is the same for both players at this stage. 
-        Inputs:
-            - initial board state (fen)
-            - current policy
-        The output should be a List of tuples:
-            episode = [(s_t,a_t,r_{t+1})]
+        Build mappings between chess moves and action indices.
+        Using custom square naming to match C++ implementation.
         """
-        logger.debug('Sampling episode...')
-        episode = []
+        idx = 0
+        
+        # Generate square names manually (a1, b1, ..., h8)
+        files = "abcdefgh"
+        ranks = "12345678"
+        squares = [f + r for r in ranks for f in files]
+        
+        # Generate all possible moves (from_square, to_square)
+        for from_sq in squares:
+            for to_sq in squares:
+                if from_sq != to_sq:
+                    move_str = from_sq + to_sq
+                    self.move_to_idx[move_str] = idx
+                    self.idx_to_move[idx] = move_str
+                    idx += 1
+
+    def get_legal_move_indices(self, game):
+        """
+        Get indices of legal moves for the current position.
+        """
+        legal_moves = []
+        side_to_move = game.get_side_to_move()
+        
+        # Get legal moves for the current side
+        for move in game.legal_moves(side_to_move): 
+            move_str = Move.to_uci(move)[:4]  
+            if move_str in self.move_to_idx:
+                legal_moves.append(self.move_to_idx[move_str])
+        return legal_moves
+
+    def sample_episode(self, starting_fen: str, max_steps: int = 200):
+        """
+        Sample a trajectory using the current policy for White
+        and oracle (best possible move) for black.
+        Returns simplified format for easier processing.
+        """
         game = Game()
-        game.reset_from_fen(fen)
-        environment = Env(game, gamma = self.gamma, step_penalty = self.step_penalty)
-        steps_pbar = tqdm(range(self.max_steps), desc="Episode Steps", unit="step", leave=False)
-        for time_step in steps_pbar:
-            logger.debug(f'Time step number {time_step} / {self.max_steps}')
-            state = environment.state().to_fen()
-            color = environment.state().get_side_to_move()
-            # Get legal moves for current player
-            legal_moves = environment.state().legal_moves(color)
-            if len(legal_moves) == 0:
-                logger.debug('!!! GAME OVER !!!')
-                steps_pbar.close()
-                break  # Game over (checkmate or stalemate)
+        game.reset_from_fen(starting_fen)
+        env = Env(game, step_penalty=1)
+        
+        # Store episode data
+        states = []      # FEN strings
+        actions = []     # Move indices
+        rewards = []     # Immediate rewards
+        players = []     # Which player made the move (0=white, 1=black)
+        
+        for step in range(max_steps):
+            current_fen = env.state().to_fen()
+            side_to_move = game.get_side_to_move()
             
-            # Convert legal moves to action indices
-            legal_actions = []
-            legal_moves_list = []
-            for move in legal_moves:
-                action = int(move.from_square) * 64 + int(move.to_square)  # Encoding an action into a flat action space (0-4095)
-                legal_actions.append(action)
-                legal_moves_list.append(move)
-            
-            # Get policy probabilities and mask illegal actions
-            logits = policy(environment.state().to_fen())
-            probs = torch.softmax(logits, dim=-1)
-            
-            # Create masked probabilities (only legal actions have non-zero probability)
-            legal_probs = torch.zeros_like(probs)
-            for action in legal_actions:
-                legal_probs[action] = probs[action]
-            
-            # Renormalize legal probabilities
-            if legal_probs.sum() > 0:
+            if side_to_move == Color.WHITE:  # White turn - use policy
+                legal_moves = self.get_legal_move_indices(game)
+                logger.info(f'Found {len(legal_moves)} legal moves.')
+                
+                # Get action probabilities
+                fen_tensor = parse_fen(current_fen).unsqueeze(0)  # Add batch dimension
+                with torch.no_grad():
+                    action_probs = self.policy.get_action_probs(fen_tensor, legal_moves)
+                    action_probs = action_probs.squeeze(0).cpu().numpy()
+                
+                if not legal_moves:
+                    break  # No legal moves available
+                
+                # Extract probabilities for legal moves only
+                legal_probs = action_probs[legal_moves]
+                # Normalize to ensure they sum to 1
                 legal_probs = legal_probs / legal_probs.sum()
-            else:
-                # Fallback: uniform distribution over legal actions
-                logger.debug('Fallback: using uniform distribution')
-                legal_probs = torch.zeros_like(probs)
-                for action in legal_actions:
-                    legal_probs[action] = 1.0 / len(legal_actions)
-            
-            # Sample from legal actions only
-            logger.debug('Sampling...')
-            action = torch.multinomial(legal_probs, 1).item()
-            
-            # Find the corresponding move (we already validated it's legal)
-            move_idx = legal_actions.index(action)
-            move = legal_moves_list[move_idx]
-            
-            step_result = environment.step(move) 
-            reward = step_result.reward
-            episode.append((state,action,reward,color))
-            steps_pbar.set_postfix({"Step": time_step+1, "Reward": reward, "Legal_moves": len(legal_moves)})
-            if step_result.done == True:
-                logger.debug(f'Stopping episode at time step {time_step}')
-                steps_pbar.close()
-                break
-        steps_pbar.close()
-        return episode
-
-    def calculate_return(self, episode, step):
-        """
-        Function that calculates the cumulative reward of a step.
-        In self-play, we calculate returns from the perspective of the current player.
-        For the player at step t, we sum discounted rewards from t onwards.
-        """
-        logger.debug('Calculating return...')
-        reward = 0
-        gamma = self.gamma
-        current_player = episode[step][3]  # Color of player at this step
-        
-        for t in range(step, len(episode)):
-            step_reward = episode[t][2]
-            step_player = episode[t][3]
-            
-            # If it's the same player, add the reward; if opponent, subtract it
-            if step_player == current_player:
-                reward += (gamma ** (t - step)) * step_reward
-            else:
-                reward -= (gamma ** (t - step)) * step_reward
+                logger.info(f'Legal probs sum: {legal_probs.sum()}')
                 
-        return reward
-    
-    def calculate_loss(self, state, action, return_value):
-        """
-        Loss Function using advantage (return - baseline).
-        """
-        logger.debug('Calculating loss...')
-        logits = self.policy(state)
-        log_probs = torch.log_softmax(logits, dim=-1)
-        log_prob_action = log_probs[action]
-        advantage = return_value - self.baseline
-        loss = -log_prob_action * advantage
-        return loss
-
-    def train(self, fen):
-        logger.info('Starting training...')
-        
-        # Generate positions ONCE at start of training for efficiency
-        logger.info('Generating endgame positions...')
-        positions = generate_endgame_positions(fen, 100) # Generating 100 random (legal) positions from current endgame (maintaining same pieces, just permuting positions)
-        logger.debug(f'Generated {len(positions)} endgame positions for training')
-        
-        n_batches = self.n_episodes // self.batch_size
-        batch_pbar = tqdm(range(n_batches), desc="Training Batches", unit="batch")
-        
-        for batch_idx in batch_pbar:
-            logger.debug(f'Batch number {batch_idx}')
-            
-            # Collect multiple episodes for this batch
-            all_episodes = []
-            batch_steps = 0
-            batch_dtm = []  # Track DTM (Distance to Mate) for this batch
-            for episode_in_batch in range(self.batch_size):
-                sample_fen = random.choice(positions) # sample random from the positions to ensure better generalisation for the endgame
-                episode = self.sample_episode(sample_fen, self.policy)
-                all_episodes.append(episode)
-                batch_steps += len(episode)
+                # Sample from legal moves
+                selected_legal_idx = np.random.choice(len(legal_moves), p=legal_probs)
+                action_idx = legal_moves[selected_legal_idx]
                 
-                # Calculate DTM: if episode ends with mate, DTM = episode length
-                # If episode times out, DTM = max_steps (failed to mate)
-                episode_length = len(episode)
-                if episode_length < self.max_steps:
-                    # Episode ended early (likely mate or game over)
-                    dtm = episode_length
-                else:
-                    # Episode hit time limit (failed to find mate)
-                    dtm = self.max_steps
-                batch_dtm.append(dtm)
-            
-            # Calculate returns and prepare training data
-            episodes_with_returns = []
-            all_returns = []
-            
-            for episode in all_episodes:
-                episode_returns = []
-                for step in range(len(episode)):
-                    return_value = self.calculate_return(episode, step)
-                    episode_returns.append(return_value)
-                    all_returns.append(return_value)
-                episodes_with_returns.append((episode, episode_returns))
-            
-            # Update baseline with average return from this batch
-            if len(all_returns) > 0:
-                batch_avg_return = sum(all_returns) / len(all_returns)
-                logger.info(f'Average return for this batch: {batch_avg_return}')
-                self.baseline = self.baseline_decay * self.baseline + (1 - self.baseline_decay) * batch_avg_return
-            
-            # Store DTM statistics for this batch
-            avg_dtm = sum(batch_dtm) / len(batch_dtm) if batch_dtm else self.max_steps
-            logger.info(f'Average DTM for this batch: {avg_dtm}')
-            self.dtm_history.append(avg_dtm)
-            
-            # Clear gradients once before processing all episodes
-            self.optimizer.zero_grad()
-            
-            # Accumulate gradients from all episodes in the batch
-            for episode, returns in episodes_with_returns:
-                for step in range(len(episode)):
-                    state = episode[step][0]  # state at time t
-                    action = episode[step][1]  # action at time t
-                    return_value = returns[step]  # return for this step
+                # Convert to move
+                move_str = self.idx_to_move[action_idx]
+                logger.info(f'Move string: {move_str}')
+                move = Move.from_strings(game, move_str[:2], move_str[2:4])
+                
+                # Take step
+                step_result = env.step(move)
+                game.do_move(move)
+
+                # Reward
+                reward = step_result.reward
+                
+                # Store data
+                states.append(current_fen)
+                actions.append(action_idx)
+                rewards.append(reward)
+                players.append(0)
+                
+            else:  # Black turn - use tablebase
+                black_move_uci = get_black_move(current_fen)
+                if black_move_uci is None:
+                    break  # No legal moves or API error
                     
-                    # Calculate loss and accumulate gradients
-                    loss = self.calculate_loss(state, action, return_value)
-                    logger.debug(f'Loss for step {step}: {loss}')
-                    loss.backward()  # accumulate gradients
+                move = Move.from_uci(game, black_move_uci)
+                step_result = env.step(move)
+                game.do_move(move)
+                
+                # Store data (we don't train on black moves, but need for reward calculation)
+                states.append(current_fen)
+                actions.append(-1)  # Dummy action for black
+                rewards.append(step_result.reward)
+                players.append(1)
             
-            # Update weights once per batch after accumulating all gradients
-            self.optimizer.step()
-            
-            batch_pbar.set_postfix({
-                "Batch": batch_idx+1, 
-                "Avg_DTM": f"{avg_dtm:.1f}",
-                "Baseline": f"{self.baseline:.3f}"
-            })
+            # Check if game is over
+            if step_result.done:
+                break
         
-        batch_pbar.close()
+        # capping max steps and giving draw if not checkmate before the end
+        if not step_result.done:
+            rewards[-1] = -1000
+        
+        return states, actions, rewards, players
+    
+    def calculate_returns(self, rewards: List[float]) -> List[float]:
+        """
+        Calculate discounted returns for each timestep.
+        """
+        returns = []
+        G = 0
+        
+        # Calculate returns backwards
+        for reward in reversed(rewards):
+            G = reward + self.gamma * G
+            returns.insert(0, G)
+            
+        return returns
+
+    def train_episode(self, starting_fen: str):
+        """
+        Train on a single episode.
+        """
+        states, actions, rewards, players = self.sample_episode(starting_fen)
+
+        DTM = len(states)
+        
+        if not states:
+            logger.info("No moves made in episode")
+            return 0.0  # No moves made
+        
+        # Calculate returns for each time step
+        returns = self.calculate_returns(rewards)
+        
+        # Collect training data for white moves only
+        log_probs = []
+        episode_returns = []
+        
+        for i, player in enumerate(players):
+            if player == 0:  # White move (stored as 0 in our tracking)
+                fen_tensor = parse_fen(states[i]).unsqueeze(0)
+                legal_moves = self.get_legal_move_indices_from_fen(states[i])  
+                
+                # Get log probabilities
+                log_prob_dist = self.policy.get_log_probs(fen_tensor, legal_moves)
+                log_prob = log_prob_dist[0, actions[i]]
+                
+                log_probs.append(log_prob)
+                episode_returns.append(returns[i])
+        
+        if not log_probs:
+            logger.info(f"No white moves to train on. Total states: {len(states)}, Players: {players}")
+            return 0.0  # No white moves to train on
+        
+        # Calculate loss
+        log_probs_tensor = torch.stack(log_probs)
+        returns_tensor = torch.tensor(episode_returns, dtype=torch.float32)
+        
+        # REINFORCE loss: -E[log π(a|s) * G]
+        loss = -torch.mean(log_probs_tensor * returns_tensor)
+        
+        # Optimize
+        self.optimizer.zero_grad()
+        loss.backward()
+        self.optimizer.step()
+        
+        return loss.item(), DTM
+    
+    def get_legal_move_indices_from_fen(self, fen: str) -> List[int]:
+        """
+        Helper to get legal move indices from FEN string.
+        """
+        temp_game = Game()
+        temp_game.reset_from_fen(fen)
+        return self.get_legal_move_indices(temp_game)
+    
+    def train(self, endgames: List[str] = config['endgames'], n_episodes: int = config['n_episodes']):
+        """
+        Train the policy on multiple endgame positions.
+        """
+        for episode in range(n_episodes):
+            # Randomly select an endgame position
+            starting_fen = np.random.choice(endgames)
+            
+            # Train on this episode
+            loss, DTM = self.train_episode(starting_fen)
+            
+            # Print progress
+            if (episode + 1) % 100 == 0:
+                print(f"Episode {episode + 1}/{n_episodes}, Loss: {loss:.4f}, DTM: {DTM}")
+        
         self.save_model()
-        self.plot_dtm_progress()
-        return self.policy
+                
     
     def plot_dtm_progress(self):
         """
@@ -399,13 +393,13 @@ class REINFORCE:
         """
         logger.info(f'Loading model with filepath {filepath}')
         try:
-            loaded_policy = policy()
+            loaded_policy = Policy()
             loaded_policy.load_state_dict(torch.load(filepath))
             loaded_policy.eval()
             return loaded_policy
         except FileNotFoundError:
             logger.error(f"File {filepath} not found. Returning randomly initialized policy.")
-            return policy()
+            return Policy()
         except Exception as e:
             logger.error(f"Error loading policy: {e}")
-            return policy()
+            return Policy()
