@@ -54,5 +54,8 @@ public:
     }
     std::string print() const;
 
-   
+    int count(Piece piece, Color color) const {
+        return __builtin_popcountll(pieces[color][piece]);
+    }
+
 };

@@ -10,6 +10,11 @@ public:
     Env(Game g, double gamma=1.0, double step_penalty=0.0)
       : game(std::move(g)), gamma(gamma), step_penalty(step_penalty), ply(0) {}
 
+    Env(const std::string& fen, double gamma=1.0, double step_penalty=0.0)
+      : game(), gamma(gamma), step_penalty(step_penalty), ply(0) {
+        game.reset_from_fen(fen);
+    }
+
     // Apply a move; compute reward for *the move that just happened*
     StepResult step(const Move& m) {
         game.do_move(const_cast<Move&>(m));
