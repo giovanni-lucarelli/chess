@@ -43,24 +43,14 @@ def parse_en_passant(ep_str):
         en_passant[square_idx] = 1
     return en_passant
 
-def parse_fen_to_features(fen_string):
-    parts = fen_string.split(' ')
+def parse_fen(fen):
+    """
+    Since we consider simple endgames (no pawns, no castling) where 
+    white always win or draws, we consider only piece placement for the NN.
+    """
+    parts = fen.split(' ')
     
     # 1. Board state (8x8x12 piece planes)
     board_tensor = parse_piece_placement(parts[0])  # [8, 8, 12]
     
-    # 2. Game state features
-    active_color = 1 if parts[1] == 'w' else 0  # [1]
-    castling_rights = parse_castling(parts[2])   # [4] (KQkq)
-    en_passant = parse_en_passant(parts[3])      # [64] (one-hot square)
-    halfmove_clock = int(parts[4]) / 50.0        # [1] (normalized)
-    fullmove = int(parts[5]) / 100.0             # [1] (normalized)
-    
-    # Concatenate all features
-    game_state = torch.cat([
-        torch.tensor([active_color, halfmove_clock, fullmove]),
-        castling_rights,
-        en_passant
-    ])  # Shape: [70]
-    
-    return board_tensor, game_state
+    return board_tensor
