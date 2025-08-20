@@ -200,7 +200,7 @@ std::vector<Move> Game::pseudo_legal_moves(Square from) const {
     }
     return moves;
 }
-
+        
 bool Game::is_move_legal(Move input_move) const {
     if (input_move.color == NO_COLOR)
         return false;

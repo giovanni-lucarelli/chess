@@ -82,7 +82,26 @@ PYBIND11_MODULE(chess_py, m) {
                 return g.parse_move(from, to);
             },
             "game"_a, "uci"_a,
-            R"doc(Create a Move from a UCI string like "e2e4" using the context of `game`.)doc");
+            R"doc(Create a Move from a UCI string like "e2e4" using the context of `game`.)doc")
+
+        .def_static("to_uci",
+            [](const Move& m) {
+                std::string uci = m.to_string(); // Gets "e2e4" format
+                
+                // Add promotion piece if applicable
+                if (m.type == MoveType::PROMOTION) {
+                    switch (m.promoted_to) {
+                        case Piece::QUEEN:  uci += "q"; break;
+                        case Piece::ROOK:   uci += "r"; break;
+                        case Piece::BISHOP: uci += "b"; break;
+                        case Piece::KNIGHT: uci += "n"; break;
+                        default: break; // No promotion piece or invalid
+                    }
+                }
+                
+                return uci;
+            },
+            R"doc(Return a UCI string representation of the Move, like "e2e4" or "e7e8q".)doc");
 
     py::class_<Game>(m, "Game")
         .def(py::init<>())

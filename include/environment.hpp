@@ -17,13 +17,11 @@ public:
 
         if (game.is_game_over()) {
             double z = game.result();  // +1/0/-1 (White POV, independent of side-to-move)
-            // If using gamma instead of step penalty:
-            double r = (gamma < 1.0 && z != 0.0) ? std::copysign(std::pow(gamma, ply-1), z) : z;
-            // Add step penalty if you use it:
-            r -= step_penalty;
-            return {r, true};
+            // Return full reward for terminal states without step penalty
+            // No gamma discount - checkmate is equally valuable regardless of when achieved
+            return {z, true};
         } else {
-            // non-terminal step reward (usually just step penalty)
+            // non-terminal step reward (just step penalty)
             return {-step_penalty, false};
         }
     }
