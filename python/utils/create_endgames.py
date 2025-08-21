@@ -1,15 +1,11 @@
 #!/usr/bin/env python3
 
-# system
-import sys
-
-sys.path.insert(0, '../')
 
 import random
 import json
 import numpy as np
 import itertools
-from build.chess_py import Game, Color
+from chessrl.chess_py import Game, Color
 
 def parse_fen_pieces(fen):
     """

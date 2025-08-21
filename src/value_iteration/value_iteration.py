@@ -22,7 +22,7 @@ import numpy as np
 import chess
 import chess.syzygy
 # chess
-from utils.env_class import Env, SyzygyDefender
+from chessrl.env import Env, SyzygyDefender
 from build.chess_py import Move
 from utils.create_endgames import generate_all_endgame_positions, pieces_to_board_string, parse_fen_pieces
 

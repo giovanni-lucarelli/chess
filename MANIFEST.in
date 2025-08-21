@@ -1,0 +1,5 @@
+recursive-include include *.hpp
+recursive-include binding *.cpp
+recursive-include src *.cpp
+recursive-include python/chessrl *.py
+global-exclude *.pyc __pycache__ .DS_Store

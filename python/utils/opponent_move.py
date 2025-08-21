@@ -1,48 +1,7 @@
-# import requests
-
-# def get_black_move(self, fen):
-#         """Query online tablebase (Lichess API)"""
-#         url = f"http://tablebase.lichess.ovh/standard?fen={fen}"
-        
-#         try:
-#             response = requests.get(url)
-#             data = response.json()
-            
-#             if 'moves' in data and data['moves']:
-#                 # Get the best move (first in the list)
-#                 best_move_data = data['moves'][0]
-#                 return best_move_data['uci']  # Return UCI string directly
-#             return None
-#         except:
-#             return None
-
-
-# two_ply_env.py
-# import requests
-# from dataclasses import dataclass
-# import sys
-# sys.path.insert(0, "../build")
-# import chess_py  
-
 from __future__ import annotations
 import sys, pathlib, requests
 from dataclasses import dataclass
-
-# Import from the C++ module - use the already imported chess_py if available
-try:
-    # Try to use already imported chess_py from sys.modules
-    if 'chess_py' in sys.modules:
-        chess_py = sys.modules['chess_py']
-        Color = chess_py.Color
-        Move = chess_py.Move
-    else:
-        # Fallback to direct import if not already loaded
-        from build.chess_py import Color, Move
-except ImportError:
-    # If build.chess_py fails, try chess_py directly
-    import chess_py
-    Color = chess_py.Color
-    Move = chess_py.Move
+from chessrl.chess_py import Color, Move
 
 # Since the C++ StepResult doesn't have a constructor exposed to Python,
 # we'll use our own compatible class for the TwoPlyEnv

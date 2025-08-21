@@ -1,29 +1,47 @@
-# env.py
+# # env.py
+# from __future__ import annotations
+# from dataclasses import dataclass
+# from typing import Any, Optional
+# import sys
+
+# import requests
+
+# # Import chess_py safely - use already loaded module if available
+# try:
+#     # Try to use already imported chess_py from sys.modules
+#     if 'chess_py' in sys.modules:
+#         cp = sys.modules['chess_py']
+#     else:
+#         # Fallback to direct import if not already loaded
+#         try:
+#             import build.chess_py as cp
+#         except ImportError:
+#             import chess_py as cp
+# except ImportError as e:
+#     raise ImportError(f"Could not import chess_py module: {e}")
+
+# from utils.plot_chess import plot_game          
+# import matplotlib.pyplot as plt  
+#             # usa python-chess
+
 from __future__ import annotations
 from dataclasses import dataclass
 from typing import Any, Optional
 import sys
-
 import requests
 
-# Import chess_py safely - use already loaded module if available
+# Prefer the packaged module name
 try:
-    # Try to use already imported chess_py from sys.modules
-    if 'chess_py' in sys.modules:
-        cp = sys.modules['chess_py']
-    else:
-        # Fallback to direct import if not already loaded
-        try:
-            import build.chess_py as cp
-        except ImportError:
-            import chess_py as cp
-except ImportError as e:
-    raise ImportError(f"Could not import chess_py module: {e}")
+    from . import chess_py as cp          # packaged (wheel / editable install)
+except Exception:
+    # Fallbacks for in-repo dev if someone runs without installing
+    try:
+        import chess_py as cp             # plain module name in build dir
+    except Exception as e:
+        raise ImportError(f"Could not import chess_py module: {e}")
 
-from utils.plot_chess import plot_game          
-import matplotlib.pyplot as plt  
-            # usa python-chess
-
+from utils.plot_chess import plot_game
+import matplotlib.pyplot as plt
 
 
 # ---------- Optional defenders ----------------
