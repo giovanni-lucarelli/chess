@@ -1,6 +1,6 @@
 import requests
 
-def get_black_move(self, fen):
+def get_black_move(fen):
         """Query online tablebase (Lichess API)"""
         url = f"http://tablebase.lichess.ovh/standard?fen={fen}"
         

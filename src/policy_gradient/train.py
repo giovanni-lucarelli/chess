@@ -25,6 +25,8 @@ if __name__ == '__main__':
     
     # Train the agent
     logger.info(f"Starting training for {config['n_episodes']} episodes...")
+    #fen = "8/1k6/3R4/1K6/8/8/8/8 w - - 0 1" # KRvK
+    #endgames = generate_endgame_positions(fen, config['n_endgames'])
     reinforce.train()
     logger.info("Training completed successfully")
     
