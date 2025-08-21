@@ -21,7 +21,7 @@ import pickle
 import numpy as np
 # chess
 from chessrl.env import Env, SyzygyDefender
-from build.chess_py import Move
+from chessrl.chess_py import Move
 from chessrl.utils.create_endgames import generate_all_endgame_positions, pieces_to_board_string, parse_fen_pieces
 
 class ValueIteration:
@@ -62,6 +62,10 @@ class ValueIteration:
                     if state_idx % 10000 == 0:  # Adjust frequency as needed
                         logger.info(f"  Processing state {state_idx+1}/{len(states)} in iteration {i+1}")
                         
+                    if state_idx == 10000:
+                        logger.info('Reached 10000 states, stopping early for demonstration purposes.')
+                        break
+
                     maxvalue = -100
                     TB_PATH = "tablebase"  
                     defender = SyzygyDefender(TB_PATH)                  

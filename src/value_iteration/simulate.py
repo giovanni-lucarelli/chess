@@ -60,7 +60,7 @@ if __name__ == '__main__':
         
         counter += 1
         
-        if counter > 150:
+        if counter > 50:
             logger.info(f'!!! GAME STOPPED - Turn limit reached ({counter-1} turns) !!!')
             break
         
