@@ -66,13 +66,20 @@ public:
     // ? is_checkmate = is_game_over ?
     // bool is_game_over();
     // ? what is this doing ?
-    
-    /// Returns true if *side_to_move()* is currently in check
+
+    // /// Returns true if *side_to_move()* is currently in check
+    // bool in_check() const {
+    //     // make sure your check_control() has been called most recently
+    //     // or call it here if it doesn’t mutate anything else 
+    //     return (get_side_to_move() == WHITE ? white_check : black_check);
+    // }
+
+    // Returns (white_in_check, black_in_check) without mutating state
+    std::pair<bool,bool> compute_check_flags() const;
+
     bool in_check() const {
-        // make sure your check_control() has been called most recently
-        // or call it here if it doesn’t mutate anything else
-        // check_control();  
-        return (get_side_to_move() == WHITE ? white_check : black_check);
+        auto [w_check, b_check] = compute_check_flags();
+        return get_side_to_move() == WHITE ? w_check : b_check;
     }
 
     /// True if side to move is in check and has no legal moves
@@ -112,7 +119,7 @@ public:
             // if it’s checkmate, the *side to move* just lost
             return (get_side_to_move() == WHITE ? -1.0 : +1.0);
         // stalemate ⇒ draw
-        return -1.0;
+        return 0.0;
     }
     
     /* --------------------------------- Actions -------------------------------- */

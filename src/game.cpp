@@ -719,3 +719,33 @@ std::string Game::to_fen() const {
     // 5) Halfmove/fullmove – if you don’t track them, emit "0 1"
     return placement + " " + stm + " " + cast + " " + ep + " 0 1";
 }
+
+std::pair<bool,bool> Game::compute_check_flags() const {
+    bool white_check = false, black_check = false;
+
+    // 1) Find king squares
+    Square white_king_sq = NO_SQUARE, black_king_sq = NO_SQUARE;
+    for (int sq = 0; sq < 64; ++sq) {
+        auto [col, piece] = board.get_piece_on_square(static_cast<Square>(sq));
+        if (piece == KING) {
+            if (col == WHITE) white_king_sq = static_cast<Square>(sq);
+            else if (col == BLACK) black_king_sq = static_cast<Square>(sq);
+        }
+    }
+
+    // 2) Scan attacks via pseudo moves (must be a const generator)
+    for (int sq = 0; sq < 64 && !(white_check && black_check); ++sq) {
+        auto [col, piece] = board.get_piece_on_square(static_cast<Square>(sq));
+        if (col == NO_COLOR) continue;
+
+        // This must not mutate state; provide a const overload if needed.
+        const auto moves = pseudo_legal_moves(static_cast<Square>(sq));
+        for (const auto& mv : moves) {
+            if (col == WHITE && mv.to == black_king_sq) black_check = true;
+            if (col == BLACK && mv.to == white_king_sq) white_check = true;
+            if (white_check && black_check) break;
+        }
+    }
+
+    return {white_check, black_check};
+}
