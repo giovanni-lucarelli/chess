@@ -6,3 +6,4 @@ plots/
 *.png
 *.so
 *.egg-info
+typescript
