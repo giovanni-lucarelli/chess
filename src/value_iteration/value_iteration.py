@@ -13,19 +13,16 @@ p(S' | S, A) =
 __Reward__ R: Only when checkmate happens (=terminal state!): +1 if it's the player checkmate, -1 if it's the "enviroment" checkmate.
  """
 import logging 
-from utils.load_config import load_config
+from chessrl.utils.load_config import load_config
 config = load_config()
 logging.basicConfig(level=config['log_level'], format = '%(asctime)s - %(levelname)s - %(message)s')
 logger = logging.getLogger(__name__)
 import pickle
 import numpy as np
-import chess
-import chess.syzygy
 # chess
 from chessrl.env import Env, SyzygyDefender
 from build.chess_py import Move
-from utils.create_endgames import generate_all_endgame_positions, pieces_to_board_string, parse_fen_pieces
-
+from chessrl.utils.create_endgames import generate_all_endgame_positions, pieces_to_board_string, parse_fen_pieces
 
 class ValueIteration:
     def __init__(
@@ -40,38 +37,6 @@ class ValueIteration:
         self.save_path = save_path
         self.tolerance = tolerance
 
-
-    def get_black_move(self, fen):
-        """Query local Syzygy tablebase"""
-        TB_PATH = "tablebase"
-        board = chess.Board(fen)
-        
-        try:
-            with chess.syzygy.open_tablebase(TB_PATH) as tablebase:
-                # Query DTZ tablebase for best move
-                best_move = None
-                best_dtz = None
-                
-                for move in board.legal_moves:
-                    board.push(move)
-                    try:
-                        # why it doesn't evaluate the moves?
-                        dtz = tablebase.probe_dtz(board)  # distance to zeroing move
-                        
-                        if best_dtz is None or (dtz is not None and dtz < best_dtz):
-                            best_dtz = dtz
-                            best_move = move
-                    except:
-                        # why it analysizes the same move multiple times?
-                        logger.info(f"Can't evaluate this move: {move}")
-                        pass  # Skip moves that can't be evaluated
-                    finally:
-                        board.pop()
-                
-                return best_move.uci() if best_move else None
-        except Exception as e:
-            logger.error(f"Error accessing tablebase: {e}")
-            return None
 
     def train(self,base_fen):
         """
@@ -97,14 +62,11 @@ class ValueIteration:
                     if state_idx % 10000 == 0:  # Adjust frequency as needed
                         logger.info(f"  Processing state {state_idx+1}/{len(states)} in iteration {i+1}")
                         
-                    if state_idx == 10000:
-                        logger.info('Reached 10000 states, stopping early for demonstration purposes.')
-                        break 
-                    
                     maxvalue = -100
+                    TB_PATH = "tablebase"  
+                    defender = SyzygyDefender(TB_PATH)                  
                     
-                    
-                    enviroment = Env.from_fen(fen, gamma = self.gamma, step_penalty = self.step_penalty, absorb_black_reply = False)
+                    enviroment = Env.from_fen(fen, gamma = self.gamma, step_penalty = self.step_penalty, defender=defender)
                     color = enviroment.state().get_side_to_move()
 
                     # Check if it's already checkmate
@@ -117,22 +79,10 @@ class ValueIteration:
 
                     # it "tries out" all actions and store the best
                     for A in enviroment.state().legal_moves(color):
-                        enviroment = Env.from_fen(fen, gamma = self.gamma, step_penalty = self.step_penalty, absorb_black_reply = False)
+                        enviroment = Env.from_fen(fen, gamma = self.gamma, step_penalty = self.step_penalty, defender = defender)
+                        # Contains both my move and the defender's reply
                         stepResult = enviroment.step(A)
                         R = stepResult.reward
-
-
-                        # Check if the move doesn't lead to a terminal state
-                        if (not (stepResult.done)):
-                            new_fen = enviroment.state().to_fen()
-                            #logger.info(f"Evaluating move {A} in state {fen}, resulting in new state {new_fen}")
-                            # we assume that black is deterministic and makes always the best move
-                            best_move_uci = self.get_black_move(new_fen)
-                            if best_move_uci is None:
-                                logger.info(f"No valid move found for black in state {new_fen}")
-                                break
-                            best_move = Move.from_uci(enviroment.state(), best_move_uci)
-                            R = enviroment.step(best_move).reward
                         
                         fen_new = enviroment.state().to_fen()
                         
@@ -152,9 +102,9 @@ class ValueIteration:
 
             #Estimate change
             err = np.sqrt(np.mean( (newValues - values)**2))
+            logger.info('Distance between V_{}(S) and V_{}(S) is: {}'.format(i, i+1, err))
             if err < self.tolerance:
                 logger.info(f'Convergence reached with tolerance {self.tolerance} after {i+1} iterations.')
-                logger.debug('Distance between V_{}(S) and V_{}(S) is: {}'.format(i, i+1, err))
                 break
 
         logger.info('Training completed.')
@@ -173,3 +123,4 @@ class ValueIteration:
             pickle.dump(serializable_policy, f)
 
         return newPolicy
+
