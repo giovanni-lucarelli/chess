@@ -21,9 +21,9 @@ import pickle
 import numpy as np
 import chess
 import chess.syzygy
-import requests
 # chess
-from build.chess_py import Game, Env, Move
+from utils.env_class import Env, SyzygyDefender
+from build.chess_py import Move
 from utils.create_endgames import generate_all_endgame_positions, pieces_to_board_string, parse_fen_pieces
 
 
@@ -41,24 +41,6 @@ class ValueIteration:
         self.tolerance = tolerance
 
 
-    def make_fen(self,base_fen, s, side="w") -> str:
-        """Return the corresponding FEN string."""
-        # Parse the base FEN
-        fen_parts = base_fen.split()
-
-        # Create new FEN
-        new_board = pieces_to_board_string(s)
-            
-        # Keep original game state info (active color, castling, etc.)
-        new_fen = new_board + ' ' + ' '.join(fen_parts[1:])
-        
-        # Debug logging
-        logger.debug(f"make_fen: base_fen={base_fen}")
-        logger.debug(f"make_fen: state s={s}")
-        logger.debug(f"make_fen: generated new_fen={new_fen}")
-
-        return new_fen
-
     def get_black_move(self, fen):
         """Query local Syzygy tablebase"""
         TB_PATH = "tablebase"
@@ -73,12 +55,15 @@ class ValueIteration:
                 for move in board.legal_moves:
                     board.push(move)
                     try:
+                        # why it doesn't evaluate the moves?
                         dtz = tablebase.probe_dtz(board)  # distance to zeroing move
                         
                         if best_dtz is None or (dtz is not None and dtz < best_dtz):
                             best_dtz = dtz
                             best_move = move
                     except:
+                        # why it analysizes the same move multiple times?
+                        logger.info(f"Can't evaluate this move: {move}")
                         pass  # Skip moves that can't be evaluated
                     finally:
                         board.pop()
@@ -93,11 +78,7 @@ class ValueIteration:
         Trains value iteration on the chess endgame starting from base_fen.
         Returns a dictionary: state_tuple -> best_action
         """
-        logger.info('Starting training...')
-        # Generate positions ONCE at start of training for efficiency
-        #logger.info('Generating endgame positions...')
-        #positions = generate_endgame_positions(fen, 100) # Generating 100 random (legal) positions from current endgame (maintaining same pieces, just permuting positions)
-        #logger.debug(f'Generated {len(positions)} endgame positions for training')
+        logger.info('Creating the states...')
         
         # Inizialize vector of values for all states
         states, state_to_idx, values = generate_all_endgame_positions(base_fen)
@@ -107,68 +88,72 @@ class ValueIteration:
         logger.info(f"Training on {len(states)} states")
 
 
-        for i in range(1):
-            logger.info(f"Starting iteration {i+1}/100")
+        for i in range(5):
+            logger.info(f"Starting iteration {i+1}/5")
             values = newValues.copy()
             
             # cycle over all the states, where each state is defined by the pieces position
-            for state_idx, s in enumerate(states):
+            for state_idx, fen in enumerate(states):
                     if state_idx % 10000 == 0:  # Adjust frequency as needed
                         logger.info(f"  Processing state {state_idx+1}/{len(states)} in iteration {i+1}")
                         
                     if state_idx == 10000:
                         logger.info('Reached 10000 states, stopping early for demonstration purposes.')
-                        break
+                        break 
                     
                     maxvalue = -100
                     
-                    fen = self.make_fen(base_fen, s, "w")
-
-                    game = Game()
-                    game.reset_from_fen(fen)
-                    enviroment = Env(game, gamma = self.gamma, step_penalty = self.step_penalty)
+                    
+                    enviroment = Env.from_fen(fen, gamma = self.gamma, step_penalty = self.step_penalty, absorb_black_reply = False)
                     color = enviroment.state().get_side_to_move()
 
                     # Check if it's already checkmate
-                    if (game.get_check(color)):
-                        values[state_to_idx[s]]= 0
-                        newPolicy[s] = None
+                    if (enviroment.is_terminal()):
+                        values[state_to_idx[fen]]= 0
+                        newPolicy[fen] = None
                         continue
+
+                    bestact = enviroment.state().legal_moves(color)[0] 
 
                     # it "tries out" all actions and store the best
                     for A in enviroment.state().legal_moves(color):
-                        game.do_move(A)
+                        enviroment = Env.from_fen(fen, gamma = self.gamma, step_penalty = self.step_penalty, absorb_black_reply = False)
+                        stepResult = enviroment.step(A)
+                        R = stepResult.reward
 
-                        # we assume that black is deterministic and makes always the best move
-                        best_move_uci = self.get_black_move(game.to_fen())
-                        if best_move_uci is None:
-                            # If no move from tablebase, skip this action
-                            game.undo_move(A)
-                            continue
+
+                        # Check if the move doesn't lead to a terminal state
+                        if (not (stepResult.done)):
+                            new_fen = enviroment.state().to_fen()
+                            #logger.info(f"Evaluating move {A} in state {fen}, resulting in new state {new_fen}")
+                            # we assume that black is deterministic and makes always the best move
+                            best_move_uci = self.get_black_move(new_fen)
+                            if best_move_uci is None:
+                                logger.info(f"No valid move found for black in state {new_fen}")
+                                break
+                            best_move = Move.from_uci(enviroment.state(), best_move_uci)
+                            R = enviroment.step(best_move).reward
                         
-                        best_move = Move.from_uci(game, best_move_uci)
-                        game.do_move(best_move)
-
-                        s_new = tuple(parse_fen_pieces(game.to_fen()))
-
-                        R = 1 if game.get_check(color) else 0
+                        fen_new = enviroment.state().to_fen()
                         
-                        value_action = R + values[state_to_idx[s_new]]
-                            
+                        try: 
+                            value_action = R + values[state_to_idx[fen_new]]
+                        except KeyError:
+                            logger.info(f"State {enviroment.state().to_fen()} not found in state space, previous {fen}, next move is for {enviroment.state().get_side_to_move()}")
+                            break
+                        
                         if (value_action > maxvalue):
                             maxvalue = value_action
                             bestact = A
-
-                        game.undo_move(best_move)
-                        game.undo_move(A)
-
+        
                     # It stores the new value and policy of state S
-                    newValues[state_to_idx[s]] = maxvalue
-                    newPolicy[s] = bestact
+                    newValues[state_to_idx[fen]] = maxvalue
+                    newPolicy[fen] = bestact
 
             #Estimate change
             err = np.sqrt(np.mean( (newValues - values)**2))
             if err < self.tolerance:
+                logger.info(f'Convergence reached with tolerance {self.tolerance} after {i+1} iterations.')
                 logger.debug('Distance between V_{}(S) and V_{}(S) is: {}'.format(i, i+1, err))
                 break
 
@@ -181,7 +166,7 @@ class ValueIteration:
             serializable_policy = {}
             for state, move in newPolicy.items():
                 if move is not None:
-                    serializable_policy[state] = f"{str(move.from_square)}{str(move.to_square)}"
+                    serializable_policy[state] = Move.to_uci(move)
                 else:
                     serializable_policy[state] = None
             

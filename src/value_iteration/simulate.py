@@ -8,7 +8,6 @@ sys.path.insert(0, '../../')
 import os
 import glob
 import logging 
-import requests
 from utils.load_config import load_config
 from utils.create_endgames import parse_fen_pieces
 config = load_config()
@@ -25,20 +24,33 @@ import chess.syzygy
 import pickle
 
 def get_black_move(self, fen):
-        """Query online tablebase (Lichess API)"""
-        url = f"http://tablebase.lichess.ovh/standard?fen={fen}"
+    """Query local Syzygy tablebase"""
+    TB_PATH = "tablebase"
+    board = chess.Board(fen)
         
-        try:
-            response = requests.get(url)
-            data = response.json()
-            
-            if 'moves' in data and data['moves']:
-                # Get the best move (first in the list)
-                best_move_data = data['moves'][0]
-                return best_move_data['uci']  # Return UCI string directly
-            return None
-        except:
-            return None
+    try:
+        with chess.syzygy.open_tablebase(TB_PATH) as tablebase:
+            # Query DTZ tablebase for best move
+            best_move = None
+            best_dtz = None
+                
+            for move in board.legal_moves:
+                board.push(move)
+                try:
+                    dtz = tablebase.probe_dtz(board)  # distance to zeroing move
+                        
+                    if best_dtz is None or (dtz is not None and dtz < best_dtz):
+                        best_dtz = dtz
+                        best_move = move
+                except:
+                    pass  # Skip moves that can't be evaluated
+                finally:
+                    board.pop()
+                
+            return best_move.uci() if best_move else None
+    except Exception as e:
+        logger.error(f"Error accessing tablebase: {e}")
+        return None
 
 if __name__ == '__main__':
     # Clean previous plots
@@ -59,16 +71,35 @@ if __name__ == '__main__':
     plt.show()
     counter = 1
     while True:
-        pieces = tuple(parse_fen_pieces(game.to_fen()))
-        move_uci = policy[pieces]  # This is now a UCI string
+        current_fen = game.to_fen()
+        pieces = tuple(parse_fen_pieces(current_fen))
+        
+        logger.info(f'Current FEN: {current_fen}')
+        logger.info(f'Pieces tuple: {pieces}')
+        
+        # Check if this state exists in the policy
+        if pieces not in policy:
+            logger.error(f'State {pieces} not found in policy!')
+            
+        move_uci = policy[pieces] 
         if move_uci is None:
-            logger.info('No valid move found in policy, stopping simulation.')
+            logger.info('No valid white move found in policy, stopping simulation.')
             break
-        move = Move.from_uci(game, move_uci)  # Convert back to Move object
+        logger.info(f'Policy UCI move: {move_uci}')
+        
+        move = Move.from_uci(game, move_uci)  # Convert to Move object
         game.do_move(move)
-        game.do_move(move)
+
+        if game.is_game_over():
+            logger.info('!!! CHECKMATE !!!')
+            break
+        
         best_move_uci = get_black_move(game.to_fen())
-        best_move = chess.Move.from_uci(game, best_move_uci)
+        if best_move_uci is None:
+            logger.info('No valid black move found, stopping simulation.')
+            break
+        
+        best_move = Move.from_uci(game, best_move_uci)
         game.do_move(best_move)
         
         plot_game(game, save_path=f'output/plots/turn_{counter}.png', title=f'Turn {counter}')
