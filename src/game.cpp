@@ -265,26 +265,31 @@ std::vector<Move> Game::legal_moves(Color color) const {
 }
 
 bool Game::is_insufficient_material() const {
+      int wp = board.count(PAWN, WHITE);
+      int wr = board.count(ROOK, WHITE);  // ADD THIS
+      int wq = board.count(QUEEN, WHITE); // ADD THIS
+      int wb = board.count(BISHOP, WHITE);
+      int wn = board.count(KNIGHT, WHITE);
 
-    int wb = board.count(BISHOP, WHITE);
-    int wn = board.count(KNIGHT, WHITE);
-    int bb = board.count(BISHOP, BLACK);
-    int bn = board.count(KNIGHT, BLACK);
+      int bp = board.count(PAWN, BLACK);
+      int br = board.count(ROOK, BLACK);  // ADD THIS
+      int bq = board.count(QUEEN, BLACK); // ADD THIS
+      int bb = board.count(BISHOP, BLACK);
+      int bn = board.count(KNIGHT, BLACK);
 
-    // K vs K
-    if ((wb + wn + bb + bn) == 0) return true;
+      // K vs K
+      if ((wp + wr + wq + wb + wn + bp + br + bq + bb + bn) == 0) return true;
 
-    // K vs (B or N)
-    if ((wb + wn) == 1 && (bb + bn) == 0) return true;
-    if ((bb + bn) == 1 && (wb + wn) == 0) return true;
+      // K vs (B or N) only - any rook, queen, or pawn makes it sufficient
+      if ((wp + wr + wq + wb + wn) == 1 && wb + wn == 1 && (bp + br + bq + bb + bn) == 0) return true;
+      if ((bp + br + bq + bb + bn) == 1 && bb + bn == 1 && (wp + wr + wq + wb + wn) == 0) return true;
 
-    // two horses 
-    if (wn >= 2 && wb == 0 && bb == 0 && bn == 0) return true;
-    if (bn >= 2 && bb == 0 && wb == 0 && wn == 0) return true;
+      // Two knights only
+      if (wn >= 2 && wp + wr + wq + wb == 0 && bp + br + bq + bb + bn == 0) return true;
+      if (bn >= 2 && bp + br + bq + bb == 0 && wp + wr + wq + wb + wn == 0) return true;
 
-    // otherwise don't declare insufficient
-    return false;
-}
+      return false;
+  }
 
 
 void Game::do_move(Move& move) {

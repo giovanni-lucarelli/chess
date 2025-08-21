@@ -94,7 +94,14 @@ public:
 
     /// Game is over if it’s a checkmate *or* a stalemate
     bool is_game_over() const {
-        return is_checkmate() || is_draw();
+        // terminal by rule
+        if (is_checkmate()) return true;
+        if (is_stalemate()) return true;
+        if (is_insufficient_material()) return true;      // if you implement this
+        // if (is_fifty_move_rule()) return true;            // halfmove clock >= 100
+        // if (is_threefold_repetition()) return true;       // if tracked
+
+        return false;
     }
 
     /// +1 for White win, -1 for Black win, 0 otherwise

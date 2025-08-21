@@ -134,6 +134,7 @@ PYBIND11_MODULE(chess_py, m) {
         .def("is_checkmate", &Game::is_checkmate)
         .def("is_stalemate", &Game::is_stalemate)
         .def("is_game_over", &Game::is_game_over)
+        .def("is_insufficient_material", &Game::is_insufficient_material)
         .def("result", &Game::result)
 
         // --- Actions ---
