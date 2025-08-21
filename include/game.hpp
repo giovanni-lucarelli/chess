@@ -110,9 +110,9 @@ public:
             return 0.0;
         if (is_checkmate()) 
             // if it’s checkmate, the *side to move* just lost
-            return (get_side_to_move() == WHITE ? -1000.0 : +1000.0);
+            return (get_side_to_move() == WHITE ? -1.0 : +1.0);
         // stalemate ⇒ draw
-        return -1000.0;
+        return -1.0;
     }
     
     /* --------------------------------- Actions -------------------------------- */

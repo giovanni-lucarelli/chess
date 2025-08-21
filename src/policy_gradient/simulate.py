@@ -16,8 +16,8 @@ import matplotlib.pyplot as plt # type: ignore
 
 # chess
 from utils.plot_chess import plot_game
-from src.policy_gradient.reinforce import policy, REINFORCE
-from build.chess_py import Game, Env
+from src.policy_gradient.reinforce import Policy, REINFORCE
+from build.chess_py import Game, Env # type: ignore
 
 if __name__ == '__main__':
     # Clean previous plots
@@ -30,15 +30,15 @@ if __name__ == '__main__':
     reinforce = REINFORCE()
     reinforce.load_model(config['filepath_test'])
     policy = reinforce.policy
-    game.reset_from_fen(config['test_endgames'][0])
-    env = Env(game, gamma = config['gamma'], step_penalty = config['step_penalty'])
+    game.reset_from_fen(config['endgames'][4])
+    env = Env(game, step_penalty = 0.01)
     
     logger.info('Start simulating...')
     plot_game(game, save_path=f'output/plots/turn_0.png', title='Initial Position')
     plt.show()
     counter = 1
     while True:
-        move = policy.predict(env.state())
+        move = policy.predict(env.state(), reinforce.move_to_idx)
         game.do_move(move)
         step = env.step(move)
         plot_game(game, save_path=f'output/plots/turn_{counter}.png', title=f'Turn {counter}')

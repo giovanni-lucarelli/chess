@@ -106,12 +106,19 @@ chess/
     ```sh
     make clean_all
     ```
-## Installing Python Requirements
+## Clone & set up a virtual environment
 
 ```
+git clone <this-repo-url> chess_RL
+cd chess_RL
+
 python -m venv .venv
-source .venv/bin/activate
-pip install -r requirements.txt
+source .venv/bin/activate        # Windows: .venv\Scripts\activate
+python -m pip install -U pip
+```
+install the python package
+```
+pip install -e .
 
 ```
 
