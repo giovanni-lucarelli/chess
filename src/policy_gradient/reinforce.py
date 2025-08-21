@@ -15,7 +15,7 @@ import matplotlib.pyplot as plt
 from utils.fen_parsing import *
 from utils.load_config import load_config
 from utils.create_endgames import generate_endgame_positions
-from utils.opponent_move import get_black_move
+from utils.opponent_move import LichessDefender
 import random
 import requests
 from typing import List
@@ -168,6 +168,9 @@ class REINFORCE:
         
         self.dtm_history = []
         self.max_steps = max_steps
+        
+        # Initialize Lichess defender for black moves
+        self.defender = LichessDefender()
 
         # For converting between moves and indices
         self.move_to_idx = {}
@@ -268,7 +271,7 @@ class REINFORCE:
                 players.append(0)  # 0 for white
                 
             else:  # Black turn - use tablebase
-                black_move_uci = get_black_move(current_fen)
+                black_move_uci = self.defender.best_reply_uci(current_fen)
                 if black_move_uci is None:
                     break  # No legal moves or API error
                     
@@ -283,7 +286,16 @@ class REINFORCE:
                 players.append(1)  # 1 for black
             
             # Check if game is over
+            logger.info(f"Position: {current_fen}")
+            logger.info(f"Step result done: {step_result.done}")
+            logger.info(f"Step result reward: {step_result.reward}")
+            
+            # Check legal moves for current side
+            legal_moves_current = game.legal_moves(game.get_side_to_move())
+            logger.info(f"Legal moves for current side: {len(legal_moves_current)}")
+            
             if step_result.done:
+                logger.info(f'Game ended after {step + 1} steps. Reward: {step_result.reward}')
                 break
         
         # Calculate DTM (Distance to Mate)

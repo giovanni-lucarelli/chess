@@ -28,18 +28,29 @@ from __future__ import annotations
 import sys, pathlib, requests
 from dataclasses import dataclass
 
-_root = pathlib.Path(__file__).resolve().parents[1]
-_build = _root / "build"
-if str(_build) not in sys.path:
-    sys.path.insert(0, str(_build))
+# Import from the C++ module - use the already imported chess_py if available
+try:
+    # Try to use already imported chess_py from sys.modules
+    if 'chess_py' in sys.modules:
+        chess_py = sys.modules['chess_py']
+        Color = chess_py.Color
+        Move = chess_py.Move
+    else:
+        # Fallback to direct import if not already loaded
+        from build.chess_py import Color, Move
+except ImportError:
+    # If build.chess_py fails, try chess_py directly
+    import chess_py
+    Color = chess_py.Color
+    Move = chess_py.Move
 
-import chess_py 
-
+# Since the C++ StepResult doesn't have a constructor exposed to Python,
+# we'll use our own compatible class for the TwoPlyEnv
 @dataclass
-class StepResult:
+class TwoPlyStepResult:
     reward: float
     done: bool
-    info: dict
+    info: dict = None
 
 # ---- Defender policies ----
 class LichessDefender:
@@ -93,7 +104,7 @@ class TwoPlyEnv:
       - checkmate for White: 0
       - draw (stalemate/insufficient/etc.): -100  
     """
-    def __init__(self, base_env: "chess_py.Env", defender=None,
+    def __init__(self, base_env, defender=None,
                  step_cost_per_two_ply: float = 2.0, draw_penalty: float = 100.0):
         self.env = base_env
         self.defender = defender or LichessDefender()
@@ -101,23 +112,23 @@ class TwoPlyEnv:
         self.draw_penalty = draw_penalty
 
     # Convert UCI to C++ Move; if you have Move.from_uci(..), use that.
-    def _uci_to_move(self, uci: str) -> "chess_py.Move":
+    def _uci_to_move(self, uci: str):
         g = self.env.state()
-        # if hasattr(chess_py.Move, "from_uci"):
-        return chess_py.Move.from_uci(g, uci)  # preferred
+        # if hasattr(Move, "from_uci"):
+        return Move.from_uci(g, uci)  # preferred
         # from_sq, to_sq = uci[:2], uci[2:4]
         # # Promotions: your Game::choose_promotion_piece() can handle default 'Q';
         # # if you need explicit promotion, extend parse_move to accept it.
         # return g.parse_move(from_sq, to_sq)
 
-    def step(self, white_uci: str) -> StepResult:
+    def step(self, white_uci: str) -> TwoPlyStepResult:
         # 1) White plays
         sr_w = self.env.step(self._uci_to_move(white_uci))
         if sr_w.done:
-            # Map your engine’s terminal scores to the shortest-mate objective
+            # Map your engine's terminal scores to the shortest-mate objective
             # Your Game::result currently returns ±1000 for mate and -1000 for draw.
             r = 0.0 if sr_w.reward > 0 else -self.draw_penalty
-            return StepResult(reward=r, done=True, info={"who":"white", "white_uci":white_uci})
+            return TwoPlyStepResult(reward=r, done=True, info={"who":"white", "white_uci":white_uci})
 
         # 2) Black best reply from tablebase
         fen = self.env.to_fen()
@@ -125,20 +136,20 @@ class TwoPlyEnv:
 
         if black_uci is None:
             # pick any legal black move 
-            legal_b = self.env.state().legal_moves(chess_py.Color.BLACK)
+            legal_b = self.env.state().legal_moves(Color.BLACK)
             if not legal_b:
                 # No legal moves – treat as terminal per C++ state; re-check:
-                return StepResult(reward=-self.draw_penalty, done=True, info={"who":"black"})
+                return TwoPlyStepResult(reward=-self.draw_penalty, done=True, info={"who":"black"})
             # If legal_moves returns Move objects, convert one back to UCI
             black_uci = getattr(legal_b[0], "uci", None) or str(legal_b[0])
 
         sr_b = self.env.step(self._uci_to_move(black_uci))
         if sr_b.done:
-            # If game ended after Black’s reply, it must be a draw (stalemate/insufficient),
+            # If game ended after Black's reply, it must be a draw (stalemate/insufficient),
             # because Black has only a King and cannot mate White.
-            return StepResult(reward=-self.draw_penalty, done=True,
+            return TwoPlyStepResult(reward=-self.draw_penalty, done=True,
                               info={"who":"black", "white_uci":white_uci, "black_uci":black_uci})
 
         # 3) Non-terminal: charge the 2-ply cost
-        return StepResult(reward=-self.step_cost, done=False,
+        return TwoPlyStepResult(reward=-self.step_cost, done=False,
                           info={"white_uci":white_uci, "black_uci":black_uci})
