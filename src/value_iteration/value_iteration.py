@@ -88,8 +88,8 @@ class ValueIteration:
         logger.info(f"Training on {len(states)} states")
 
 
-        for i in range(5):
-            logger.info(f"Starting iteration {i+1}/5")
+        for i in range(1):
+            logger.info(f"Starting iteration {i+1}/1")
             values = newValues.copy()
             
             # cycle over all the states, where each state is defined by the pieces position
@@ -97,14 +97,15 @@ class ValueIteration:
                     if state_idx % 10000 == 0:  # Adjust frequency as needed
                         logger.info(f"  Processing state {state_idx+1}/{len(states)} in iteration {i+1}")
                         
-                    if state_idx == 10000:
+                    """if state_idx == 10000:
                         logger.info('Reached 10000 states, stopping early for demonstration purposes.')
-                        break 
+                        return newPolicy """
                     
                     maxvalue = -100
+                    TB_PATH = "tablebase"  
+                    defender = SyzygyDefender(TB_PATH)                  
                     
-                    
-                    enviroment = Env.from_fen(fen, gamma = self.gamma, step_penalty = self.step_penalty, absorb_black_reply = False)
+                    enviroment = Env.from_fen(fen, gamma = self.gamma, step_penalty = self.step_penalty, defender=defender)
                     color = enviroment.state().get_side_to_move()
 
                     # Check if it's already checkmate
@@ -117,22 +118,10 @@ class ValueIteration:
 
                     # it "tries out" all actions and store the best
                     for A in enviroment.state().legal_moves(color):
-                        enviroment = Env.from_fen(fen, gamma = self.gamma, step_penalty = self.step_penalty, absorb_black_reply = False)
+                        enviroment = Env.from_fen(fen, gamma = self.gamma, step_penalty = self.step_penalty, defender = defender)
+                        # Contains both my move and the defender's reply
                         stepResult = enviroment.step(A)
                         R = stepResult.reward
-
-
-                        # Check if the move doesn't lead to a terminal state
-                        if (not (stepResult.done)):
-                            new_fen = enviroment.state().to_fen()
-                            #logger.info(f"Evaluating move {A} in state {fen}, resulting in new state {new_fen}")
-                            # we assume that black is deterministic and makes always the best move
-                            best_move_uci = self.get_black_move(new_fen)
-                            if best_move_uci is None:
-                                logger.info(f"No valid move found for black in state {new_fen}")
-                                break
-                            best_move = Move.from_uci(enviroment.state(), best_move_uci)
-                            R = enviroment.step(best_move).reward
                         
                         fen_new = enviroment.state().to_fen()
                         
