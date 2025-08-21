@@ -40,8 +40,8 @@ class BuildExt(build_ext):
 setup(
     name="chessrl",
     version="0.1.0",
-    packages=find_packages(where="python") + ["utils"],
-    package_dir={"": "python", "utils": "utils"},
+    packages=find_packages(where="python", include=["chessrl", "chessrl.*"]),
+    package_dir={"": "python"},
     ext_modules=[ext],
     include_package_data=True,
 )

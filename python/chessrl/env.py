@@ -14,7 +14,7 @@ except Exception:
     except Exception as e:
         raise ImportError(f"Could not import chess_py module: {e}")
 
-from utils.plot_chess import plot_game
+from chessrl.utils.plot_chess import plot_game
 import matplotlib.pyplot as plt
 
 
