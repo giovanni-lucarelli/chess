@@ -4,8 +4,8 @@ from dataclasses import dataclass
 from typing import Any, Optional
 
 import requests
-import chess_py as cp  # your pybind11 module
-from plot_chess import plot_game          
+import build.chess_py as cp  # your pybind11 module
+from utils.plot_chess import plot_game          
 import matplotlib.pyplot as plt  
             # usa python-chess
 

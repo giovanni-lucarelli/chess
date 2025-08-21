@@ -1,14 +1,15 @@
 #!/usr/bin/env python3
 
 # system
-import sys 
+import sys
+
 sys.path.insert(0, '../')
 
 import random
 import json
 import numpy as np
 import itertools
-from build.chess_py import Game
+from build.chess_py import Game, Color
 
 def parse_fen_pieces(fen):
     """
@@ -232,9 +233,22 @@ def generate_endgame_positions(base_fen, num_positions):
     
     return positions
 
+def check_legality_with_engine(fen):
+    game = Game()
+    game.reset_from_fen(fen)
+    game.set_side_to_move(Color.BLACK)
+    # If black in check and still has moves
+    if game.get_check(Color.BLACK) and any(game.legal_moves(Color.BLACK)):
+        game.set_side_to_move(Color.WHITE)
+        return False
+    game.set_side_to_move(Color.WHITE)
+    return True
+
 def generate_all_endgame_positions(base_fen):
     # Parse the base FEN
+    fen_parts = base_fen.split()
     original_pieces = parse_fen_pieces(base_fen)
+    default_fen_part =' ' + ' '.join(fen_parts[1:])
     
     # Always keep both kings
     kings = [p for p in original_pieces if p[0].lower() == 'k']
@@ -254,18 +268,18 @@ def generate_all_endgame_positions(base_fen):
             for piece_perm in set(itertools.permutations(piece_types)):
                 for chosen_squares in itertools.combinations(range(64), n):
                     state = tuple(zip(piece_perm, chosen_squares))  # make hashable
-                    if is_position_legal(state):
-                        if state not in state_to_idx:  # avoid duplicates
-                            idx = len(positions)
-                            positions.append(state)
-                            state_to_idx[state] = idx
+                    fen = pieces_to_board_string(state) + default_fen_part 
+                    if is_position_legal(state) and check_legality_with_engine(fen):
+                            fen = pieces_to_board_string(state) + default_fen_part
+                            if fen not in state_to_idx:  # avoid duplicates
+                                idx = len(positions)
+                                positions.append(fen)
+                                state_to_idx[fen] = idx
 
     values = np.zeros(len(positions), dtype=float)
     
     print(f"Total states: {len(positions)}")
-    if positions:
-        print("Example state:", positions[0])
-        print("Value of that state:", values[0])
-        print("Index of that state:", state_to_idx[positions[0]])
+
+    print(positions[0])
     
     return positions, state_to_idx, values
