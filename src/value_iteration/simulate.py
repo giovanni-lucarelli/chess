@@ -34,36 +34,38 @@ if __name__ == '__main__':
         
     TB_PATH = "tablebase"  
     defender = SyzygyDefender(TB_PATH) 
-    env = Env.from_fen(config['test_endgames'][0], gamma = config['gamma'], step_penalty = config['step_penalty'], defender = defender)
     
     logger.info('Start simulating...')
-    env.display_state()
-    plt.show()
-    counter = 1
-    while True:
-        current_fen = env.to_fen()
+    for fen in config['test_endgames']:
+        env = Env.from_fen(fen, gamma = config['gamma'], step_penalty = config['step_penalty'], defender = defender)
         
-        logger.info(f'Current FEN: {current_fen}')
-        
-        # Check if this state exists in the policy
-        if current_fen not in policy:
-            logger.error(f'Current FEN not found in policy!')
+        env.display_state()
+        #plt.show()
+        counter = 1
+        while True:
+            current_fen = env.to_fen()
             
-        move_uci = policy[current_fen] 
-        if move_uci is None:
-            logger.info('No valid white move found in policy, stopping simulation.')
-            break
-        logger.info(f'Policy UCI move: {move_uci}')
-        
-        # Apply the move to the environment
-        env.step(move_uci)
-        
-        counter += 1
-        
-        if counter > 50:
-            logger.info(f'!!! GAME STOPPED - Turn limit reached ({counter-1} turns) !!!')
-            break
-        
-        if env.state().is_game_over():
-            logger.info('!!! GAME OVER !!!')
-            break
+            logger.info(f'Current FEN: {current_fen}')
+            
+            # Check if this state exists in the policy
+            if current_fen not in policy:
+                logger.error(f'Current FEN not found in policy!')
+                
+            move_uci = policy[current_fen] 
+            if move_uci is None:
+                logger.info('No valid white move found in policy, stopping simulation.')
+                break
+            logger.info(f'Policy UCI move: {move_uci}')
+            
+            # Apply the move to the environment
+            env.step(move_uci)
+            
+            counter += 1
+            
+            if counter > 50:
+                logger.info(f'!!! GAME STOPPED - Turn limit reached ({counter-1} turns) !!!')
+                break
+            
+            if env.state().is_game_over():
+                logger.info('Checkmate!')
+                break
