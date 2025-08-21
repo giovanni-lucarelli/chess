@@ -53,8 +53,8 @@ class ValueIteration:
         logger.info(f"Training on {len(states)} states")
 
 
-        for i in range(1):
-            logger.info(f"Starting iteration {i+1}/1")
+        for i in range(5):
+            logger.info(f"Starting iteration {i+1}/5")
             values = newValues.copy()
             
             # cycle over all the states, where each state is defined by the pieces position
@@ -62,9 +62,9 @@ class ValueIteration:
                     if state_idx % 10000 == 0:  # Adjust frequency as needed
                         logger.info(f"  Processing state {state_idx+1}/{len(states)} in iteration {i+1}")
                         
-                    """if state_idx == 10000:
+                    if state_idx == 10000:
                         logger.info('Reached 10000 states, stopping early for demonstration purposes.')
-                        return newPolicy """
+                        return newPolicy
                     
                     maxvalue = -100
                     TB_PATH = "tablebase"  
@@ -106,9 +106,9 @@ class ValueIteration:
 
             #Estimate change
             err = np.sqrt(np.mean( (newValues - values)**2))
+            logger.info('Distance between V_{}(S) and V_{}(S) is: {}'.format(i, i+1, err))
             if err < self.tolerance:
                 logger.info(f'Convergence reached with tolerance {self.tolerance} after {i+1} iterations.')
-                logger.debug('Distance between V_{}(S) and V_{}(S) is: {}'.format(i, i+1, err))
                 break
 
         logger.info('Training completed.')
