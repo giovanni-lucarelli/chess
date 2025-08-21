@@ -165,6 +165,12 @@ PYBIND11_MODULE(chess_py, m) {
              py::arg("gamma") = 1.0,
              py::arg("step_penalty") = 0.0)
 
+        // Constructor: Env(const std::string& fen, double gamma=1.0, double step_penalty=0.0)
+        .def(py::init<const std::string&, double, double>(),
+             py::arg("fen"),
+             py::arg("gamma") = 1.0,
+             py::arg("step_penalty") = 0.0)
+
         // Apply a move; returns StepResult
         .def("step", &Env::step, py::arg("move"),
              R"doc(Apply a Move and return StepResult(reward, done).)doc")

@@ -1,78 +1,139 @@
-#!/usr/bin/env python3 
+#!/usr/bin/env python3
+from __future__ import annotations
 
-# sys
-import sys
-sys.path.insert(0, '../')
+# stdlib
+import os
+from io import BytesIO
+from typing import Iterable, Optional
 
-# utils
-import matplotlib.pyplot as plt # type: ignore
+import matplotlib.pyplot as plt  
+from PIL import Image  # per mostrare inline quando non salviamo su file
 
 # chess
-from build.chess_py import Game, Env
+import chess
+import chess.svg
+from cairosvg import svg2png
 
-UNICODE = {
-    'K':'♔','Q':'♕','R':'♖','B':'♗','N':'♘','P':'♙',
-    'k':'♚','q':'♛','r':'♜','b':'♝','n':'♞','p':'♟'
-}
+def _render_svg_from_fen(
+    fen: str,
+    *,
+    flipped: bool = False,
+    size: int = 640,
+    coordinates: bool = True,
+    lastmove: Optional[str] = None,          # es. "e2e4"
+    arrows: Optional[Iterable[str]] = None,  # es. ["e2e4","g1f3"]
+    squares: Optional[Iterable[str]] = None, # es. ["e4","d5"]
+) -> str:
+    board = chess.Board(fen)
 
-def fen_to_grid(fen: str):
-    board_fen = fen.split()[0]
-    rows = board_fen.split('/')
-    grid = []
-    for r in rows:
-        row = []
-        for ch in r:
-            if ch.isdigit():
-                row.extend([' '] * int(ch))
-            else:
-                row.append(ch)
-        grid.append(row)   # row 0 = rank 8
-    return grid
+    lm = None
+    if lastmove:
+        try:
+            lm = chess.Move.from_uci(lastmove)
+        except Exception:
+            lm = None 
 
-def plot_fen(fen: str, ax=None, title=None, flipped=False):
-    grid = fen_to_grid(fen)
+    # arrows
+    arrow_objs = []
+    if arrows:
+        for a in arrows:
+            try:
+                u = a.strip().lower()
+                u = u.replace("-", "").replace(" ", "")
+                if len(u) >= 4:
+                    a_from = chess.parse_square(u[:2])
+                    a_to = chess.parse_square(u[2:4])
+                    arrow_objs.append(chess.svg.Arrow(a_from, a_to))
+            except Exception:
+                pass
+
+    # highlighted squares
+    sq_list = []
+    if squares:
+        for s in squares:
+            try:
+                sq_list.append(chess.parse_square(s))
+            except Exception:
+                pass
+
+    # generate SVG
+    svg = chess.svg.board(
+        board=board,
+        size=size,
+        coordinates=coordinates,
+        flipped=flipped,
+        lastmove=lm,
+        arrows=arrow_objs,
+        squares=sq_list,
+    )
+
+    return svg
+
+def plot_fen(
+    fen: str,
+    ax=None,
+    title: Optional[str] = None,
+    flipped: bool = False,
+    *,
+    size: int = 640,
+    coordinates: bool = True,
+    lastmove: Optional[str] = None,
+    arrows: Optional[Iterable[str]] = None,
+    squares: Optional[Iterable[str]] = None,
+    save_path: Optional[str] = None,
+):
+    """
+    Disegna la scacchiera della FEN.
+    - Se save_path è fornito:
+        - .svg -> salva SVG
+        - altrimenti -> salva PNG (via cairosvg)
+    - Se save_path è None, mostra il PNG inline con matplotlib.
+    """
+    svg_str = _render_svg_from_fen(
+        fen,
+        flipped=flipped,
+        size=size,
+        coordinates=coordinates,
+        lastmove=lastmove,
+        arrows=arrows,
+        squares=squares,
+    )
+
+    if save_path:
+        out_dir = os.path.dirname(save_path)
+        if out_dir:
+            os.makedirs(out_dir, exist_ok=True)
+        if save_path.lower().endswith(".svg"):
+            with open(save_path, "w", encoding="utf-8") as f:
+                f.write(svg_str)
+        else:
+            svg2png(bytestring=svg_str.encode("utf-8"), write_to=save_path, dpi=300)
+        return None
+
+    png_bytes = svg2png(bytestring=svg_str.encode("utf-8"))
+    img = Image.open(BytesIO(png_bytes))
     if ax is None:
-        fig, ax = plt.subplots(figsize=(5,5))
-    ax.set_aspect('equal')
-
-    # draw board
-    for r in range(8):
-        for c in range(8):
-            rr = r if not flipped else 7 - r
-            cc = c if not flipped else 7 - c
-            ax.add_patch(plt.Rectangle((c, 7 - r), 1, 1, fill=True,
-                                       facecolor=('#EEE' if (r+c)%2==0 else '#888')))
-            piece = grid[rr][cc]
-            if piece.strip():
-                ax.text(c+0.5, 7-r+0.5, UNICODE.get(piece, '?'),
-                        ha='center', va='center', fontsize=28)
-
-    # coords
-    files = "abcdefgh" if not flipped else "hgfedcba"
-    ranks = "12345678" if not flipped else "87654321"
-    for i,f in enumerate(files):
-        ax.text(i+0.5, -0.15, f, ha='center', va='top', fontsize=10)
-    for i,rk in enumerate(ranks):
-        ax.text(-0.15, i+0.5, rk, ha='right', va='center', fontsize=10)
-
-    ax.set_xlim(0,8); ax.set_ylim(0,8)
+        fig, ax = plt.subplots(figsize=(size/100, size/100), dpi=100)
+    ax.imshow(img)
     ax.set_xticks([]); ax.set_yticks([])
-    if title: ax.set_title(title)
+    if title:
+        ax.set_title(title)
     plt.tight_layout()
     return ax
 
-def plot_game(game, save_path=None, **kwargs):
-    """Convenience: plot current position of a Game."""
-    ax = plot_fen(game.to_fen(), **kwargs)
-    if save_path:
-        plt.savefig(save_path, bbox_inches='tight', dpi=150)
-        plt.close()
-    else:
-        plt.show()
-    return ax
+def plot_game(
+    game,
+    save_path: Optional[str] = None,
+    **kwargs,
+):
+    """
+    Disegna/salva la posizione corrente di un Game (usa game.to_fen()).
+    Accetta gli stessi kwargs di plot_fen (size, flipped, coordinates, lastmove, arrows, squares).
+    """
+    fen = game.to_fen()
+    return plot_fen(fen, save_path=save_path, **kwargs)
 
-if __name__ == '__main__':
-    fen = input('Insert FEN: ')
-    game = Game()
-    game.reset_from_fen(fen)
-    plot_game(game)
+if __name__ == "__main__":
+    fen = input("Insert FEN: ")
+    plot_fen(fen, title="Preview", flipped=False, size=640)
+    plt.show()

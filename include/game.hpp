@@ -80,14 +80,21 @@ public:
         return in_check() && legal_moves(get_side_to_move()).empty();
     }
 
+    bool is_insufficient_material() const;
+
     /// True if side to move is *not* in check but has no legal moves
     bool is_stalemate() const {
         return !in_check() && legal_moves(get_side_to_move()).empty();
     }
 
+    bool is_draw() const {
+        return is_stalemate() || is_insufficient_material()
+            /* || is_threefold() || is_fifty_move_rule() */;
+    }
+
     /// Game is over if it’s a checkmate *or* a stalemate
     bool is_game_over() const {
-        return is_checkmate() || is_stalemate();
+        return is_checkmate() || is_draw();
     }
 
     /// +1 for White win, -1 for Black win, 0 otherwise

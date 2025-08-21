@@ -264,6 +264,29 @@ std::vector<Move> Game::legal_moves(Color color) const {
     return moves;
 }
 
+bool Game::is_insufficient_material() const {
+
+    int wb = board.count(BISHOP, WHITE);
+    int wn = board.count(KNIGHT, WHITE);
+    int bb = board.count(BISHOP, BLACK);
+    int bn = board.count(KNIGHT, BLACK);
+
+    // K vs K
+    if ((wb + wn + bb + bn) == 0) return true;
+
+    // K vs (B or N)
+    if ((wb + wn) == 1 && (bb + bn) == 0) return true;
+    if ((bb + bn) == 1 && (wb + wn) == 0) return true;
+
+    // two horses 
+    if (wn >= 2 && wb == 0 && bb == 0 && bn == 0) return true;
+    if (bn >= 2 && bb == 0 && wb == 0 && wn == 0) return true;
+
+    // otherwise don't declare insufficient
+    return false;
+}
+
+
 void Game::do_move(Move& move) {
     Square from = move.from;
     Square to = move.to;

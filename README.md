@@ -86,7 +86,7 @@ chess/
     make
     ```
 
-## Running the Engine
+### Running the Engine
 
 - To run the chess game executable:
     ```sh
@@ -106,7 +106,14 @@ chess/
     ```sh
     make clean_all
     ```
+## Installing Python Requirements
 
+```
+python -m venv .venv
+source .venv/bin/activate
+pip install -r requirements.txt
+
+```
 
 ## Dependencies
 
