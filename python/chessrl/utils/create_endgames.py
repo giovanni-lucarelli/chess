@@ -232,19 +232,30 @@ def generate_endgame_positions(base_fen, num_positions):
 def check_legality_with_engine(fen):
     game = Game()
     game.reset_from_fen(fen)
-    game.set_side_to_move(Color.BLACK)
-    # If black in check and still has moves
-    if game.get_check(Color.BLACK) and any(game.legal_moves(Color.BLACK)):
-        game.set_side_to_move(Color.WHITE)
+    # If black in check but it's white turb, then illegal state
+    if game.get_check(Color.BLACK):
         return False
-    game.set_side_to_move(Color.WHITE)
     return True
+
+def could_be_black_move(fen):
+    game = Game()
+    game.reset_from_fen(fen)
+    game.set_side_to_move(Color.BLACK)
+    # If black has no legal moves, it is a terminal position and it's correct that it's black turn
+    if not any(game.legal_moves(Color.BLACK)):
+        game.set_side_to_move(Color.WHITE)
+        return True
+    # If black has legal moves, but it's stalemate, it's correct that it's black turn
+    elif (game.is_insufficient_material()):
+        game.set_side_to_move(Color.WHITE)
+        return True
+    return False
 
 def generate_all_endgame_positions(base_fen):
     # Parse the base FEN
     fen_parts = base_fen.split()
     original_pieces = parse_fen_pieces(base_fen)
-    default_fen_part =' ' + ' '.join(fen_parts[1:])
+    default_fen_part =' ' + ' '.join(fen_parts[2:])
     
     # Always keep both kings
     kings = [p for p in original_pieces if p[0].lower() == 'k']
@@ -264,13 +275,22 @@ def generate_all_endgame_positions(base_fen):
             for piece_perm in set(itertools.permutations(piece_types)):
                 for chosen_squares in itertools.combinations(range(64), n):
                     state = tuple(zip(piece_perm, chosen_squares))  # make hashable
-                    fen = pieces_to_board_string(state) + default_fen_part 
-                    if is_position_legal(state) and check_legality_with_engine(fen):
-                            fen = pieces_to_board_string(state) + default_fen_part
+                    string = pieces_to_board_string(state)
+                    fen = string + " w"+ default_fen_part 
+                    if is_position_legal(state):
+                        # I add assuming white to move
+                        if check_legality_with_engine(fen):
                             if fen not in state_to_idx:  # avoid duplicates
                                 idx = len(positions)
                                 positions.append(fen)
                                 state_to_idx[fen] = idx
+                        # I consider the position with black to move
+                        if could_be_black_move(fen):
+                            fen_black = string + " b" + default_fen_part
+                            if fen_black not in state_to_idx:
+                                idx = len(positions)
+                                positions.append(fen_black)
+                                state_to_idx[fen_black] = idx
 
     values = np.zeros(len(positions), dtype=float)
     

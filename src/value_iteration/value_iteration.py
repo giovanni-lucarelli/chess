@@ -13,19 +13,16 @@ p(S' | S, A) =
 __Reward__ R: Only when checkmate happens (=terminal state!): +1 if it's the player checkmate, -1 if it's the "enviroment" checkmate.
  """
 import logging 
-from utils.load_config import load_config
+from chessrl.utils.load_config import load_config
 config = load_config()
 logging.basicConfig(level=config['log_level'], format = '%(asctime)s - %(levelname)s - %(message)s')
 logger = logging.getLogger(__name__)
 import pickle
 import numpy as np
-import chess
-import chess.syzygy
 # chess
 from chessrl.env import Env, SyzygyDefender
 from build.chess_py import Move
-from utils.create_endgames import generate_all_endgame_positions, pieces_to_board_string, parse_fen_pieces
-
+from chessrl.utils.create_endgames import generate_all_endgame_positions, pieces_to_board_string, parse_fen_pieces
 
 class ValueIteration:
     def __init__(
@@ -40,38 +37,6 @@ class ValueIteration:
         self.save_path = save_path
         self.tolerance = tolerance
 
-
-    def get_black_move(self, fen):
-        """Query local Syzygy tablebase"""
-        TB_PATH = "tablebase"
-        board = chess.Board(fen)
-        
-        try:
-            with chess.syzygy.open_tablebase(TB_PATH) as tablebase:
-                # Query DTZ tablebase for best move
-                best_move = None
-                best_dtz = None
-                
-                for move in board.legal_moves:
-                    board.push(move)
-                    try:
-                        # why it doesn't evaluate the moves?
-                        dtz = tablebase.probe_dtz(board)  # distance to zeroing move
-                        
-                        if best_dtz is None or (dtz is not None and dtz < best_dtz):
-                            best_dtz = dtz
-                            best_move = move
-                    except:
-                        # why it analysizes the same move multiple times?
-                        logger.info(f"Can't evaluate this move: {move}")
-                        pass  # Skip moves that can't be evaluated
-                    finally:
-                        board.pop()
-                
-                return best_move.uci() if best_move else None
-        except Exception as e:
-            logger.error(f"Error accessing tablebase: {e}")
-            return None
 
     def train(self,base_fen):
         """
@@ -162,3 +127,4 @@ class ValueIteration:
             pickle.dump(serializable_policy, f)
 
         return newPolicy
+

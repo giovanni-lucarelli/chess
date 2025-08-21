@@ -8,18 +8,16 @@ sys.path.insert(0, '../../')
 import os
 import glob
 import logging 
-from utils.load_config import load_config
-from utils.create_endgames import parse_fen_pieces
+from chessrl.utils.load_config import load_config
 config = load_config()
 logging.basicConfig(level=config['log_level'], format = '%(asctime)s - %(levelname)s - %(message)s')
 logger = logging.getLogger(__name__)
 import matplotlib.pyplot as plt # type: ignore
 
 # chess
-from utils.plot_chess import plot_game
 from src.value_iteration.value_iteration import ValueIteration
 from build.chess_py import Env, Move
-from utils.env_class import Env, SyzygyDefender
+from chessrl.env import Env, SyzygyDefender
 
 import pickle
 
