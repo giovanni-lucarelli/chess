@@ -62,10 +62,6 @@ class ValueIteration:
                     if state_idx % 10000 == 0:  # Adjust frequency as needed
                         logger.info(f"  Processing state {state_idx+1}/{len(states)} in iteration {i+1}")
                         
-                    if state_idx == 10000:
-                        logger.info('Reached 10000 states, stopping early for demonstration purposes.')
-                        return newPolicy
-                    
                     maxvalue = -100
                     TB_PATH = "tablebase"  
                     defender = SyzygyDefender(TB_PATH)                  
