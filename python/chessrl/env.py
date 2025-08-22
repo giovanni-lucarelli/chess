@@ -36,8 +36,12 @@ class LichessDefender:
             r.raise_for_status()
             data = r.json()
             mv = data.get("moves")
-            return mv[0]["uci"] if mv else None
+            if mv:
+                return mv[0]["uci"]
+            else:
+                return None
         except Exception:
+            print(f"Warning: Lichess defender request failed for FEN: {fen}", file=sys.stderr)
             return None
 
 
@@ -47,7 +51,10 @@ class SyzygyDefender:
         import chess
         import chess.syzygy
         self.chess = chess
-        self.tb = chess.syzygy.open_tablebase(tb_path)
+        try:
+            self.tb = chess.syzygy.open_tablebase(tb_path)
+        except Exception as e:
+            raise ValueError(f"Failed to open Syzygy tablebase at '{tb_path}': {e}")
 
     def best_reply_uci(self, fen: str) -> str | None:
         board = self.chess.Board(fen)
@@ -56,8 +63,9 @@ class SyzygyDefender:
             board.push(mv)
             try:
                 score = abs(self.tb.probe_dtz(board))
-            except Exception:
+            except Exception as e:
                 score = 0
+                print(f"Warning: failed to probe DTZ for position {board.fen()}: {e}")
             board.pop()
             if score > best_score:
                 best_score, best = score, mv

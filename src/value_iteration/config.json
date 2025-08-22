@@ -1,10 +1,10 @@
 {
-    "tolerance": 0.001,
+    "tolerance": 0.01,
     "step_penalty": 0.01,
     "gamma": 1,
     "log_level": "INFO",
     "savepath_value_iteration": "output/value_iteration_policy.pkl",
-    "all_checkmates": true,
+    "type_of_tests": "fixed",
     "endgames": [
         "4k3/8/8/8/8/8/1R6/4K3 w - - 0 1",
         "7k/8/K7/8/3R4/8/8/8 w - - 0 1"
@@ -14,6 +14,8 @@
         "6k1/8/8/6K1/8/8/1R6/8 w - - 0 1",
         "8/1k6/3R4/8/8/4K3/8/8 w - - 0 1",
         "8/8/8/8/8/8/4k3/3R2K1 w - - 0 1",
-        "7k/8/8/8/8/4R3/4K3/8 w - - 0 1"
+        "7k/8/8/8/8/4R3/4K3/8 w - - 0 1",
+	"4k3/8/8/8/8/8/1R6/4K3 w - - 0 1",
+	"8/8/8/4k3/8/3K4/8/1R6 w - - 0 1"
     ]
 }

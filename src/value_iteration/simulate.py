@@ -16,9 +16,8 @@ import matplotlib.pyplot as plt # type: ignore
 
 # chess
 from src.value_iteration.value_iteration import ValueIteration
-from build.chess_py import Env, Move
-from chessrl.env import Env, SyzygyDefender
-from chessrl.utils.mate_positions import generate_endgames_offline
+from chessrl.env import Env, SyzygyDefender, LichessDefender
+from chessrl.utils.mate_positions import generate_endgames_offline,sample_random_position
 
 import pickle
 
@@ -34,16 +33,19 @@ if __name__ == '__main__':
         policy = pickle.load(f)
         
     TB_PATH = "tablebase"  
-    defender = SyzygyDefender(TB_PATH) 
+    #defender = SyzygyDefender(TB_PATH) 
+    defender = LichessDefender()
 
-    if config['all_checkmates']:    
-        # KR vs K, White to move, exact mate-in-2
-        fens = generate_endgames_offline("KRvK", mate_in=8, side_to_move="w",
-                                        max_positions=3, max_tries=50000)
+    if (config['type_of_tests']=='mate_in_n'):    
+        # KR vs K, White to move, exact mate-in-3
+        fens = generate_endgames_offline("KRvK", mate_in=4, side_to_move="w",
+                                        max_positions=10, max_tries=50000)
+    elif (config['type_of_tests']=='random'):
+        fens = sample_random_position("KRvK", side_to_move = "w",seed = 0)
     else:
         fens = config['test_endgames']
     
-    logger.info('Start simulating...')
+    logger.info('Start simulating with mode...')
     for fen in fens:
         env = Env.from_fen(fen, gamma = config['gamma'], step_penalty = config['step_penalty'], defender = defender)
         logger.info("\n")

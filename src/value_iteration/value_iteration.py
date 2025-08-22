@@ -20,7 +20,7 @@ logger = logging.getLogger(__name__)
 import pickle
 import numpy as np
 # chess
-from chessrl.env import Env, SyzygyDefender
+from chessrl.env import Env, SyzygyDefender,LichessDefender
 from chessrl.chess_py import Move
 from chessrl.utils.create_endgames import generate_all_endgame_positions, pieces_to_board_string, parse_fen_pieces
 
@@ -52,9 +52,10 @@ class ValueIteration:
 
         logger.info(f"Training on {len(states)} states")
 
+        n_iterations = 1
 
-        for i in range(5):
-            logger.info(f"Starting iteration {i+1}/5")
+        for i in range(n_iterations):
+            logger.info(f"Starting iteration {i+1}/{n_iterations}...")
             values = newValues.copy()
             
             # cycle over all the states, where each state is defined by the pieces position
@@ -62,9 +63,14 @@ class ValueIteration:
                     if state_idx % 10000 == 0:  # Adjust frequency as needed
                         logger.info(f"  Processing state {state_idx+1}/{len(states)} in iteration {i+1}")
                         
+                    if (state_idx == 10000):
+                        print("Early stopping")
+                        break
+
                     maxvalue = -100
                     TB_PATH = "tablebase"  
-                    defender = SyzygyDefender(TB_PATH)                  
+                    defender = SyzygyDefender(TB_PATH)
+                    #defender = LichessDefender()                  
                     
                     enviroment = Env.from_fen(fen, gamma = self.gamma, step_penalty = self.step_penalty, defender=defender)
                     color = enviroment.state().get_side_to_move()
