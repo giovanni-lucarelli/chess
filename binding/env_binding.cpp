@@ -7,7 +7,6 @@
 
 namespace py = pybind11;
 
-
 PYBIND11_MODULE(chess_py, m) {
     m.doc() = "Bindings for Env RL wrapper around Game";
 

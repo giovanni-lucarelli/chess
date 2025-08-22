@@ -1,0 +1,17 @@
+[build-system]
+requires = ["setuptools>=69", "wheel", "pybind11>=2.12"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "chessrl"
+version = "0.1.0"
+description = "Chess RL environment with fast C++ core and pybind11 bindings"
+authors = [{ name = "You" }]
+readme = "README.md"
+requires-python = ">=3.9"
+dependencies = [
+  "requests>=2.31",
+  "matplotlib>=3.7",
+]
+optional-dependencies.syzygy = ["python-chess>=1.999"]
+
