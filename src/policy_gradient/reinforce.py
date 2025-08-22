@@ -12,20 +12,40 @@ from torch import nn
 import logging
 from tqdm import tqdm 
 import matplotlib.pyplot as plt 
-from utils.fen_parsing import *
+from utils.fen_parsing import parse_fen
 from utils.load_config import load_config
-from utils.create_endgames import generate_endgame_positions
+from utils.create_endgames import generate_endgame_positions, generate_all_endgame_positions
 from utils.opponent_move import LichessDefender
-import random
-import requests
+from utils.env_class import Env as PythonEnv  # Import Python Env class with alias
 from typing import List
+import random
 
 config = load_config()
 logging.basicConfig(level=config['log_level'], format = '%(asctime)s - %(levelname)s - %(message)s')
 logger = logging.getLogger(__name__)
 
 # chess
-from build.chess_py import Game, Env, Move, Color # type: ignore
+# Import chess_py safely - use already loaded module if available
+try:
+    # Try to use already imported chess_py from sys.modules
+    if 'chess_py' in sys.modules:
+        chess_py = sys.modules['chess_py']
+        Game = chess_py.Game
+        Env = chess_py.Env
+        Move = chess_py.Move
+        Color = chess_py.Color
+    else:
+        # Fallback to direct import if not already loaded
+        try:
+            from build.chess_py import Game, Env, Move, Color
+        except ImportError:
+            import chess_py # type: ignore
+            Game = chess_py.Game
+            Env = chess_py.Env
+            Move = chess_py.Move
+            Color = chess_py.Color
+except ImportError as e:
+    raise ImportError(f"Could not import chess_py module: {e}")
 
 class Policy(nn.Module):
     """
@@ -67,7 +87,7 @@ class Policy(nn.Module):
         elif isinstance(fen, torch.Tensor):
             x = fen  # Already a tensor with batch dimension
         else:
-            raise ValueError(f"Expected str or torch.Tensor, got {type(fen)}")
+            logger.error(f"Expected str or torch.Tensor, got {type(fen)}")
         x = x.permute(0, 3, 1, 2)  # → [batch, 12, 8, 8] for CNN
         x = self.board_conv(x)     # → [batch, 128, 8, 8] 
         x = self.global_pool(x)    # → [batch, 128, 1, 1]
@@ -212,15 +232,18 @@ class REINFORCE:
                 legal_moves.append(self.move_to_idx[move_str])
         return legal_moves
     
-    def sample_episode(self, starting_fen: str, max_steps: int = config['max_steps']):
+    def sample_episode(self, fen: str, max_steps: int = config['max_steps']):
         """
         Sample a trajectory using the current policy for White
         and oracle (best possible move) for black.
         Returns simplified format for easier processing.
         """
-        game = Game()
-        game.reset_from_fen(starting_fen)
-        env = Env(game, step_penalty=0.01)
+        env = PythonEnv.from_fen(
+            fen,
+            step_penalty=0.01,
+            defender=LichessDefender(),   
+        )
+        game = env.state()
         
         # Store episode data
         states = []      # FEN strings
@@ -229,12 +252,11 @@ class REINFORCE:
         players = []     # Which player made the move (0=white, 1=black)
         
         for step in range(max_steps):
-            current_fen = env.state().to_fen()
+            current_fen = game.to_fen()
             side_to_move = game.get_side_to_move()
             
             if side_to_move == Color.WHITE:  # White turn - use policy
                 legal_moves = self.get_legal_move_indices(game)
-                logger.debug(f'Found {len(legal_moves)} legal moves.')
                 
                 if not legal_moves:
                     break  # No legal moves available
@@ -246,7 +268,7 @@ class REINFORCE:
                     action_probs = action_probs.squeeze(0).cpu().numpy()
                 
                 # Extract probabilities for legal moves only
-                legal_probs = action_probs[legal_moves]
+                legal_probs = action_probs[legal_moves]  # Remove the extra [0,] indexing
                 # Add small epsilon to avoid zero probabilities
                 legal_probs = legal_probs + 1e-8
                 # Normalize to ensure they sum to 1
@@ -262,48 +284,24 @@ class REINFORCE:
                 
                 # Take step
                 step_result = env.step(move)
-                game.do_move(move)
 
                 # Store data
                 states.append(current_fen)
                 actions.append(action_idx)
                 rewards.append(step_result.reward)
-                players.append(0)  # 0 for white
-                
-            else:  # Black turn - use tablebase
-                black_move_uci = self.defender.best_reply_uci(current_fen)
-                if black_move_uci is None:
-                    break  # No legal moves or API error
-                    
-                move = Move.from_uci(game, black_move_uci)
-                step_result = env.step(move)
-                game.do_move(move)
-                
-                # Store data (we don't train on black moves)
-                states.append(current_fen)
-                actions.append(-1)  # Dummy action for black
-                rewards.append(step_result.reward)
-                players.append(1)  # 1 for black
+                players.append(Color.WHITE)  
             
-            # Check if game is over
-            logger.info(f"Position: {current_fen}")
-            logger.info(f"Step result done: {step_result.done}")
-            logger.info(f"Step result reward: {step_result.reward}")
-            
-            # Check legal moves for current side
-            legal_moves_current = game.legal_moves(game.get_side_to_move())
-            logger.info(f"Legal moves for current side: {len(legal_moves_current)}")
-            
-            if step_result.done:
-                logger.info(f'Game ended after {step + 1} steps. Reward: {step_result.reward}')
+            if game.is_game_over():
+                logger.info(f'Game over after {step + 1} steps. Reward: {step_result.reward}')
                 break
         
-        # Calculate DTM (Distance to Mate)
-        DTM = len([p for p in players if p == 0])  # Count white moves
-        
+        # Calculate DTM (Distance to Mate) only if checkmate done (positive reward)
+
+        DTM = len([p for p in players if p == 0]) if step_result.reward > 0 else float('inf')  # Count white moves
+
         # Cap max steps and give draw penalty if not checkmate
         if not step_result.done:
-            rewards[-1] = -1
+            rewards[-1] = -0.5
         
         return states, actions, rewards, players, DTM
     
@@ -321,38 +319,57 @@ class REINFORCE:
             
         return returns
         
-    def train_episode(self, starting_fen: str):
+    def collect_episode_data(self, starting_fen: str):
         """
-        Train on a single episode.
+        Collect data from a single episode without training.
+        Returns episode data that can be accumulated for batch training.
         """
         states, actions, rewards, players, DTM = self.sample_episode(starting_fen)
         
         if not states:
             logger.info("No moves made in episode")
-            return 0.0, None
+            return None, DTM
         
         # Calculate returns for each time step
         returns = self.calculate_returns(rewards)
         
         # Collect training data for white moves only
-        log_probs = []
-        episode_returns = []
+        episode_data = []
         
         for i, player in enumerate(players):
             if player == 0:  # White move (0 in our tracking)
-                fen_tensor = parse_fen(states[i]).unsqueeze(0)
-                legal_moves = self.get_legal_move_indices_from_fen(states[i])
-                
-                # Get log probabilities
-                log_prob_dist = self.policy.get_log_probs(fen_tensor, legal_moves)
-                log_prob = log_prob_dist[0, actions[i]]
-                
-                log_probs.append(log_prob)
-                episode_returns.append(returns[i])
+                episode_data.append({
+                    'state': states[i],
+                    'action': actions[i], 
+                    'return': returns[i]
+                })
         
-        if not log_probs:
-            logger.debug(f"No white moves to train on. Total states: {len(states)}, Players: {players}")
+        return episode_data, DTM
+
+    def train_episode(self, starting_fen: str):
+        """
+        Train on a single episode (legacy method for backward compatibility).
+        """
+        episode_data, DTM = self.collect_episode_data(starting_fen)
+        
+        if not episode_data:
+            logger.debug("No white moves to train on")
             return 0.0, DTM
+        
+        # Convert episode data to tensors and train
+        log_probs = []
+        episode_returns = []
+        
+        for data in episode_data:
+            fen_tensor = parse_fen(data['state']).unsqueeze(0)
+            legal_moves = self.get_legal_move_indices_from_fen(data['state'])
+            
+            # Get log probabilities
+            log_prob_dist = self.policy.get_log_probs(fen_tensor, legal_moves)
+            log_prob = log_prob_dist[0, data['action']]
+            
+            log_probs.append(log_prob)
+            episode_returns.append(data['return'])
         
         # Calculate loss with numerical stability
         log_probs_tensor = torch.stack(log_probs)
@@ -368,6 +385,46 @@ class REINFORCE:
         
         return loss.item(), DTM
 
+    def train_batch(self, batch_data: List[dict]):
+        """
+        Train on a batch of accumulated episode data.
+        """
+        if not batch_data:
+            logger.warning("No data to train on")
+            return 0.0
+        
+        log_probs = []
+        episode_returns = []
+        
+        for data in batch_data:
+            fen_tensor = parse_fen(data['state']).unsqueeze(0)
+            legal_moves = self.get_legal_move_indices_from_fen(data['state'])
+            
+            # Get log probabilities
+            log_prob_dist = self.policy.get_log_probs(fen_tensor, legal_moves)
+            log_prob = log_prob_dist[0, data['action']]
+            
+            log_probs.append(log_prob)
+            episode_returns.append(data['return'])
+        
+        if not log_probs:
+            logger.warning("No valid training data in batch")
+            return 0.0
+        
+        # Calculate loss with numerical stability
+        log_probs_tensor = torch.stack(log_probs)
+        returns_tensor = torch.tensor(episode_returns, dtype=torch.float32)
+        
+        # REINFORCE loss: -E[log π(a|s) * G]
+        loss = -torch.mean(log_probs_tensor * returns_tensor)
+        
+        # Optimize
+        self.optimizer.zero_grad()
+        loss.backward()
+        self.optimizer.step()
+        
+        return loss.item()
+
     def get_legal_move_indices_from_fen(self, fen: str) -> List[int]:
         """
         Helper to get legal move indices from FEN string.
@@ -376,13 +433,17 @@ class REINFORCE:
         temp_game.reset_from_fen(fen)
         return self.get_legal_move_indices(temp_game)
     
-    def train(self, endgames: List[str] = config['endgames'], n_episodes: int = config['n_episodes']):
+    def train_single_episode_mode(self, endgame: List[str] = config['endgames'], n_episodes: int = config['n_episodes']):
         """
-        Train the policy on multiple endgame positions.
+        Train the policy with the original method (update after every episode).
+        Kept for backward compatibility and comparison.
         """
+        logger.info("Training in single-episode mode (update after each episode)")
+        
         for episode in range(n_episodes):
             # Randomly select an endgame position
-            starting_fen = "8/1k6/3R4/8/8/4K3/8/8 w - - 0 1"
+            #starting_fen = random.choice(endgame)
+            starting_fen = '1k6/8/1K6/8/8/8/8/6R1 w - - 0 1' # KRvK 1 DTM
 
             # Train on this episode
             loss, DTM = self.train_episode(starting_fen)
@@ -397,6 +458,82 @@ class REINFORCE:
                 avg_dtm_str = f"{avg_dtm:.2f}" if avg_dtm is not None else "N/A"
                 print(f"Episode {episode + 1}/{n_episodes}, Loss: {loss:.4f}, DTM: {DTM}, Avg DTM: {avg_dtm_str}")
         
+        self.save_model()
+
+    def train(self, endgame: List[str] = config['endgames'], n_episodes: int = config['n_episodes'], 
+              episodes_per_update: int = 10000):
+        """
+        Train the policy on multiple endgame positions with batch updates.
+        
+        Args:
+            endgame: List of endgame FENs to sample from
+            n_episodes: Total number of episodes to run
+            episodes_per_update: Number of episodes to collect before each parameter update
+        """
+        logger.info(f"Starting training with {episodes_per_update} episodes per update")
+        
+        accumulated_data = []
+        accumulated_dtm = []
+        update_count = 0
+
+        endgames = generate_all_endgame_positions(endgame[0])
+        
+        for episode in range(n_episodes):
+            # Randomly select an endgame position
+            starting_fen = random.choice(endgame)
+
+            # Collect episode data without training
+            episode_data, DTM = self.collect_episode_data(starting_fen)
+            
+            # Store DTM for plotting
+            if DTM is not None:
+                accumulated_dtm.append(DTM)
+            
+            # Accumulate training data
+            if episode_data:
+                accumulated_data.extend(episode_data)
+            
+            # Check if we should update parameters
+            if (episode + 1) % episodes_per_update == 0:
+                if accumulated_data:
+                    # Train on accumulated batch
+                    loss = self.train_batch(accumulated_data)
+                    update_count += 1
+                    
+                    # Calculate average DTM for this batch
+                    avg_dtm = np.mean(accumulated_dtm) if accumulated_dtm else None
+                    avg_dtm_str = f"{avg_dtm:.2f}" if avg_dtm is not None else "N/A"
+                    
+                    logger.info(f"Update {update_count}: Episodes {episode + 1 - episodes_per_update + 1}-{episode + 1}, "
+                              f"Loss: {loss:.4f}, Batch Size: {len(accumulated_data)}, Avg DTM: {avg_dtm_str}")
+                    
+                    # Store DTM history (average for this batch)
+                    if avg_dtm is not None:
+                        self.dtm_history.append(avg_dtm)
+                    
+                    # Clear accumulated data for next batch
+                    accumulated_data = []
+                    accumulated_dtm = []
+                else:
+                    logger.warning(f"No data accumulated for update at episode {episode + 1}")
+            
+            # Print progress every 1000 episodes
+            if (episode + 1) % 1000 == 0:
+                recent_dtm = np.mean(accumulated_dtm[-100:]) if len(accumulated_dtm) >= 100 else np.mean(accumulated_dtm) if accumulated_dtm else None
+                recent_dtm_str = f"{recent_dtm:.2f}" if recent_dtm is not None else "N/A"
+                logger.info(f"Progress: Episode {episode + 1}/{n_episodes}, Recent DTM: {recent_dtm_str}, "
+                          f"Data points accumulated: {len(accumulated_data)}")
+        
+        # Handle any remaining data
+        if accumulated_data:
+            loss = self.train_batch(accumulated_data)
+            update_count += 1
+            avg_dtm = np.mean(accumulated_dtm) if accumulated_dtm else None
+            avg_dtm_str = f"{avg_dtm:.2f}" if avg_dtm is not None else "N/A"
+            logger.info(f"Final update {update_count}: Remaining {len(accumulated_data)} data points, "
+                      f"Loss: {loss:.4f}, Avg DTM: {avg_dtm_str}")
+        
+        logger.info(f"Training completed with {update_count} parameter updates")
         self.save_model()
                 
     

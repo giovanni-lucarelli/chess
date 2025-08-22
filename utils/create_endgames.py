@@ -9,7 +9,24 @@ import random
 import json
 import numpy as np
 import itertools
-from build.chess_py import Game, Color
+
+# Import chess_py safely - use already loaded module if available
+try:
+    # Try to use already imported chess_py from sys.modules
+    if 'chess_py' in sys.modules:
+        chess_py = sys.modules['chess_py']
+        Game = chess_py.Game
+        Color = chess_py.Color
+    else:
+        # Fallback to direct import if not already loaded
+        try:
+            from build.chess_py import Game, Color
+        except ImportError:
+            import chess_py
+            Game = chess_py.Game
+            Color = chess_py.Color
+except ImportError as e:
+    raise ImportError(f"Could not import chess_py module: {e}")
 
 def parse_fen_pieces(fen):
     """

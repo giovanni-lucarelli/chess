@@ -30,7 +30,7 @@ if __name__ == '__main__':
     reinforce = REINFORCE()
     reinforce.load_model(config['filepath_test'])
     policy = reinforce.policy
-    game.reset_from_fen(config['endgames'][4])
+    game.reset_from_fen(config['endgames_test'][0])
     env = Env(game, step_penalty = 0.01)
     
     logger.info('Start simulating...')

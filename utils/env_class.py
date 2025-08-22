@@ -16,7 +16,7 @@ try:
         try:
             import build.chess_py as cp
         except ImportError:
-            import chess_py as cp
+            import chess_py as cp # type: ignore
 except ImportError as e:
     raise ImportError(f"Could not import chess_py module: {e}")
 
