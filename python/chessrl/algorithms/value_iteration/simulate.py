@@ -32,7 +32,7 @@ if __name__ == '__main__':
     with open(config['savepath_value_iteration'], "rb") as f:
         policy = pickle.load(f)
         
-    TB_PATH = "tablebase"  
+    TB_PATH = os.path.join(os.path.dirname(__file__), '..', '..', '..', '..', 'syzygy-tables')
     #defender = SyzygyDefender(TB_PATH) 
     defender = LichessDefender()
 

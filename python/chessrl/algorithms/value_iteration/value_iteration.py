@@ -13,6 +13,7 @@ p(S' | S, A) =
 __Reward__ R: Only when checkmate happens (=terminal state!): +1 if it's the player checkmate, -1 if it's the "enviroment" checkmate.
  """
 import logging 
+import os
 from chessrl.utils.load_config import load_config
 config = load_config()
 logging.basicConfig(level=config['log_level'], format = '%(asctime)s - %(levelname)s - %(message)s')
@@ -68,7 +69,7 @@ class ValueIteration:
                         break
 
                     maxvalue = -100
-                    TB_PATH = "tablebase"  
+                    TB_PATH = os.path.join(os.path.dirname(__file__), '..', '..', '..', '..', 'syzygy-tables')
                     defender = SyzygyDefender(TB_PATH)
                     #defender = LichessDefender()                  
                     
