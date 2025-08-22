@@ -71,18 +71,42 @@ def main():
                   title=f"Turn {ply}")
         plt.show()
 
+    # while not g.is_game_over() and ply < args.max_plies:
+    #     side = g.get_side_to_move()
+    #     move = None
+
+    #     if side == Color.BLACK and defender is not None:
+    #         # Black uses defender (Syzygy/Lichess)
+    #         reply = best_reply_from_defender(defender, g.to_fen())
+    #         if reply:
+    #             move = Move.from_uci(g, reply)
+    #     if move is None:
+    #         # Use MCTS for whoever didn't get a defender move
+    #         move = mcts.search(g)
+    #     if move is None:
+    #         log.info("No legal move found; stopping.")
+    #         break
+
+    #     g.do_move(move)
+    #     ply += 1
+
+    #     if args.plot:
+    #         plot_game(g, save_path=os.path.join(args.plots_dir, f"turn_{ply}.png"),
+    #                   title=f"Turn {ply}")
+    #         plt.show()
+
     while not g.is_game_over() and ply < args.max_plies:
         side = g.get_side_to_move()
         move = None
 
         if side == Color.BLACK and defender is not None:
-            # Black uses defender (Syzygy/Lichess)
             reply = best_reply_from_defender(defender, g.to_fen())
             if reply:
                 move = Move.from_uci(g, reply)
         if move is None:
-            # Use MCTS for whoever didn't get a defender move
-            move = mcts.search(g)
+            # MCTS for White or Black if no defender
+            best_move, top_stats = mcts.search_with_stats(g, top_k=5, print_stats=True)
+            move = best_move
         if move is None:
             log.info("No legal move found; stopping.")
             break
@@ -92,8 +116,9 @@ def main():
 
         if args.plot:
             plot_game(g, save_path=os.path.join(args.plots_dir, f"turn_{ply}.png"),
-                      title=f"Turn {ply}")
+                    title=f"Turn {ply}")
             plt.show()
+
 
     log.info("Game finished. is_game_over=%s, result=%.1f", g.is_game_over(), g.result() if g.is_game_over() else 0.0)
 
