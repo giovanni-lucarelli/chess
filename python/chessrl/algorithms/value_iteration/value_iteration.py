@@ -58,7 +58,7 @@ class ValueIteration:
 
         logger.info(f"Training on {len(states)} states")
 
-        n_iterations = 1
+        n_iterations = 15
 
         for i in range(n_iterations):
             logger.info(f"Starting iteration {i+1}/{n_iterations}...")

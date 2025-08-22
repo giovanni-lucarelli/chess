@@ -14,7 +14,6 @@ logging.basicConfig(level=config['log_level'], format = '%(asctime)s - %(levelna
 logger = logging.getLogger(__name__)
 
 # chess
-from chessrl.utils.plot_chess import plot_game, plot_fen
 from value_iteration import ValueIteration 
 
 if __name__ == '__main__':

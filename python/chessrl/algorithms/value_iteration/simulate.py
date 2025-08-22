@@ -24,10 +24,10 @@ import pickle
 
 if __name__ == '__main__':
     # Clean previous plots
-    plot_files = glob.glob('output/plots/turn_*.png')
+    """ plot_files = glob.glob('output/plots/turn_*.png')
     for file in plot_files:
         os.remove(file)
-    logger.info(f'Cleaned {len(plot_files)} previous plot files')
+    logger.info(f'Cleaned {len(plot_files)} previous plot files') """
     
     # Load the policy dictionary from file
     with open(config['savepath_value_iteration'], "rb") as f:
