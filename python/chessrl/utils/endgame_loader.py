@@ -51,6 +51,7 @@ def load_all_positions(csv_path: str):
             reader = csv.DictReader(f)
             for row in reader:
                 fen = row['fen']
+                positions_to_idx[fen] = len(positions)
                 positions.append(fen)
         
         values = np.zeros(len(positions), dtype=float)

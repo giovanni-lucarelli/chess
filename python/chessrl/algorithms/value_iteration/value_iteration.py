@@ -95,7 +95,7 @@ class ValueIteration:
                         
                         try: 
                             value_action = R + values[state_to_idx[fen_new]]
-                        except KeyError:
+                        except KeyError as e:
                             logger.info(f"State {enviroment.state().to_fen()} not found in state space, previous {fen}, next move is for {enviroment.state().get_side_to_move()}")
                             break
                         
