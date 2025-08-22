@@ -15,7 +15,8 @@ __Reward__ R: Only when checkmate happens (=terminal state!): +1 if it's the pla
 import logging 
 import os
 from chessrl.utils.load_config import load_config
-config = load_config()
+config_path = os.path.join(os.path.dirname(__file__), 'config.json')
+config = load_config(config_path)
 logging.basicConfig(level=config['log_level'], format = '%(asctime)s - %(levelname)s - %(message)s')
 logger = logging.getLogger(__name__)
 import pickle

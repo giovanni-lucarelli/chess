@@ -10,7 +10,7 @@ try:
 except Exception:
     # Fallbacks for in-repo dev if someone runs without installing
     try:
-        import chess_py as cp             # plain module name in build dir
+        import chess_py as cp             # type: ignore # plain module name in build dir
     except Exception as e:
         raise ImportError(f"Could not import chess_py module: {e}")
 
