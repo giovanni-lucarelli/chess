@@ -12,40 +12,21 @@ from torch import nn
 import logging
 from tqdm import tqdm 
 import matplotlib.pyplot as plt 
-from utils.fen_parsing import parse_fen
-from utils.load_config import load_config
-from utils.create_endgames import generate_endgame_positions, generate_all_endgame_positions
-from utils.opponent_move import LichessDefender
-from utils.env_class import Env as PythonEnv  # Import Python Env class with alias
+from chessrl.utils.load_config import load_config
+from chessrl.utils.fen_parsing import parse_fen
+from chessrl.utils.endgame_loader import sample_endgames
 from typing import List
 import random
 
-config = load_config()
+import os
+config_path = os.path.join(os.path.dirname(__file__), 'config.json')
+config = load_config(config_path)
 logging.basicConfig(level=config['log_level'], format = '%(asctime)s - %(levelname)s - %(message)s')
 logger = logging.getLogger(__name__)
 
 # chess
-# Import chess_py safely - use already loaded module if available
-try:
-    # Try to use already imported chess_py from sys.modules
-    if 'chess_py' in sys.modules:
-        chess_py = sys.modules['chess_py']
-        Game = chess_py.Game
-        Env = chess_py.Env
-        Move = chess_py.Move
-        Color = chess_py.Color
-    else:
-        # Fallback to direct import if not already loaded
-        try:
-            from build.chess_py import Game, Env, Move, Color
-        except ImportError:
-            import chess_py # type: ignore
-            Game = chess_py.Game
-            Env = chess_py.Env
-            Move = chess_py.Move
-            Color = chess_py.Color
-except ImportError as e:
-    raise ImportError(f"Could not import chess_py module: {e}")
+from chessrl import Env, SyzygyDefender
+from chessrl import chess_py as cp
 
 class Policy(nn.Module):
     """
@@ -140,14 +121,14 @@ class Policy(nn.Module):
         fen = game_state.to_fen()
         
         # Create a temporary game to get legal moves
-        temp_game = Game()
+        temp_game = cp.Game()
         temp_game.reset_from_fen(fen)
         
         # Get legal move indices
         legal_moves = []
         side_to_move = temp_game.get_side_to_move()
         for move in temp_game.legal_moves(side_to_move):
-            move_str = Move.to_uci(move)[:4]
+            move_str = cp.Move.to_uci(move)[:4]
             if move_str in move_to_idx:
                 legal_moves.append((move_to_idx[move_str], move))
         
@@ -189,8 +170,8 @@ class REINFORCE:
         self.dtm_history = []
         self.max_steps = max_steps
         
-        # Initialize Lichess defender for black moves
-        self.defender = LichessDefender()
+        # Initialize Syzygy defender for black moves
+        self.defender = SyzygyDefender(tb_path='/Users/christianfaccio/UniTs/projects/chess/syzygy-tables')
 
         # For converting between moves and indices
         self.move_to_idx = {}
@@ -227,7 +208,7 @@ class REINFORCE:
         
         # Get legal moves for the current side
         for move in game.legal_moves(side_to_move): 
-            move_str = Move.to_uci(move)[:4]  
+            move_str = cp.Move.to_uci(move)[:4]  
             if move_str in self.move_to_idx:
                 legal_moves.append(self.move_to_idx[move_str])
         return legal_moves
@@ -238,10 +219,10 @@ class REINFORCE:
         and oracle (best possible move) for black.
         Returns simplified format for easier processing.
         """
-        env = PythonEnv.from_fen(
+        env = Env.from_fen(
             fen,
             step_penalty=0.01,
-            defender=LichessDefender(),   
+            defender=self.defender,   
         )
         game = env.state()
         
@@ -255,7 +236,7 @@ class REINFORCE:
             current_fen = game.to_fen()
             side_to_move = game.get_side_to_move()
             
-            if side_to_move == Color.WHITE:  # White turn - use policy
+            if side_to_move == cp.Color.WHITE:  # White turn - use policy
                 legal_moves = self.get_legal_move_indices(game)
                 
                 if not legal_moves:
@@ -280,7 +261,7 @@ class REINFORCE:
                 
                 # Convert to move
                 move_str = self.idx_to_move[action_idx]
-                move = Move.from_strings(game, move_str[:2], move_str[2:4])
+                move = cp.Move.from_strings(game, move_str[:2], move_str[2:4])
                 
                 # Take step
                 step_result = env.step(move)
@@ -289,7 +270,7 @@ class REINFORCE:
                 states.append(current_fen)
                 actions.append(action_idx)
                 rewards.append(step_result.reward)
-                players.append(Color.WHITE)  
+                players.append(cp.Color.WHITE)  
             
             if game.is_game_over():
                 logger.info(f'Game over after {step + 1} steps. Reward: {step_result.reward}')
@@ -429,7 +410,7 @@ class REINFORCE:
         """
         Helper to get legal move indices from FEN string.
         """
-        temp_game = Game()
+        temp_game = cp.Game()
         temp_game.reset_from_fen(fen)
         return self.get_legal_move_indices(temp_game)
     
@@ -461,7 +442,7 @@ class REINFORCE:
         self.save_model()
 
     def train(self, endgame: List[str] = config['endgames'], n_episodes: int = config['n_episodes'], 
-              episodes_per_update: int = 10000):
+              episodes_per_update: int = 1000):
         """
         Train the policy on multiple endgame positions with batch updates.
         
@@ -476,8 +457,10 @@ class REINFORCE:
         accumulated_dtm = []
         update_count = 0
 
-        endgames = generate_all_endgame_positions(endgame[0])
-        
+        # Convert string keys to integers for DTZ sampling
+        dtz_counts = {int(k): v for k, v in config['endgame_sampling'].items()}
+        endgames = sample_endgames(csv_path='../../../../syzygy-tables/krk_dtz.csv', dtz_counts=dtz_counts)
+
         for episode in range(n_episodes):
             # Randomly select an endgame position
             starting_fen = random.choice(endgame)

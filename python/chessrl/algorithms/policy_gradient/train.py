@@ -6,16 +6,17 @@ sys.path.insert(0, '../../')
 
 # utils
 import logging
-from utils.load_config import load_config
-config = load_config()
+import os
+from chessrl.utils.load_config import load_config
+config_path = os.path.join(os.path.dirname(__file__), 'config.json')
+config = load_config(config_path)
 logging.basicConfig(level=config['log_level'], format = '%(asctime)s - %(levelname)s - %(message)s')
 logger = logging.getLogger(__name__)
 
 # chess
-from build.chess_py import Game, Env # type: ignore
-from utils.plot_chess import plot_game, plot_fen
-from utils.create_endgames import generate_endgame_positions
-from reinforce import REINFORCE 
+from chessrl.utils.plot_chess import plot_game, plot_fen
+from chessrl.utils.create_endgames import generate_endgame_positions
+from chessrl.algorithms.policy_gradient.reinforce import REINFORCE 
 
 if __name__ == '__main__':
     logger.info("Starting REINFORCE training for chess endgames")
