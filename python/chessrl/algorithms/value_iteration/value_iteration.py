@@ -22,9 +22,10 @@ logger = logging.getLogger(__name__)
 import pickle
 import numpy as np
 # chess
-from chessrl.env import Env, SyzygyDefender,LichessDefender
+from chessrl.env import Env, SyzygyDefender
 from chessrl.chess_py import Move
-from chessrl.utils.create_endgames import generate_all_endgame_positions, pieces_to_board_string, parse_fen_pieces
+from chessrl.utils.create_endgames import generate_all_endgame_positions
+from chessrl.utils.endgame_loader import load_all_positions
 
 class ValueIteration:
     def __init__(
@@ -48,7 +49,10 @@ class ValueIteration:
         logger.info('Creating the states...')
         
         # Inizialize vector of values for all states
-        states, state_to_idx, values = generate_all_endgame_positions(base_fen)
+        #states, state_to_idx, values = generate_all_endgame_positions(base_fen)
+        endgame_path = os.path.join(os.path.dirname(__file__), '..', '..', '..', '..', 'syzygy-tables', config['endgame_type'] + '_dtz.csv')
+        states, state_to_idx, values =load_all_positions(endgame_path)
+
         newValues = values.copy()
         newPolicy = {}
 
@@ -65,14 +69,9 @@ class ValueIteration:
                     if state_idx % 10000 == 0:  # Adjust frequency as needed
                         logger.info(f"  Processing state {state_idx+1}/{len(states)} in iteration {i+1}")
                         
-                    if (state_idx == 10000):
-                        print("Early stopping")
-                        break
-
                     maxvalue = -100
                     TB_PATH = os.path.join(os.path.dirname(__file__), '..', '..', '..', '..', 'syzygy-tables')
                     defender = SyzygyDefender(TB_PATH)
-                    #defender = LichessDefender()                  
                     
                     enviroment = Env.from_fen(fen, gamma = self.gamma, step_penalty = self.step_penalty, defender=defender)
                     color = enviroment.state().get_side_to_move()

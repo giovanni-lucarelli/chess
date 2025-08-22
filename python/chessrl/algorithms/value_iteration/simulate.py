@@ -16,7 +16,7 @@ logger = logging.getLogger(__name__)
 import matplotlib.pyplot as plt # type: ignore
 
 # chess
-from src.value_iteration.value_iteration import ValueIteration
+from value_iteration import ValueIteration
 from chessrl.env import Env, SyzygyDefender, LichessDefender
 from chessrl.utils.mate_positions import generate_endgames_offline,sample_random_position
 
@@ -34,8 +34,7 @@ if __name__ == '__main__':
         policy = pickle.load(f)
         
     TB_PATH = os.path.join(os.path.dirname(__file__), '..', '..', '..', '..', 'syzygy-tables')
-    #defender = SyzygyDefender(TB_PATH) 
-    defender = LichessDefender()
+    defender = SyzygyDefender(TB_PATH) 
 
     if (config['type_of_tests']=='mate_in_n'):    
         # KR vs K, White to move, exact mate-in-3

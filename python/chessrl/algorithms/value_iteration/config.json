@@ -2,8 +2,9 @@
     "tolerance": 0.01,
     "step_penalty": 1,
     "gamma": 1,
+    "endgame_type": "krk",
     "log_level": "INFO",
-    "savepath_value_iteration": "output/value_iteration_policy.pkl",
+    "savepath_value_iteration": "output/value_iteration_policy_9.pkl",
     "type_of_tests": "fixed",
     "endgames": [
         "4k3/8/8/8/8/8/1R6/4K3 w - - 0 1",

@@ -1,5 +1,6 @@
 import csv
 import random
+import numpy as np
 from typing import Dict, List, Tuple, Optional, Union
 from pathlib import Path
 
@@ -39,6 +40,23 @@ def load_positions(csv_path: str):
             dtz_groups[dtz].append(pos)
     
     return positions, dtz_groups
+
+
+def load_all_positions(csv_path: str):
+        positions = []
+        positions_to_idx = {}
+        
+        # Read the CSV file
+        with open(csv_path, 'r') as f:
+            reader = csv.DictReader(f)
+            for row in reader:
+                fen = row['fen']
+                positions.append(fen)
+        
+        values = np.zeros(len(positions), dtype=float)
+
+        return positions, positions_to_idx, values
+
 
 def sample_endgames(
     csv_path: str,
