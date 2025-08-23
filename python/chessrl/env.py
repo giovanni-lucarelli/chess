@@ -183,12 +183,12 @@ class Env:
     def result_white_pov(self) -> float:
         return self.game.result()
 
-    def display_state(self) -> None:
+    def display_state(self, save_path: str) -> None:
         # Your Board::print appears to return a string in bindings; print it if available.
         try:
             plot_game(
                 self.game,
-                # save_path="output/plots/turn_0.png",
+                save_path=save_path,
                 title=f"side to move: {self.game.get_side_to_move()}",
                 flipped=False,
                 coordinates=True,

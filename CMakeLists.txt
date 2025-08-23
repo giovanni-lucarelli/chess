@@ -13,7 +13,7 @@ set(CHESS_SOURCES
     src/move.cpp
     src/chessboard.cpp
     src/game.cpp
-    src/mcts/mcts.cpp
+    python/chessrl/algorithms/mcts/mcts.cpp
 )
 
 

@@ -414,7 +414,7 @@ class REINFORCE:
         temp_game.reset_from_fen(fen)
         return self.get_legal_move_indices(temp_game)
     
-    def train_single_episode_mode(self, endgame: List[str] = config['endgames'], n_episodes: int = config['n_episodes']):
+    def train_single_episode_mode(self, endgame: List[str], n_episodes: int = config['n_episodes']):
         """
         Train the policy with the original method (update after every episode).
         Kept for backward compatibility and comparison.
@@ -441,7 +441,8 @@ class REINFORCE:
         
         self.save_model()
 
-    def train(self, endgame: List[str] = config['endgames'], n_episodes: int = config['n_episodes'], 
+    def train(self, 
+              n_episodes: int = config['n_episodes'], 
               episodes_per_update: int = 1000):
         """
         Train the policy on multiple endgame positions with batch updates.
@@ -463,7 +464,7 @@ class REINFORCE:
 
         for episode in range(n_episodes):
             # Randomly select an endgame position
-            starting_fen = random.choice(endgame)
+            starting_fen = random.choice(endgames)['fen']
 
             # Collect episode data without training
             episode_data, DTM = self.collect_episode_data(starting_fen)
