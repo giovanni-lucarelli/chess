@@ -156,8 +156,10 @@ class Env:
                     if self.game.is_game_over():
                         return StepResult(reward=self.game.result(), done=True, info=info)
                 except Exception:
-                    # Ignore defender errors/mismatches; proceed with step penalty.
+                    print(f"Warning: Failed to apply defender move '{reply_uci}' for FEN: {self.to_fen()}", file=sys.stderr)
                     pass
+            else:
+                print(f"Warning: Defender returned NONE move for FEN: {self.to_fen()}", file=sys.stderr)
 
         # 3) Non-terminal step reward
         return StepResult(reward=-self.step_penalty, done=False, info=info)

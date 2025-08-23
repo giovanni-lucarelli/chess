@@ -1,7 +1,10 @@
 import csv
 import random
+import numpy as np
 from typing import Dict, List, Tuple, Optional, Union
 from pathlib import Path
+from chessrl.env import Env
+from chessrl import chess_py  # Import the chess_py module to access Move class
 
 
 """
@@ -39,6 +42,121 @@ def load_positions(csv_path: str):
             dtz_groups[dtz].append(pos)
     
     return positions, dtz_groups
+
+
+def load_all_positions(csv_path: str):
+        positions = []
+        positions_to_idx = {}
+        
+        # Read the CSV file
+        with open(csv_path, 'r') as f:
+            reader = csv.DictReader(f)
+            for row in reader:
+                fen = row['fen']
+                if ('b' in fen):
+                    game = Env.from_fen(fen)
+                    terminal_state = game.state().is_game_over()
+                if ('w' in fen) or ('b' in fen and terminal_state):
+                    positions_to_idx[fen] = len(positions)
+                    positions.append(fen)
+                else:
+                    continue
+            
+            for fen in generate_two_kings_fens():
+                if fen not in positions_to_idx:
+                    positions_to_idx[fen] = len(positions)
+                    positions.append(fen)
+        
+        values = np.zeros(len(positions), dtype=float)
+
+        return positions, positions_to_idx, values
+
+# TODO: this function is very ugly, make the csv already contain these positions!!
+def generate_two_kings_fens():
+    files = "abcdefgh"
+    ranks = "12345678"
+
+    def square(idx):
+        return files[idx % 8] + ranks[idx // 8]
+
+    def fen_row(pieces):
+        """Convert list of 64 chars to FEN board string"""
+        rows = []
+        for r in range(8):
+            row = pieces[r*8:(r+1)*8]
+            fen_row = ""
+            empty = 0
+            for ch in row:
+                if ch == ".":
+                    empty += 1
+                else:
+                    if empty > 0:
+                        fen_row += str(empty)
+                        empty = 0
+                    fen_row += ch
+            if empty > 0:
+                fen_row += str(empty)
+            rows.append(fen_row)
+        return "/".join(rows[::-1])  # ranks 8→1
+
+    # Precompute adjacency (king moves)
+    king_moves = {}
+    for i in range(64):
+        adj = []
+        r, f = divmod(i, 8)
+        for dr in [-1, 0, 1]:
+            for df in [-1, 0, 1]:
+                if dr == 0 and df == 0:
+                    continue
+                nr, nf = r + dr, f + df
+                if 0 <= nr < 8 and 0 <= nf < 8:
+                    adj.append(nr*8 + nf)
+        king_moves[i] = set(adj)
+
+    fens = []
+    for wk in range(64):
+        for bk in range(64):
+            if wk == bk:
+                continue
+            if bk in king_moves[wk]:  # kings adjacent → illegal
+                continue
+            # create empty board
+            board = ["."] * 64
+            board[wk] = "K"
+            board[bk] = "k"
+            fen_board = fen_row(board)
+            for stm in ["w", "b"]:
+                fen = f"{fen_board} {stm} - - 0 1"
+                fens.append(fen)
+    return fens
+
+def load_all_positions_with_actions(csv_path: str):
+        positions = []
+        positions_actions_to_idx = {}
+        # IMPORTANT DIFFERENCE: I don't save terminal states anymore!
+        q_values = []
+        last_index = 0
+        
+        # Read the CSV file
+        with open(csv_path, 'r') as f:
+            reader = csv.DictReader(f)
+            for row in reader:
+                fen = row['fen']
+                game = Env.from_fen(fen)
+                terminal_state = game.state().is_game_over()
+                if ('w' in fen) and (not terminal_state):
+                    legal_moves = list(game.state().legal_moves(game.state().get_side_to_move()))
+                    for i, a in enumerate(legal_moves):
+                        positions_actions_to_idx[(fen, chess_py.Move.to_uci(a))] = last_index+i
+                    last_index += len(legal_moves)
+                    positions.append(fen)
+                else:
+                    continue
+            
+        q_values = np.zeros(len(positions_actions_to_idx), dtype=float)             
+        return positions, positions_actions_to_idx, q_values
+
+
 
 def sample_endgames(
     csv_path: str,

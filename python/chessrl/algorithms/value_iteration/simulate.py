@@ -16,7 +16,7 @@ logger = logging.getLogger(__name__)
 import matplotlib.pyplot as plt # type: ignore
 
 # chess
-from src.value_iteration.value_iteration import ValueIteration
+from value_iteration import ValueIteration
 from chessrl.env import Env, SyzygyDefender, LichessDefender
 from chessrl.utils.mate_positions import generate_endgames_offline,sample_random_position
 
@@ -24,18 +24,17 @@ import pickle
 
 if __name__ == '__main__':
     # Clean previous plots
-    plot_files = glob.glob('output/plots/turn_*.png')
+    """ plot_files = glob.glob('output/plots/turn_*.png')
     for file in plot_files:
         os.remove(file)
-    logger.info(f'Cleaned {len(plot_files)} previous plot files')
+    logger.info(f'Cleaned {len(plot_files)} previous plot files') """
     
     # Load the policy dictionary from file
     with open(config['savepath_value_iteration'], "rb") as f:
         policy = pickle.load(f)
         
-    TB_PATH = "tablebase"  
-    #defender = SyzygyDefender(TB_PATH) 
-    defender = LichessDefender()
+    TB_PATH = os.path.join(os.path.dirname(__file__), '..', '..', '..', '..', 'syzygy-tables')
+    defender = SyzygyDefender(TB_PATH) 
 
     if (config['type_of_tests']=='mate_in_n'):    
         # KR vs K, White to move, exact mate-in-3
