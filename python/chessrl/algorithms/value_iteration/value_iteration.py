@@ -24,7 +24,7 @@ import numpy as np
 # chess
 from chessrl.env import Env, SyzygyDefender
 from chessrl.chess_py import Move
-from chessrl.utils.create_endgames import generate_all_endgame_positions
+#from chessrl.utils.create_endgames import generate_all_endgame_positions
 from chessrl.utils.endgame_loader import load_all_positions
 
 class ValueIteration:

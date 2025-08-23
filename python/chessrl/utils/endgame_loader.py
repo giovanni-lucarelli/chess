@@ -4,6 +4,7 @@ import numpy as np
 from typing import Dict, List, Tuple, Optional, Union
 from pathlib import Path
 from chessrl.env import Env
+from chessrl import chess_py  # Import the chess_py module to access Move class
 
 
 """
@@ -70,6 +71,7 @@ def load_all_positions(csv_path: str):
 
         return positions, positions_to_idx, values
 
+# TODO: this function is very ugly, make the csv already contain these positions!!
 def generate_two_kings_fens():
     files = "abcdefgh"
     ranks = "12345678"
@@ -127,6 +129,32 @@ def generate_two_kings_fens():
                 fen = f"{fen_board} {stm} - - 0 1"
                 fens.append(fen)
     return fens
+
+def load_all_positions_with_actions(csv_path: str):
+        positions = []
+        positions_actions_to_idx = {}
+        # IMPORTANT DIFFERENCE: I don't save terminal states anymore!
+        q_values = []
+        last_index = 0
+        
+        # Read the CSV file
+        with open(csv_path, 'r') as f:
+            reader = csv.DictReader(f)
+            for row in reader:
+                fen = row['fen']
+                game = Env.from_fen(fen)
+                terminal_state = game.state().is_game_over()
+                if ('w' in fen) and (not terminal_state):
+                    legal_moves = list(game.state().legal_moves(game.state().get_side_to_move()))
+                    for i, a in enumerate(legal_moves):
+                        positions_actions_to_idx[(fen, chess_py.Move.to_uci(a))] = last_index+i
+                    last_index += len(legal_moves)
+                    positions.append(fen)
+                else:
+                    continue
+            
+        q_values = np.zeros(len(positions_actions_to_idx), dtype=float)             
+        return positions, positions_actions_to_idx, q_values
 
 
 
