@@ -44,7 +44,7 @@ if __name__ == '__main__':
     plt.show()
     counter = 1
     while True:
-        move = reinforce.policy.predict(env.state(), reinforce.move_to_idx)
+        move = reinforce.policy.predict(env, reinforce.move_to_idx)
         step = env.step(move)
         env.display_state(save_path=f"output/plots/turn_{counter}.png")
         counter += 1
@@ -54,5 +54,8 @@ if __name__ == '__main__':
             break
         
         if step.done:
-            logger.info('!!! GAME OVER !!!')
+            if step.reward > 0:
+                logger.info('!!! CHECKMATE !!!')
+            else:
+                logger.info('!!! GAME OVER (Draw/Stalemate) !!!')
             break

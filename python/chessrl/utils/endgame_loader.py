@@ -220,19 +220,14 @@ def sample_endgames(
     
     return sampled_positions
     
-def sample_by_single_dtz(dtz: int, count: int) -> List[Dict[str, Union[str, int]]]:
+def get_all_endgames_from_dtz(csv_path: str,
+                              dtz: int):
     """
-    Convenience method to sample positions from a single DTZ value.
-    
-    Args:
-        dtz: The DTZ value to sample from
-        count: Number of positions to sample
-        
-    Returns:
-        List of position dictionaries
+    Get all endgame positions for a specific DTZ value.
     """
-    return sample_endgames({dtz: count})
-    
+    positions, dtz_groups = load_positions(csv_path=csv_path)
+    return dtz_groups.get(dtz, [])
+
 def get_stats(csv_path: str) -> Dict[str, Union[int, Dict[int, int]]]:
     """
     Get statistics about the loaded dataset.

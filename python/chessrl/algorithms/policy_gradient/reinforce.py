@@ -14,7 +14,7 @@ from tqdm import tqdm
 import matplotlib.pyplot as plt 
 from chessrl.utils.load_config import load_config
 from chessrl.utils.fen_parsing import parse_fen
-from chessrl.utils.endgame_loader import sample_endgames
+from chessrl.utils.endgame_loader import sample_endgames, get_all_endgames_from_dtz
 from typing import List
 import random
 
@@ -113,26 +113,26 @@ class Policy(nn.Module):
         else:
             return torch.log_softmax(logits, dim=-1)
     
-    def predict(self, game_state, move_to_idx):
+    def predict(self, env, move_to_idx, epsilon=config['epsilon']):
         """
         Predict the best move for the given game state.
+        
+        Args:
+            epsilon: If > 0, use epsilon-greedy exploration
         """
         # Convert game state to FEN
-        fen = game_state.to_fen()
-        
-        # Create a temporary game to get legal moves
-        temp_game = cp.Game()
-        temp_game.reset_from_fen(fen)
-        
+        fen = env.to_fen()
+
         # Get legal move indices
         legal_moves = []
-        side_to_move = temp_game.get_side_to_move()
-        for move in temp_game.legal_moves(side_to_move):
+        side_to_move = env.state().get_side_to_move()
+        for move in env.state().legal_moves(side_to_move):
             move_str = cp.Move.to_uci(move)[:4]
             if move_str in move_to_idx:
                 legal_moves.append((move_to_idx[move_str], move))
         
         if not legal_moves:
+            logger.warning(f"No legal moves found for position: {fen}")
             return None
         
         # Get action probabilities
@@ -141,10 +141,19 @@ class Policy(nn.Module):
             action_probs = self.get_action_probs(fen_tensor, [idx for idx, _ in legal_moves])
             action_probs = action_probs.squeeze(0).cpu().numpy()
         
-        # Find the move with highest probability
+        # Choose move (epsilon-greedy or greedy)
         legal_indices = [idx for idx, _ in legal_moves]
         legal_probs = action_probs[legal_indices]
-        best_legal_idx = legal_indices[legal_probs.argmax()]
+        
+        if epsilon > 0 and np.random.random() < epsilon:
+            # Random exploration
+            selected_idx = np.random.choice(len(legal_moves))
+            best_legal_idx = legal_indices[selected_idx]
+        else:
+            # Greedy selection
+            best_legal_idx = legal_indices[legal_probs.argmax()]
+        
+        logger.debug(f"Found {len(legal_moves)} legal moves, best prob: {legal_probs.max():.4f}")
         
         # Return the corresponding move
         for idx, move in legal_moves:
@@ -273,12 +282,14 @@ class REINFORCE:
                 players.append(cp.Color.WHITE)  
             
             if game.is_game_over():
-                logger.info(f'Game over after {step + 1} steps. Reward: {step_result.reward}')
                 break
         
-        # Calculate DTM (Distance to Mate) only if checkmate done (positive reward)
-
-        DTM = len([p for p in players if p == 0]) if step_result.reward > 0 else float('inf')  # Count white moves
+        # Calculate DTM (Distance to Mate) only if checkmate achieved (positive reward)
+        # DTM should count white moves only when the game ends in mate
+        if step_result.reward > 0:
+            DTM = len([p for p in players if p == cp.Color.WHITE])  # Count white moves to mate
+        else:
+            DTM = float('inf')  # No mate achieved
 
         # Cap max steps and give draw penalty if not checkmate
         if not step_result.done:
@@ -299,11 +310,10 @@ class REINFORCE:
             returns.insert(0, G)
             
         return returns
-        
-    def collect_episode_data(self, starting_fen: str):
+
+    def train_episode(self, starting_fen: str):
         """
-        Collect data from a single episode without training.
-        Returns episode data that can be accumulated for batch training.
+        Train on a single episode (legacy method for backward compatibility).
         """
         states, actions, rewards, players, DTM = self.sample_episode(starting_fen)
         
@@ -314,43 +324,24 @@ class REINFORCE:
         # Calculate returns for each time step
         returns = self.calculate_returns(rewards)
         
-        # Collect training data for white moves only
-        episode_data = []
-        
-        for i, player in enumerate(players):
-            if player == 0:  # White move (0 in our tracking)
-                episode_data.append({
-                    'state': states[i],
-                    'action': actions[i], 
-                    'return': returns[i]
-                })
-        
-        return episode_data, DTM
-
-    def train_episode(self, starting_fen: str):
-        """
-        Train on a single episode (legacy method for backward compatibility).
-        """
-        episode_data, DTM = self.collect_episode_data(starting_fen)
-        
-        if not episode_data:
-            logger.debug("No white moves to train on")
-            return 0.0, DTM
-        
         # Convert episode data to tensors and train
         log_probs = []
         episode_returns = []
         
-        for data in episode_data:
-            fen_tensor = parse_fen(data['state']).unsqueeze(0)
-            legal_moves = self.get_legal_move_indices_from_fen(data['state'])
+        for step in range(len(states)):
+            fen_tensor = parse_fen(states[step]).unsqueeze(0)
+            
+            # Create temporary game to get legal moves
+            temp_game = cp.Game()
+            temp_game.reset_from_fen(states[step])
+            legal_moves = self.get_legal_move_indices(temp_game)
             
             # Get log probabilities
             log_prob_dist = self.policy.get_log_probs(fen_tensor, legal_moves)
-            log_prob = log_prob_dist[0, data['action']]
+            log_prob = log_prob_dist[0, actions[step]]
             
             log_probs.append(log_prob)
-            episode_returns.append(data['return'])
+            episode_returns.append(returns[step])
         
         # Calculate loss with numerical stability
         log_probs_tensor = torch.stack(log_probs)
@@ -366,84 +357,8 @@ class REINFORCE:
         
         return loss.item(), DTM
 
-    def train_batch(self, batch_data: List[dict]):
-        """
-        Train on a batch of accumulated episode data.
-        """
-        if not batch_data:
-            logger.warning("No data to train on")
-            return 0.0
-        
-        log_probs = []
-        episode_returns = []
-        
-        for data in batch_data:
-            fen_tensor = parse_fen(data['state']).unsqueeze(0)
-            legal_moves = self.get_legal_move_indices_from_fen(data['state'])
-            
-            # Get log probabilities
-            log_prob_dist = self.policy.get_log_probs(fen_tensor, legal_moves)
-            log_prob = log_prob_dist[0, data['action']]
-            
-            log_probs.append(log_prob)
-            episode_returns.append(data['return'])
-        
-        if not log_probs:
-            logger.warning("No valid training data in batch")
-            return 0.0
-        
-        # Calculate loss with numerical stability
-        log_probs_tensor = torch.stack(log_probs)
-        returns_tensor = torch.tensor(episode_returns, dtype=torch.float32)
-        
-        # REINFORCE loss: -E[log π(a|s) * G]
-        loss = -torch.mean(log_probs_tensor * returns_tensor)
-        
-        # Optimize
-        self.optimizer.zero_grad()
-        loss.backward()
-        self.optimizer.step()
-        
-        return loss.item()
-
-    def get_legal_move_indices_from_fen(self, fen: str) -> List[int]:
-        """
-        Helper to get legal move indices from FEN string.
-        """
-        temp_game = cp.Game()
-        temp_game.reset_from_fen(fen)
-        return self.get_legal_move_indices(temp_game)
-    
-    def train_single_episode_mode(self, endgame: List[str], n_episodes: int = config['n_episodes']):
-        """
-        Train the policy with the original method (update after every episode).
-        Kept for backward compatibility and comparison.
-        """
-        logger.info("Training in single-episode mode (update after each episode)")
-        
-        for episode in range(n_episodes):
-            # Randomly select an endgame position
-            #starting_fen = random.choice(endgame)
-            starting_fen = '1k6/8/1K6/8/8/8/8/6R1 w - - 0 1' # KRvK 1 DTM
-
-            # Train on this episode
-            loss, DTM = self.train_episode(starting_fen)
-            
-            # Store DTM for plotting
-            if DTM is not None:
-                self.dtm_history.append(DTM)
-            
-            # Print progress
-            if (episode + 1) % 1 == 0:
-                avg_dtm = np.mean(self.dtm_history[-100:]) if self.dtm_history else None
-                avg_dtm_str = f"{avg_dtm:.2f}" if avg_dtm is not None else "N/A"
-                print(f"Episode {episode + 1}/{n_episodes}, Loss: {loss:.4f}, DTM: {DTM}, Avg DTM: {avg_dtm_str}")
-        
-        self.save_model()
-
     def train(self, 
-              n_episodes: int = config['n_episodes'], 
-              episodes_per_update: int = 1000):
+              n_episodes: int = config['n_episodes']):
         """
         Train the policy on multiple endgame positions with batch updates.
         
@@ -452,103 +367,36 @@ class REINFORCE:
             n_episodes: Total number of episodes to run
             episodes_per_update: Number of episodes to collect before each parameter update
         """
-        logger.info(f"Starting training with {episodes_per_update} episodes per update")
-        
-        accumulated_data = []
+        endgames = get_all_endgames_from_dtz(csv_path='../../../../syzygy-tables/krk_dtz.csv', dtz=3) # training on KRvK with DTZ=3 only
+
         accumulated_dtm = []
-        update_count = 0
+        accumulated_loss = []
 
-        # Convert string keys to integers for DTZ sampling
-        dtz_counts = {int(k): v for k, v in config['endgame_sampling'].items()}
-        endgames = sample_endgames(csv_path='../../../../syzygy-tables/krk_dtz.csv', dtz_counts=dtz_counts)
+        # Create progress bar
+        with tqdm(total=n_episodes, desc="Training Episodes") as pbar:
+            for episode in range(n_episodes):
+                endgame_data = random.choice(endgames)
+                starting_fen = endgame_data['fen']  # Extract FEN string from dictionary
+                loss, DTM = self.train_episode(starting_fen)
 
-        for episode in range(n_episodes):
-            # Randomly select an endgame position
-            starting_fen = random.choice(endgames)['fen']
+                accumulated_loss.append(loss)
 
-            # Collect episode data without training
-            episode_data, DTM = self.collect_episode_data(starting_fen)
-            
-            # Store DTM for plotting
-            if DTM is not None:
-                accumulated_dtm.append(DTM)
-            
-            # Accumulate training data
-            if episode_data:
-                accumulated_data.extend(episode_data)
-            
-            # Check if we should update parameters
-            if (episode + 1) % episodes_per_update == 0:
-                if accumulated_data:
-                    # Train on accumulated batch
-                    loss = self.train_batch(accumulated_data)
-                    update_count += 1
-                    
-                    # Calculate average DTM for this batch
-                    avg_dtm = np.mean(accumulated_dtm) if accumulated_dtm else None
-                    avg_dtm_str = f"{avg_dtm:.2f}" if avg_dtm is not None else "N/A"
-                    
-                    logger.info(f"Update {update_count}: Episodes {episode + 1 - episodes_per_update + 1}-{episode + 1}, "
-                              f"Loss: {loss:.4f}, Batch Size: {len(accumulated_data)}, Avg DTM: {avg_dtm_str}")
-                    
-                    # Store DTM history (average for this batch)
-                    if avg_dtm is not None:
-                        self.dtm_history.append(avg_dtm)
-                    
-                    # Clear accumulated data for next batch
-                    accumulated_data = []
-                    accumulated_dtm = []
-                else:
-                    logger.warning(f"No data accumulated for update at episode {episode + 1}")
-            
-            # Print progress every 1000 episodes
-            if (episode + 1) % 1000 == 0:
-                recent_dtm = np.mean(accumulated_dtm[-100:]) if len(accumulated_dtm) >= 100 else np.mean(accumulated_dtm) if accumulated_dtm else None
-                recent_dtm_str = f"{recent_dtm:.2f}" if recent_dtm is not None else "N/A"
-                logger.info(f"Progress: Episode {episode + 1}/{n_episodes}, Recent DTM: {recent_dtm_str}, "
-                          f"Data points accumulated: {len(accumulated_data)}")
-        
-        # Handle any remaining data
-        if accumulated_data:
-            loss = self.train_batch(accumulated_data)
-            update_count += 1
-            avg_dtm = np.mean(accumulated_dtm) if accumulated_dtm else None
-            avg_dtm_str = f"{avg_dtm:.2f}" if avg_dtm is not None else "N/A"
-            logger.info(f"Final update {update_count}: Remaining {len(accumulated_data)} data points, "
-                      f"Loss: {loss:.4f}, Avg DTM: {avg_dtm_str}")
-        
-        logger.info(f"Training completed with {update_count} parameter updates")
-        self.save_model()
+                # Store DTM for plotting
+                if DTM is not None:
+                    accumulated_dtm.append(DTM)
                 
-    
-    def plot_dtm_progress(self):
-        """
-        Plot DTM (Distance to Mate) progress over training batches
-        """
-        if not self.dtm_history:
-            logger.warning("No DTM history to plot")
-            return
-            
-        plt.figure(figsize=(10, 6))
-        plt.plot(range(1, len(self.dtm_history) + 1), self.dtm_history, 'b-', linewidth=2)
-        plt.xlabel('Training Batch')
-        plt.ylabel('Average DTM (Distance to Mate)')
-        plt.title('DTM Progress During Training')
-        plt.grid(True, alpha=0.3)
-        
-        # Add horizontal line for optimal DTM (3 for the simple endgame)
-        optimal_dtm = 3  # Known optimal for the simple endgame
-        plt.axhline(y=optimal_dtm, color='r', linestyle='--', alpha=0.7, label=f'Optimal DTM = {optimal_dtm}')
-        plt.legend()
-        
-        # Set y-axis to show reasonable range
-        plt.ylim(0, min(self.max_steps, max(self.dtm_history) * 1.1))
-        
-        plt.tight_layout()
-        plt.savefig('output/dtm_progress.png', dpi=300, bbox_inches='tight')
-        plt.show()
-        logger.info(f"DTM progress plot saved to output/dtm_progress.png")
-    
+                # Update progress bar with recent metrics
+                recent_loss = np.mean(accumulated_loss[-100:]) if len(accumulated_loss) >= 100 else np.mean(accumulated_loss)
+                recent_dtm = np.mean(accumulated_dtm[-100:]) if len(accumulated_dtm) >= 100 else (np.mean(accumulated_dtm) if accumulated_dtm else float('inf'))
+                
+                pbar.set_postfix({
+                    'Loss': f'{recent_loss:.3f}' if recent_loss is not None else 'N/A',
+                    'DTM': f'{recent_dtm:.1f}' if recent_dtm != float('inf') else 'inf'
+                })
+                pbar.update(1)
+
+        self.save_model()
+
     def save_model(self, filepath=config['filepath_train']):
         """
         Save the trained policy weights to a file.
@@ -568,22 +416,3 @@ class REINFORCE:
             logger.error(f"File {filepath} not found. Using randomly initialized weights.")
         except Exception as e:
             logger.error(f"Error loading model: {e}")
-    
-    @staticmethod
-    def load_policy_for_prediction(filepath=config['filepath_test']):
-        """
-        Static method to load a trained policy for prediction only.
-        Returns a policy instance ready for prediction.
-        """
-        logger.info(f'Loading model with filepath {filepath}')
-        try:
-            loaded_policy = Policy()
-            loaded_policy.load_state_dict(torch.load(filepath))
-            loaded_policy.eval()
-            return loaded_policy
-        except FileNotFoundError:
-            logger.error(f"File {filepath} not found. Returning randomly initialized policy.")
-            return Policy()
-        except Exception as e:
-            logger.error(f"Error loading policy: {e}")
-            return Policy()

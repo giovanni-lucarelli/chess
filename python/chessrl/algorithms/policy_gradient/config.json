@@ -1,5 +1,5 @@
 {
-    "alpha": 0.05,
+    "alpha": 0.001,
     "gamma": 0.95,
     "epsilon": 0.003,
     "endgame_sampling": {
