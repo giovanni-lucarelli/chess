@@ -99,20 +99,43 @@ class Env:
     __slots__ = ("game", "gamma", "step_penalty", "defender",
                  "absorb_black_reply", "ply")
 
+    # def __init__(
+    #     self,
+    #     game: cp.Game,
+    #     gamma: float = 1.0,
+    #     step_penalty: float = 0.0,
+    #     defender: Any | None = None,
+    #     absorb_black_reply: bool = True,
+    # ):
+    #     self.game = game
+    #     self.gamma = gamma
+    #     self.step_penalty = step_penalty
+    #     self.defender = defender
+    #     self.absorb_black_reply = absorb_black_reply
+    #     self.ply = 0  # counts every applied ply (agent + absorbed reply)
+
     def __init__(
-        self,
-        game: cp.Game,
-        gamma: float = 1.0,
-        step_penalty: float = 0.0,
-        defender: Any | None = None,
-        absorb_black_reply: bool = True,
-    ):
+            self, 
+            game: cp.Game, 
+            gamma: float = 1.0, 
+            step_penalty: float = 0.0, 
+            defender: Any | None = None,
+            absorb_black_reply: bool = True,
+            two_ply_cost: float = 2.0, 
+            draw_penalty: float = 1000.0,
+            exact_plies: bool = False
+            ):
+        
         self.game = game
         self.gamma = gamma
-        self.step_penalty = step_penalty
+        self.step_penalty = step_penalty  # (non più usato quando absorb_black_reply=True)
         self.defender = defender
         self.absorb_black_reply = absorb_black_reply
-        self.ply = 0  # counts every applied ply (agent + absorbed reply)
+        self.two_ply_cost = two_ply_cost
+        self.draw_penalty = draw_penalty
+        self.exact_plies = exact_plies
+        self.ply = 0
+
 
     # --- Constructors ---------------------------------------------------------
 
@@ -132,19 +155,67 @@ class Env:
 
     # --- Core step ------------------------------------------------------------
 
+    # def step(self, move_or_uci: cp.Move | str) -> StepResult:
+    #     """Apply agent move; optionally absorb Black’s tablebase reply."""
+    #     info = {"absorbed_reply": False, "reply_uci": None}
+
+    #     # 1) Agent move
+    #     self._apply(move_or_uci)
+    #     self.ply += 1
+
+    #     # Terminal after agent move?
+    #     if self.game.is_game_over():
+    #         return StepResult(reward=self.game.result(), done=True, info=info)
+
+    #     # 2) Absorb Black reply (only if it's Black to move now)
+    #     if self.absorb_black_reply and self.defender and self._stm_is_black():
+    #         reply_uci = self.defender.best_reply_uci(self.to_fen())
+    #         if reply_uci:
+    #             try:
+    #                 self._apply_uci(reply_uci)
+    #                 self.ply += 1
+    #                 info["absorbed_reply"] = True
+    #                 info["reply_uci"] = reply_uci
+    #                 if self.game.is_game_over():
+    #                     return StepResult(reward=self.game.result(), done=True, info=info)
+    #             except Exception:
+    #                 print(f"Warning: Failed to apply defender move '{reply_uci}' for FEN: {self.to_fen()}", file=sys.stderr)
+    #                 pass
+    #         else:
+    #             print(f"Warning: Defender returned NONE move for FEN: {self.to_fen()}", file=sys.stderr)
+
+    #     # 3) Non-terminal step reward
+    #     return StepResult(reward=-self.step_penalty, done=False, info=info)
+
     def step(self, move_or_uci: cp.Move | str) -> StepResult:
-        """Apply agent move; optionally absorb Black’s tablebase reply."""
+        """
+        Applica la mossa del Bianco; se richiesto, assorbe la miglior risposta del Nero.
+        Ricompense:
+        - non terminale dopo 2 plies   ->  -two_ply_cost
+        - mate dopo mossa del Bianco   ->  0  (o -1 se exact_plies=True)
+        - draw (stallo, insuff., 3x)   ->  -draw_penalty
+        """
         info = {"absorbed_reply": False, "reply_uci": None}
 
-        # 1) Agent move
+        # --- 1) mossa del Bianco ---
         self._apply(move_or_uci)
         self.ply += 1
 
-        # Terminal after agent move?
+        # Terminale dopo la mossa del Bianco?
         if self.game.is_game_over():
-            return StepResult(reward=self.game.result(), done=True, info=info)
+            # Se è checkmate, il Bianco ha appena dato matto
+            try:
+                is_mate = self.game.is_checkmate()
+            except AttributeError:
+                # fallback robusto: con KRK/KQK/KBBK il Nero non può dare matto
+                is_mate = True  # se è terminale qui, è sicuramente mate del Bianco
+            if is_mate:
+                reward = -1.0 if getattr(self, "exact_plies", False) else 0.0
+                return StepResult(reward=reward, done=True, info=info)
+            else:
+                return StepResult(reward=-self.draw_penalty, done=True, info=info)
 
-        # 2) Absorb Black reply (only if it's Black to move now)
+        # --- 2) assorbi la miglior risposta del Nero ---
         if self.absorb_black_reply and self.defender and self._stm_is_black():
             reply_uci = self.defender.best_reply_uci(self.to_fen())
             if reply_uci:
@@ -154,15 +225,16 @@ class Env:
                     info["absorbed_reply"] = True
                     info["reply_uci"] = reply_uci
                     if self.game.is_game_over():
-                        return StepResult(reward=self.game.result(), done=True, info=info)
+                        # dopo la risposta del Nero, se finisce è sempre patta
+                        return StepResult(reward=-self.draw_penalty, done=True, info=info)
                 except Exception:
-                    print(f"Warning: Failed to apply defender move '{reply_uci}' for FEN: {self.to_fen()}", file=sys.stderr)
-                    pass
+                    print(f"Warning: failed to apply defender move '{reply_uci}' for {self.to_fen()}", file=sys.stderr)
             else:
-                print(f"Warning: Defender returned NONE move for FEN: {self.to_fen()}", file=sys.stderr)
+                print(f"Warning: defender returned None for {self.to_fen()}", file=sys.stderr)
 
-        # 3) Non-terminal step reward
-        return StepResult(reward=-self.step_penalty, done=False, info=info)
+        # --- 3) non terminale ---
+        return StepResult(reward=-self.two_ply_cost, done=False, info=info)
+
 
     # --- Mirrors / conveniences ----------------------------------------------
 
