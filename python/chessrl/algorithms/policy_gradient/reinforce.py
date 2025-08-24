@@ -136,7 +136,8 @@ class Policy(nn.Module):
             return None
         
         # Get action probabilities
-        fen_tensor = parse_fen(fen).unsqueeze(0)
+        device = next(self.parameters()).device
+        fen_tensor = parse_fen(fen).unsqueeze(0).to(device)
         with torch.no_grad():
             action_probs = self.get_action_probs(fen_tensor, [idx for idx, _ in legal_moves])
             action_probs = action_probs.squeeze(0).cpu().numpy()
@@ -173,7 +174,19 @@ class REINFORCE:
         self.lr = lr 
         self.gamma = gamma 
         self.epsilon = epsilon
-        self.policy = Policy()
+        
+        # Device selection: CUDA > MPS > CPU
+        if torch.cuda.is_available():
+            self.device = torch.device('cuda')
+            logger.info(f"Using CUDA device: {torch.cuda.get_device_name()}")
+        elif torch.backends.mps.is_available():
+            self.device = torch.device('mps')
+            logger.info("Using MPS device (Apple Silicon GPU)")
+        else:
+            self.device = torch.device('cpu')
+            logger.info("Using CPU device")
+        
+        self.policy = Policy().to(self.device)
         self.optimizer = torch.optim.Adam(self.policy.parameters(), lr=lr)
         
         self.dtm_history = []
@@ -252,7 +265,7 @@ class REINFORCE:
                     break  # No legal moves available
                 
                 # Get action probabilities
-                fen_tensor = parse_fen(current_fen).unsqueeze(0)
+                fen_tensor = parse_fen(current_fen).unsqueeze(0).to(self.device)
                 with torch.no_grad():
                     action_probs = self.policy.get_action_probs(fen_tensor, legal_moves)
                     action_probs = action_probs.squeeze(0).cpu().numpy()
@@ -272,7 +285,7 @@ class REINFORCE:
                 move_str = self.idx_to_move[action_idx]
                 move = cp.Move.from_strings(game, move_str[:2], move_str[2:4])
                 
-                # Take step
+                # Take step - this includes also the black move
                 step_result = env.step(move)
 
                 # Store data
@@ -286,14 +299,14 @@ class REINFORCE:
         
         # Calculate DTM (Distance to Mate) only if checkmate achieved (positive reward)
         # DTM should count white moves only when the game ends in mate
-        if step_result.reward > 0:
+        if env.state().is_checkmate():
             DTM = len([p for p in players if p == cp.Color.WHITE])  # Count white moves to mate
         else:
             DTM = float('inf')  # No mate achieved
 
         # Cap max steps and give draw penalty if not checkmate
         if not step_result.done:
-            rewards[-1] = -0.5
+            rewards[-1] = -1
         
         return states, actions, rewards, players, DTM
     
@@ -329,7 +342,7 @@ class REINFORCE:
         episode_returns = []
         
         for step in range(len(states)):
-            fen_tensor = parse_fen(states[step]).unsqueeze(0)
+            fen_tensor = parse_fen(states[step]).unsqueeze(0).to(self.device)
             
             # Create temporary game to get legal moves
             temp_game = cp.Game()
@@ -345,7 +358,7 @@ class REINFORCE:
         
         # Calculate loss with numerical stability
         log_probs_tensor = torch.stack(log_probs)
-        returns_tensor = torch.tensor(episode_returns, dtype=torch.float32)
+        returns_tensor = torch.tensor(episode_returns, dtype=torch.float32, device=self.device)
         
         # REINFORCE loss: -E[log π(a|s) * G]
         loss = -torch.mean(log_probs_tensor * returns_tensor)
@@ -355,44 +368,46 @@ class REINFORCE:
         loss.backward()
         self.optimizer.step()
         
+        # Clear GPU cache to prevent memory buildup
+        if self.device.type == 'cuda':
+            torch.cuda.empty_cache()
+        elif self.device.type == 'mps':
+            torch.mps.empty_cache()
+        
         return loss.item(), DTM
 
-    def train(self, 
-              endgames,
-              n_episodes: int = config['n_episodes']):
+    def train(self, endgames):
         """
         Train the policy on multiple endgame positions with batch updates.
         
         Args:
-            endgame: List of endgame FENs to sample from
-            n_episodes: Total number of episodes to run
-            episodes_per_update: Number of episodes to collect before each parameter update
+            endgames: List of endgame FENs to sample from
         """
 
         accumulated_dtm = []
         accumulated_loss = []
 
         # Create progress bar
-        with tqdm(total=n_episodes, desc="Training Episodes") as pbar:
-            for episode in range(n_episodes):
-                endgame_data = random.choice(endgames)
-                starting_fen = endgame_data['fen']  # Extract FEN string from dictionary
+        with tqdm(total=len(endgames), desc="Training") as pbar:
+            for i, endgame in enumerate(endgames):
+                starting_fen = endgame['fen']  
                 loss, DTM = self.train_episode(starting_fen)
 
                 accumulated_loss.append(loss)
-
-                # Store DTM for plotting
-                if DTM is not None:
+ 
+                if DTM is not None and DTM != float('inf'):
                     accumulated_dtm.append(DTM)
                 
-                # Update progress bar with recent metrics
-                recent_loss = np.mean(accumulated_loss[-100:]) if len(accumulated_loss) >= 100 else np.mean(accumulated_loss)
-                recent_dtm = np.mean(accumulated_dtm[-100:]) if len(accumulated_dtm) >= 100 else (np.mean(accumulated_dtm) if accumulated_dtm else float('inf'))
+                # Update progress bar every 50 iterations to reduce overhead
+                if i % 50 == 0 or i == len(endgames) - 1:
+                    recent_loss = np.mean(accumulated_loss[-100:]) if len(accumulated_loss) >= 100 else np.mean(accumulated_loss)
+                    recent_dtm = np.mean(accumulated_dtm[-100:]) if len(accumulated_dtm) >= 100 else (np.mean(accumulated_dtm) if accumulated_dtm else float('inf'))
+                    
+                    pbar.set_postfix({
+                        'Loss': f'{recent_loss:.3f}' if recent_loss is not None else 'N/A',
+                        'DTM': f'{recent_dtm:.1f}' if recent_dtm != float('inf') else 'inf'
+                    })
                 
-                pbar.set_postfix({
-                    'Loss': f'{recent_loss:.3f}' if recent_loss is not None else 'N/A',
-                    'DTM': f'{recent_dtm:.1f}' if recent_dtm != float('inf') else 'inf'
-                })
                 pbar.update(1)
 
         self.save_model()
@@ -410,7 +425,9 @@ class REINFORCE:
         """
         logger.info(f'Loading model with filepath {filepath}')
         try:
-            self.policy.load_state_dict(torch.load(filepath))
+            # Load model weights and map to the current device
+            state_dict = torch.load(filepath, map_location=self.device)
+            self.policy.load_state_dict(state_dict)
             self.policy.eval()
         except FileNotFoundError:
             logger.error(f"File {filepath} not found. Using randomly initialized weights.")

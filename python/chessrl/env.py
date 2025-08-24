@@ -97,7 +97,7 @@ class Env:
     """
 
     __slots__ = ("game", "gamma", "step_penalty", "defender",
-                 "absorb_black_reply", "ply")
+                 "absorb_black_reply", "ply", "two_ply_cost", "draw_penalty", "exact_plies")
 
     # def __init__(
     #     self,
@@ -151,7 +151,8 @@ class Env:
         g = cp.Game()
         g.reset_from_fen(fen)
         return cls(g, gamma=gamma, step_penalty=step_penalty,
-                   defender=defender, absorb_black_reply=absorb_black_reply)
+                   defender=defender, absorb_black_reply=absorb_black_reply,
+                   two_ply_cost=2.0, draw_penalty=1000.0, exact_plies=True)
 
     # --- Core step ------------------------------------------------------------
 
