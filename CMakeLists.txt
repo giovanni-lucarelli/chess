@@ -13,9 +13,7 @@ set(CHESS_SOURCES
     src/move.cpp
     src/chessboard.cpp
     src/game.cpp
-    python/chessrl/algorithms/mcts/mcts.cpp
 )
-
 
 # Core library 
 
@@ -28,8 +26,8 @@ if(CMAKE_CXX_COMPILER_ID MATCHES "GNU|Clang")
 endif()
 
 # main cpp executable for dev
-add_executable(Chess src/main.cpp)
-target_link_libraries(Chess PRIVATE chess_core)
+# add_executable(Chess src/main.cpp)
+# target_link_libraries(Chess PRIVATE chess_core)
 
 # tests
 include(FetchContent)
