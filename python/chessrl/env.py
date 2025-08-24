@@ -67,7 +67,7 @@ class SyzygyDefender:
                 score = 0
                 print(f"Warning: failed to probe DTZ for position {board.fen()}: {e}")
             board.pop()
-            if score > best_score:
+            if (score > best_score and best_score!=0) or (score==0):
                 best_score, best = score, mv
         return best.uci() if best else None
 
