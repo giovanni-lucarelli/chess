@@ -123,7 +123,7 @@ class Env:
             absorb_black_reply: bool = True,
             two_ply_cost: float = 2.0, 
             draw_penalty: float = 1000.0,
-            exact_plies: bool = False
+            exact_plies: bool = True
             ):
         
         self.game = game
