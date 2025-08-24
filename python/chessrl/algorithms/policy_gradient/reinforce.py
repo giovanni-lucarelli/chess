@@ -358,6 +358,7 @@ class REINFORCE:
         return loss.item(), DTM
 
     def train(self, 
+              endgames,
               n_episodes: int = config['n_episodes']):
         """
         Train the policy on multiple endgame positions with batch updates.
@@ -367,7 +368,6 @@ class REINFORCE:
             n_episodes: Total number of episodes to run
             episodes_per_update: Number of episodes to collect before each parameter update
         """
-        endgames = get_all_endgames_from_dtz(csv_path='../../../../syzygy-tables/krk_dtz.csv', dtz=3) # training on KRvK with DTZ=3 only
 
         accumulated_dtm = []
         accumulated_loss = []
