@@ -20,6 +20,6 @@ if __name__ == '__main__':
     valueIteration = ValueIteration()
     
     # For now we are using only RRK vs K
-    best_policy = valueIteration.train(config['endgames'][0])
+    best_policy = valueIteration.train()
 
 

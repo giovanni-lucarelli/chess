@@ -71,7 +71,7 @@ def load_all_positions(csv_path: str):
 
         return positions, positions_to_idx, values
 
-# TODO: this function is very ugly, make the csv already contain these positions!!
+# TODO: this function is very ugly, make it nicer!! (Or I could delete it and make the csv contain these fens)
 def generate_two_kings_fens():
     files = "abcdefgh"
     ranks = "12345678"

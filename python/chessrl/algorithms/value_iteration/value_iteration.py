@@ -35,14 +35,16 @@ class ValueIteration:
             n_iterations = config['n_iterations'],
             step_penalty=config['step_penalty'],
             gamma=config['gamma'],
+            endgame_type=config['endgame_type']
     ):
         self.step_penalty = step_penalty
         self.n_iterations = n_iterations
         self.gamma = gamma
         self.tolerance = tolerance
+        self.endgame_type = endgame_type
 
 
-    def train(self,base_fen):
+    def train(self):
         """
         Trains value iteration on the chess endgame starting from base_fen.
         Returns a dictionary: state_tuple -> best_action
@@ -119,13 +121,13 @@ class ValueIteration:
                 logger.info(f'Convergence reached with tolerance {self.tolerance} after {i+1} iterations.')
                 break
 
-            save_policy_jsonl(newPolicy, f"artifacts/policies/vi_krk_greedy_intermediate_{i+1}.jsonl")
-            save_values(states, newValues, f"artifacts/values/vi_krk_greedy_intermediate_{i+1}.parquet")
+            save_policy_jsonl(newPolicy, f"artifacts/policies/vi_{self.endgame_type}_greedy_intermediate_{i+1}.jsonl")
+            save_values(states, newValues, f"artifacts/values/vi_{self.endgame_type}_greedy_intermediate_{i+1}.parquet")
 
         logger.info('Training completed.')
         
         # newPolicy : Dict[fen, uci]  |  states : List[fen]  |  newValues : np.ndarray
-        save_policy_jsonl(newPolicy, "artifacts/policies/vi_krk_greedy.jsonl")
-        save_values(states, newValues, "artifacts/values/vi_krk_values.parquet")
+        save_policy_jsonl(newPolicy, f"artifacts/policies/vi_{self.endgame_type}_greedy.jsonl")
+        save_values(states, newValues, f"artifacts/values/vi_{self.endgame_type}_values.parquet")
 
         return newPolicy
