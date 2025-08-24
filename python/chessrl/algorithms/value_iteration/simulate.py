@@ -79,5 +79,10 @@ if __name__ == '__main__':
                 break
             
             if env.state().is_game_over():
-                logger.info('Checkmate!')
+                if env.state().is_stalemate():
+                    logger.info('Stalemate!')
+                elif env.state().is_insufficient_material():
+                    logger.info('Draw due to insufficient material!') 
+                elif env.state().is_checkmate():
+                    logger.info('Checkmate!')
                 break
