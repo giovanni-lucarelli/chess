@@ -1,25 +1,14 @@
-// env_bindings.cpp
 #include <pybind11/pybind11.h>
 #include <pybind11/stl.h>
-#include <environment.hpp>
 #include "game.hpp"
 #include "move.hpp"
 
 namespace py = pybind11;
+using namespace pybind11::literals;
+
 
 PYBIND11_MODULE(chess_py, m) {
     m.doc() = "Bindings for Env RL wrapper around Game";
-
-    // --- StepResult ---
-    py::class_<StepResult>(m, "StepResult")
-        .def_readonly("reward", &StepResult::reward)
-        .def_readonly("done", &StepResult::done)
-        .def("__repr__", [](const StepResult& s){
-            return "<StepResult reward=" + std::to_string(s.reward) +
-                   ", done=" + std::string(s.done ? "True" : "False") + ">";
-        });
-
-    using namespace pybind11::literals;
 
     py::enum_<Color>(m, "Color")
         .value("WHITE", Color::WHITE)
@@ -157,34 +146,4 @@ PYBIND11_MODULE(chess_py, m) {
         .def("__repr__", [](const Game& g){
             return "<Game fen=\"" + g.to_fen() + "\">";
         });
-
-    py::class_<Env>(m, "Env")
-        // Constructor: Env(Game g, double gamma=1.0, double step_penalty=0.0)
-        .def(py::init<Game, double, double>(),
-             py::arg("game"),
-             py::arg("gamma") = 1.0,
-             py::arg("step_penalty") = 0.0)
-
-        // Constructor: Env(const std::string& fen, double gamma=1.0, double step_penalty=0.0)
-        .def(py::init<const std::string&, double, double>(),
-             py::arg("fen"),
-             py::arg("gamma") = 1.0,
-             py::arg("step_penalty") = 0.0)
-
-        // Apply a move; returns StepResult
-        .def("step", &Env::step, py::arg("move"),
-             R"doc(Apply a Move and return StepResult(reward, done).)doc")
-
-        // Read-only accessors / utilities
-        .def("state", &Env::state,
-             py::return_value_policy::reference_internal,
-             R"doc(Return a reference to the underlying Game (tied to this Env).)doc")
-        .def("steps", &Env::steps)
-        .def("reset_from_fen", &Env::reset_from_fen, py::arg("fen"))
-        .def("to_fen", &Env::to_fen)
-        .def("is_terminal", &Env::is_terminal)
-        .def("result_white_pov", &Env::result_white_pov)
-        .def("display_state", &Env::display_state)
-        .def("__str__", &Env::to_string)
-        .def("__repr__", [](const Env& e){ return e.to_string(); });
 }

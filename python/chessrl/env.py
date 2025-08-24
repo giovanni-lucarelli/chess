@@ -3,6 +3,7 @@ from dataclasses import dataclass
 from typing import Any, Optional
 import sys
 import requests
+from functools import lru_cache
 
 # Prefer the packaged module name
 try:
@@ -56,18 +57,36 @@ class SyzygyDefender:
         except Exception as e:
             raise ValueError(f"Failed to open Syzygy tablebase at '{tb_path}': {e}")
 
+    # def best_reply_uci(self, fen: str) -> str | None:
+    #     board = self.chess.Board(fen)
+    #     best, best_score = None, float("-inf")
+    #     for mv in board.legal_moves:
+    #         board.push(mv)
+    #         try:
+    #             score = abs(self.tb.probe_dtz(board))
+    #         except Exception as e:
+    #             score = 0
+    #             print(f"Warning: failed to probe DTZ for position {board.fen()}: {e}")
+    #         board.pop()
+    #         if (score > best_score and best_score!=0) or (score==0):
+    #             best_score, best = score, mv
+    #     return best.uci() if best else None
+
     def best_reply_uci(self, fen: str) -> str | None:
+        return self._best_reply_cached(fen)
+
+    @lru_cache(maxsize=200_000)
+    def _best_reply_cached(self, fen: str) -> str | None:
         board = self.chess.Board(fen)
-        best, best_score = None, float("-inf")
+        best, best_score = None, -1
         for mv in board.legal_moves:
             board.push(mv)
             try:
                 score = abs(self.tb.probe_dtz(board))
-            except Exception as e:
+            except Exception:
                 score = 0
-                print(f"Warning: failed to probe DTZ for position {board.fen()}: {e}")
             board.pop()
-            if (score > best_score and best_score!=0) or (score==0):
+            if score > best_score:
                 best_score, best = score, mv
         return best.uci() if best else None
 
@@ -96,23 +115,16 @@ class Env:
       No gamma discount is applied (gamma kept only for interface parity).
     """
 
-    __slots__ = ("game", "gamma", "step_penalty", "defender",
-                 "absorb_black_reply", "ply")
-
-    # def __init__(
-    #     self,
-    #     game: cp.Game,
-    #     gamma: float = 1.0,
-    #     step_penalty: float = 0.0,
-    #     defender: Any | None = None,
-    #     absorb_black_reply: bool = True,
-    # ):
-    #     self.game = game
-    #     self.gamma = gamma
-    #     self.step_penalty = step_penalty
-    #     self.defender = defender
-    #     self.absorb_black_reply = absorb_black_reply
-    #     self.ply = 0  # counts every applied ply (agent + absorbed reply)
+    __slots__ = (
+        "game",
+        "gamma",
+        "step_penalty",
+        "defender",
+        "absorb_black_reply",
+        "two_ply_cost",     
+        "draw_penalty",     
+        "ply",
+    )
 
     def __init__(
             self, 
@@ -123,7 +135,6 @@ class Env:
             absorb_black_reply: bool = True,
             two_ply_cost: float = 2.0, 
             draw_penalty: float = 1000.0,
-            exact_plies: bool = True
             ):
         
         self.game = game
@@ -133,7 +144,6 @@ class Env:
         self.absorb_black_reply = absorb_black_reply
         self.two_ply_cost = two_ply_cost
         self.draw_penalty = draw_penalty
-        self.exact_plies = exact_plies
         self.ply = 0
 
 
@@ -155,38 +165,6 @@ class Env:
 
     # --- Core step ------------------------------------------------------------
 
-    # def step(self, move_or_uci: cp.Move | str) -> StepResult:
-    #     """Apply agent move; optionally absorb Black’s tablebase reply."""
-    #     info = {"absorbed_reply": False, "reply_uci": None}
-
-    #     # 1) Agent move
-    #     self._apply(move_or_uci)
-    #     self.ply += 1
-
-    #     # Terminal after agent move?
-    #     if self.game.is_game_over():
-    #         return StepResult(reward=self.game.result(), done=True, info=info)
-
-    #     # 2) Absorb Black reply (only if it's Black to move now)
-    #     if self.absorb_black_reply and self.defender and self._stm_is_black():
-    #         reply_uci = self.defender.best_reply_uci(self.to_fen())
-    #         if reply_uci:
-    #             try:
-    #                 self._apply_uci(reply_uci)
-    #                 self.ply += 1
-    #                 info["absorbed_reply"] = True
-    #                 info["reply_uci"] = reply_uci
-    #                 if self.game.is_game_over():
-    #                     return StepResult(reward=self.game.result(), done=True, info=info)
-    #             except Exception:
-    #                 print(f"Warning: Failed to apply defender move '{reply_uci}' for FEN: {self.to_fen()}", file=sys.stderr)
-    #                 pass
-    #         else:
-    #             print(f"Warning: Defender returned NONE move for FEN: {self.to_fen()}", file=sys.stderr)
-
-    #     # 3) Non-terminal step reward
-    #     return StepResult(reward=-self.step_penalty, done=False, info=info)
-
     def step(self, move_or_uci: cp.Move | str) -> StepResult:
         """
         Applica la mossa del Bianco; se richiesto, assorbe la miglior risposta del Nero.
@@ -201,19 +179,10 @@ class Env:
         self._apply(move_or_uci)
         self.ply += 1
 
-        # Terminale dopo la mossa del Bianco?
+        # Terminal after White's move? (mate or draw)
         if self.game.is_game_over():
-            # Se è checkmate, il Bianco ha appena dato matto
-            try:
-                is_mate = self.game.is_checkmate()
-            except AttributeError:
-                # fallback robusto: con KRK/KQK/KBBK il Nero non può dare matto
-                is_mate = True  # se è terminale qui, è sicuramente mate del Bianco
-            if is_mate:
-                reward = -1.0 if getattr(self, "exact_plies", False) else 0.0
-                return StepResult(reward=reward, done=True, info=info)
-            else:
-                return StepResult(reward=-self.draw_penalty, done=True, info=info)
+            reward = -1.0 if self.game.is_checkmate() else -self.draw_penalty
+            return StepResult(reward=reward, done=True, info=info)
 
         # --- 2) assorbi la miglior risposta del Nero ---
         if self.absorb_black_reply and self.defender and self._stm_is_black():

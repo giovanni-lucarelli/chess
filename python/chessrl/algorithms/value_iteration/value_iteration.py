@@ -26,6 +26,8 @@ from chessrl.env import Env, SyzygyDefender
 from chessrl.chess_py import Move
 #from chessrl.utils.create_endgames import generate_all_endgame_positions
 from chessrl.utils.endgame_loader import load_all_positions
+from chessrl.utils.io import save_policy_jsonl, save_values
+
 
 class ValueIteration:
     def __init__(
@@ -58,7 +60,10 @@ class ValueIteration:
 
         logger.info(f"Training on {len(states)} states")
 
-        n_iterations = 15
+        n_iterations = 1
+
+        TB_PATH = os.path.join(os.path.dirname(__file__), '..', '..', '..', '..', 'syzygy-tables')
+        defender = SyzygyDefender(TB_PATH)
 
         for i in range(n_iterations):
             logger.info(f"Starting iteration {i+1}/{n_iterations}...")
@@ -70,8 +75,6 @@ class ValueIteration:
                         logger.info(f"  Processing state {state_idx+1}/{len(states)} in iteration {i+1}")
                         
                     maxvalue = -100
-                    TB_PATH = os.path.join(os.path.dirname(__file__), '..', '..', '..', '..', 'syzygy-tables')
-                    defender = SyzygyDefender(TB_PATH)
                     
                     enviroment = Env.from_fen(fen, gamma = self.gamma, step_penalty = self.step_penalty, defender=defender)
                     color = enviroment.state().get_side_to_move()
@@ -105,7 +108,7 @@ class ValueIteration:
         
                     # It stores the new value and policy of state S
                     newValues[state_to_idx[fen]] = maxvalue
-                    newPolicy[fen] = bestact
+                    newPolicy[fen] = Move.to_uci(bestact)
 
             #Estimate change
             err = np.sqrt(np.mean( (newValues - values)**2))
@@ -115,19 +118,12 @@ class ValueIteration:
                 break
 
         logger.info('Training completed.')
-        logger.debug(f'Best policy found: {newPolicy}')
-
-        # Save policy to file
-        with open(self.save_path, "wb") as f:
-            # Convert Move objects to UCI strings for pickling
-            serializable_policy = {}
-            for state, move in newPolicy.items():
-                if move is not None:
-                    serializable_policy[state] = Move.to_uci(move)
-                else:
-                    serializable_policy[state] = None
-            
-            pickle.dump(serializable_policy, f)
+        
+        # newPolicy : Dict[fen, uci]  |  states : List[fen]  |  newValues : np.ndarray
+        save_policy_jsonl(newPolicy, "output/vi_krk_greedy.jsonl")
+        save_values(states, newValues, "output/vi_krk_values.parquet")
 
         return newPolicy
+    
+        
 

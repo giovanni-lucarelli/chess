@@ -8,7 +8,6 @@ CPP_SOURCES = [
     "src/move.cpp",
     "src/chessboard.cpp",
     "src/game.cpp",
-    "python/chessrl/algorithms/mcts/mcts.cpp",
     "binding/env_binding.cpp",
 ]
 

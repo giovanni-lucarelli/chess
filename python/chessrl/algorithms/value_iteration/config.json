@@ -1,5 +1,5 @@
 {
-    "tolerance": 0.01,
+    "tolerance": 0.1,
     "step_penalty": 1,
     "gamma": 1,
     "endgame_type": "krk",
