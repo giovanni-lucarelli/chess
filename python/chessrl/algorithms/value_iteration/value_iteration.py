@@ -24,7 +24,6 @@ import numpy as np
 # chess
 from chessrl.env import Env, SyzygyDefender
 from chessrl.chess_py import Move
-#from chessrl.utils.create_endgames import generate_all_endgame_positions
 from chessrl.utils.endgame_loader import load_all_positions
 from chessrl.utils.io import save_policy_jsonl, save_values
 
@@ -32,14 +31,14 @@ from chessrl.utils.io import save_policy_jsonl, save_values
 class ValueIteration:
     def __init__(
             self,
-            save_path=config['savepath_value_iteration'],
             tolerance = config['tolerance'],
+            n_iterations = config['n_iterations'],
             step_penalty=config['step_penalty'],
             gamma=config['gamma'],
     ):
         self.step_penalty = step_penalty
+        self.n_iterations = n_iterations
         self.gamma = gamma
-        self.save_path = save_path
         self.tolerance = tolerance
 
 
@@ -60,10 +59,13 @@ class ValueIteration:
 
         logger.info(f"Training on {len(states)} states")
 
-        n_iterations = 1
+        n_iterations = self.n_iterations
 
         TB_PATH = os.path.join(os.path.dirname(__file__), '..', '..', '..', '..', 'syzygy-tables')
         defender = SyzygyDefender(TB_PATH)
+
+        os.makedirs("artifacts/policies", exist_ok=True)
+        os.makedirs("artifacts/values", exist_ok=True)
 
         for i in range(n_iterations):
             logger.info(f"Starting iteration {i+1}/{n_iterations}...")
@@ -117,13 +119,13 @@ class ValueIteration:
                 logger.info(f'Convergence reached with tolerance {self.tolerance} after {i+1} iterations.')
                 break
 
+            save_policy_jsonl(newPolicy, f"artifacts/policies/vi_krk_greedy_intermediate_{i+1}.jsonl")
+            save_values(states, newValues, f"artifacts/values/vi_krk_greedy_intermediate_{i+1}.parquet")
+
         logger.info('Training completed.')
         
         # newPolicy : Dict[fen, uci]  |  states : List[fen]  |  newValues : np.ndarray
-        save_policy_jsonl(newPolicy, "output/vi_krk_greedy.jsonl")
-        save_values(states, newValues, "output/vi_krk_values.parquet")
+        save_policy_jsonl(newPolicy, "artifacts/policies/vi_krk_greedy.jsonl")
+        save_values(states, newValues, "artifacts/values/vi_krk_values.parquet")
 
         return newPolicy
-    
-        
-

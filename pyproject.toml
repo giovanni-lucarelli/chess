@@ -14,4 +14,6 @@ dependencies = [
   "matplotlib>=3.7",
 ]
 optional-dependencies.syzygy = ["python-chess>=1.999"]
+[project.optional-dependencies]
+parquet = ["pyarrow>=14"]
 
