@@ -28,6 +28,8 @@ This yields a finite, deterministic **Markov Decision Process** (MDP) with:
 * **Actions**: legal moves for the current player.
 * **Transition function**: deterministic update given current state and chosen action, followed by the opponent’s deterministic or stochastic reply.
 * **Rewards**: +1 for win, −1 for loss, 0 otherwise.
+* **Rewards**: -2 per ply, −1000 for draw
+
 
 
 ## Markov Game formalization

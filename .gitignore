@@ -7,3 +7,13 @@ plots/
 *.so
 *.egg-info
 typescript
+
+#latex related
+*.aux
+*.gz
+*.snm
+*.log
+*.out
+*.toc
+*.fls
+*.nav

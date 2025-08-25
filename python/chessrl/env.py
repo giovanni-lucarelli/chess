@@ -152,7 +152,7 @@ class Env:
         g.reset_from_fen(fen)
         return cls(g, gamma=gamma, step_penalty=step_penalty,
                    defender=defender, absorb_black_reply=absorb_black_reply,
-                   two_ply_cost=2.0, draw_penalty=1000.0, exact_plies=exact_plies)
+                   two_ply_cost=2.0, draw_penalty=1000.0)
 
     # --- Core step ------------------------------------------------------------
 
@@ -161,7 +161,7 @@ class Env:
         Applica la mossa del Bianco; se richiesto, assorbe la miglior risposta del Nero.
         Ricompense:
         - non terminale dopo 2 plies   ->  -two_ply_cost
-        - mate dopo mossa del Bianco   ->  0  (o -1 se exact_plies=True)
+        - mate dopo mossa del Bianco   ->  -1  
         - draw (stallo, insuff., 3x)   ->  -draw_penalty
         """
         info = {"absorbed_reply": False, "reply_uci": None}
