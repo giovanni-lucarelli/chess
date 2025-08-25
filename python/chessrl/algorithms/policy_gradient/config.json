@@ -6,7 +6,7 @@
         "3": 100
     },
     "log_level": "INFO",
-    "n_episodes": 10000,
+    "n_episodes": 500000,
     "max_steps": 25,
     "filepath_train": "output/weights.pth",
     "filepath_test": "output/weights.pth"

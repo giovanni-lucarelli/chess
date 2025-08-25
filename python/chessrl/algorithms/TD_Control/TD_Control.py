@@ -32,6 +32,7 @@ class TD_Control():
         self.endgame_type = endgame_type
         endgame_path = os.path.join(os.path.dirname(__file__), '..', '..', '..', '..', 'tablebase', self.endgame_type, f"{self.endgame_type}_full.csv")
         self.states, self.positions_actions_to_idx, self.Qvalues = load_all_positions_with_actions(endgame_path)
+        self.defender = SyzygyDefender('../../../../tablebase/krk')
 
     
     # This is the only method that changes between Q-learning and SARSA
@@ -123,16 +124,14 @@ class TD_Control():
     
 
     def train(self, endgames, td_error_algorithm: str, n_episodes: int = config['n_episodes']):
-        TB_PATH = os.path.join(os.path.dirname(__file__), '..', '..', '..', '..', 'tablebase',self.endgame_type)
-
         performance_traj_Q = np.zeros(n_episodes)
         
         logger.info(f'Starting {td_error_algorithm} training...')
         with tqdm(total=len(endgames), desc="Training") as pbar:  
             for endgame in endgames:
-                env = Env.from_fen(endgame['fen'], gamma = self.gamma, defender=SyzygyDefender(TB_PATH)) 
+                env = Env.from_fen(endgame, gamma = self.gamma, defender=self.defender) 
                 a = self.get_action_epsilon_greedy(env.state().to_fen(), env.state().legal_moves(env.state().get_side_to_move()))
-                s = endgame['fen']
+                s = endgame
                 
                 # Skip if no legal moves available
                 if a is None:
