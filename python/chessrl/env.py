@@ -57,36 +57,22 @@ class SyzygyDefender:
         except Exception as e:
             raise ValueError(f"Failed to open Syzygy tablebase at '{tb_path}': {e}")
 
-    # def best_reply_uci(self, fen: str) -> str | None:
-    #     board = self.chess.Board(fen)
-    #     best, best_score = None, float("-inf")
-    #     for mv in board.legal_moves:
-    #         board.push(mv)
-    #         try:
-    #             score = abs(self.tb.probe_dtz(board))
-    #         except Exception as e:
-    #             score = 0
-    #             print(f"Warning: failed to probe DTZ for position {board.fen()}: {e}")
-    #         board.pop()
-    #         if (score > best_score and best_score!=0) or (score==0):
-    #             best_score, best = score, mv
-    #     return best.uci() if best else None
-
     def best_reply_uci(self, fen: str) -> str | None:
         return self._best_reply_cached(fen)
 
     @lru_cache(maxsize=200_000)
     def _best_reply_cached(self, fen: str) -> str | None:
         board = self.chess.Board(fen)
-        best, best_score = None, -1
+        best, best_score = None, float("-inf")
         for mv in board.legal_moves:
             board.push(mv)
             try:
                 score = abs(self.tb.probe_dtz(board))
             except Exception:
                 score = 0
+                raise RuntimeError(f"Failed to probe DTZ for position {board.fen()}")
             board.pop()
-            if score > best_score:
+            if (score > best_score and best_score!=0) or (score==0):
                 best_score, best = score, mv
         return best.uci() if best else None
 
@@ -124,6 +110,7 @@ class Env:
         "two_ply_cost",     
         "draw_penalty",     
         "ply",
+        "exact_plies"
     )
 
     def __init__(
@@ -135,6 +122,7 @@ class Env:
             absorb_black_reply: bool = True,
             two_ply_cost: float = 2.0, 
             draw_penalty: float = 1000.0,
+            exact_plies=True,
             ):
         
         self.game = game
@@ -145,6 +133,7 @@ class Env:
         self.two_ply_cost = two_ply_cost
         self.draw_penalty = draw_penalty
         self.ply = 0
+        self.exact_plies = exact_plies
 
 
     # --- Constructors ---------------------------------------------------------
@@ -157,12 +146,13 @@ class Env:
         step_penalty: float = 0.0,
         defender: Any | None = None,
         absorb_black_reply: bool = True,
+        exact_plies: bool = True,
     ) -> "Env":
         g = cp.Game()
         g.reset_from_fen(fen)
         return cls(g, gamma=gamma, step_penalty=step_penalty,
                    defender=defender, absorb_black_reply=absorb_black_reply,
-                   two_ply_cost=2.0, draw_penalty=1000.0)
+                   two_ply_cost=2.0, draw_penalty=1000.0, exact_plies=exact_plies)
 
     # --- Core step ------------------------------------------------------------
 

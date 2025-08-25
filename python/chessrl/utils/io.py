@@ -13,12 +13,12 @@ def save_policy_jsonl(policy: dict[str, object], path: str):
             f.write(json.dumps({"fen": fen, "uci": _to_uci(move)}) + "\n")
 
 def load_policy_jsonl(path: str):
-    table={}
     with open(path) as f:
-        for line in f:
-            row = json.loads(line)
-            table[row["fen"]] = row["uci"]
-    return lambda fen, budget=None: table.get(fen)
+        table = {row['fen']: row['uci'] for row in (json.loads(line) for line in f)}
+    return table
+
+def load_vf_parquet(path: str):
+    return pd.read_parquet(path, engine='pyarrow').set_index("fen")["V"].to_dict()
 
 def save_values(states: list[str], values, path: str):
     os.makedirs(os.path.dirname(path), exist_ok=True)

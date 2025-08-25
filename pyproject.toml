@@ -1,5 +1,5 @@
 [build-system]
-requires = ["setuptools>=69", "wheel", "pybind11>=2.12"]
+requires = ["setuptools>=69", "wheel", "pybind11>=2.12",  "pyarrow>=14"]
 build-backend = "setuptools.build_meta"
 
 [project]
@@ -14,4 +14,5 @@ dependencies = [
   "matplotlib>=3.7",
 ]
 optional-dependencies.syzygy = ["python-chess>=1.999"]
+
 
