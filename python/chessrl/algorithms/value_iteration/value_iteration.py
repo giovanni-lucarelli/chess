@@ -43,7 +43,6 @@ class ValueIteration:
         self.tolerance = tolerance
         self.endgame_type = endgame_type
 
-
     def train(self):
         """
         Trains value iteration on the chess endgame starting from base_fen.
@@ -53,7 +52,7 @@ class ValueIteration:
         
         # Inizialize vector of values for all states
         #states, state_to_idx, values = generate_all_endgame_positions(base_fen)
-        endgame_path = os.path.join(os.path.dirname(__file__), '..', '..', '..', '..', 'syzygy-tables', config['endgame_type'] + '_dtz.csv')
+        endgame_path = os.path.join(os.path.dirname(__file__), '..', '..', '..', '..', 'tablebase', self.endgame_type, f"{self.endgame_type}_full.csv")
         states, state_to_idx, values =load_all_positions(endgame_path)
 
         newValues = values.copy()
@@ -62,14 +61,13 @@ class ValueIteration:
         logger.info(f"Training on {len(states)} states")
 
         n_iterations = self.n_iterations
-
-        TB_PATH = os.path.join(os.path.dirname(__file__), '..', '..', '..', '..', 'syzygy-tables')
+        TB_PATH = os.path.join(os.path.dirname(__file__), '..', '..', '..', '..', 'tablebase',self.endgame_type)
         defender = SyzygyDefender(TB_PATH)
 
-        os.makedirs("artifacts/policies", exist_ok=True)
-        os.makedirs("artifacts/values", exist_ok=True)
+        os.makedirs("../../../../artifacts/policies", exist_ok=True)
+        os.makedirs("../../../../artifacts/values", exist_ok=True)
 
-        for i in range(n_iterations):
+        for i in range(self.n_iterations):
             logger.info(f"Starting iteration {i+1}/{n_iterations}...")
             values = newValues.copy()
             
@@ -77,10 +75,10 @@ class ValueIteration:
             for state_idx, fen in enumerate(states):
                     if state_idx % 10000 == 0:  # Adjust frequency as needed
                         logger.info(f"  Processing state {state_idx+1}/{len(states)} in iteration {i+1}")
-                        
+                    
                     maxvalue = -100
                     
-                    enviroment = Env.from_fen(fen, gamma = self.gamma, step_penalty = self.step_penalty, defender=defender)
+                    enviroment = Env.from_fen(fen, gamma = self.gamma, defender=defender)
                     color = enviroment.state().get_side_to_move()
 
                     # Check if it's already checkmate
@@ -93,7 +91,7 @@ class ValueIteration:
 
                     # it "tries out" all actions and store the best
                     for A in enviroment.state().legal_moves(color):
-                        enviroment = Env.from_fen(fen, gamma = self.gamma, step_penalty = self.step_penalty, defender = defender)
+                        enviroment = Env.from_fen(fen, gamma = self.gamma, defender = defender)
                         # Contains both my move and the defender's reply
                         stepResult = enviroment.step(A)
                         R = stepResult.reward
@@ -121,13 +119,13 @@ class ValueIteration:
                 logger.info(f'Convergence reached with tolerance {self.tolerance} after {i+1} iterations.')
                 break
 
-            save_policy_jsonl(newPolicy, f"artifacts/policies/vi_{self.endgame_type}_greedy_intermediate_{i+1}.jsonl")
-            save_values(states, newValues, f"artifacts/values/vi_{self.endgame_type}_greedy_intermediate_{i+1}.parquet")
+            save_policy_jsonl(newPolicy, f"../../../../artifacts/policies/vi_{self.endgame_type}_greedy_intermediate_{i+1}.jsonl")
+            save_values(states, newValues, f"../../../../artifacts/values/vi_{self.endgame_type}_greedy_intermediate_{i+1}.parquet")
 
         logger.info('Training completed.')
         
         # newPolicy : Dict[fen, uci]  |  states : List[fen]  |  newValues : np.ndarray
-        save_policy_jsonl(newPolicy, f"artifacts/policies/vi_{self.endgame_type}_greedy.jsonl")
-        save_values(states, newValues, f"artifacts/values/vi_{self.endgame_type}_values.parquet")
+        save_policy_jsonl(newPolicy, f"../../../../artifacts/policies/vi_{self.endgame_type}_greedy.jsonl")
+        save_values(states, newValues, f"../../../../artifacts/values/vi_{self.endgame_type}_values.parquet")
 
         return newPolicy
