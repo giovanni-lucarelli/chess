@@ -2,10 +2,9 @@
 
 # system
 import sys 
-sys.path.insert(0, '../../')
+sys.path.insert(0, '../../../')
 
 # utils
-import json
 import numpy as np
 import torch 
 from torch import nn 
@@ -14,9 +13,7 @@ from tqdm import tqdm
 import matplotlib.pyplot as plt 
 from chessrl.utils.load_config import load_config
 from chessrl.utils.fen_parsing import parse_fen
-from chessrl.utils.endgame_loader import sample_endgames, get_all_endgames_from_dtz
 from typing import List
-import random
 
 import os
 config_path = os.path.join(os.path.dirname(__file__), 'config.json')
@@ -113,7 +110,7 @@ class Policy(nn.Module):
         else:
             return torch.log_softmax(logits, dim=-1)
     
-    def predict(self, env, move_to_idx, epsilon=config['epsilon']):
+    def predict(self, env, move_to_idx):
         """
         Predict the best move for the given game state.
         
@@ -125,8 +122,7 @@ class Policy(nn.Module):
 
         # Get legal move indices
         legal_moves = []
-        side_to_move = env.state().get_side_to_move()
-        for move in env.state().legal_moves(side_to_move):
+        for move in env.state().legal_moves(cp.Color.WHITE):
             move_str = cp.Move.to_uci(move)[:4]
             if move_str in move_to_idx:
                 legal_moves.append((move_to_idx[move_str], move))
@@ -145,13 +141,7 @@ class Policy(nn.Module):
         legal_indices = [idx for idx, _ in legal_moves]
         legal_probs = action_probs[legal_indices]
         
-        if epsilon > 0 and np.random.random() < epsilon:
-            # Random exploration
-            selected_idx = np.random.choice(len(legal_moves))
-            best_legal_idx = legal_indices[selected_idx]
-        else:
-            # Greedy selection
-            best_legal_idx = legal_indices[legal_probs.argmax()]
+        best_legal_idx = legal_indices[legal_probs.argmax()]
         
         logger.debug(f"Found {len(legal_moves)} legal moves, best prob: {legal_probs.max():.4f}")
         
@@ -167,12 +157,11 @@ class REINFORCE:
             self,
             lr: float = config['alpha'],
             gamma: float = config['gamma'],
-            epsilon: float = config['epsilon'],
-            max_steps: int = config['max_steps']
+            max_steps: int = config['max_steps'],
+            tb_path: str = '../../../../tablebase/krk/'
     ):
         self.lr = lr 
         self.gamma = gamma 
-        self.epsilon = epsilon
         self.policy = Policy()
         self.optimizer = torch.optim.Adam(self.policy.parameters(), lr=lr)
         
@@ -180,7 +169,7 @@ class REINFORCE:
         self.max_steps = max_steps
         
         # Initialize Syzygy defender for black moves
-        self.defender = SyzygyDefender(tb_path='/Users/christianfaccio/UniTs/projects/chess/syzygy-tables')
+        self.defender = SyzygyDefender(tb_path=tb_path)
 
         # For converting between moves and indices
         self.move_to_idx = {}
@@ -191,6 +180,8 @@ class REINFORCE:
         """
         Build mappings between chess moves and action indices.
         Using custom square naming to match C++ implementation.
+        move_to_idx -> a1:0 
+        idx_to_move -> 0:a1
         """
         idx = 0
         
@@ -208,95 +199,78 @@ class REINFORCE:
                     self.idx_to_move[idx] = move_str
                     idx += 1
 
-    def get_legal_move_indices(self, game):
+    def get_legal_move_indices(self, env):
         """
         Get indices of legal moves for the current position.
         """
-        legal_moves = []
-        side_to_move = game.get_side_to_move()
+        legal_moves_idx = []
         
         # Get legal moves for the current side
-        for move in game.legal_moves(side_to_move): 
-            move_str = cp.Move.to_uci(move)[:4]  
+        for move in env.state().legal_moves(cp.Color.WHITE):
+            move_str = cp.Move.to_uci(move)[:4]
             if move_str in self.move_to_idx:
-                legal_moves.append(self.move_to_idx[move_str])
-        return legal_moves
+                legal_moves_idx.append(self.move_to_idx[move_str])
+        return legal_moves_idx
     
-    def sample_episode(self, fen: str, max_steps: int = config['max_steps']):
+    def sample_episode(self, env, max_steps: int = config['max_steps']):
         """
         Sample a trajectory using the current policy for White
         and oracle (best possible move) for black.
-        Returns simplified format for easier processing.
         """
-        env = Env.from_fen(
-            fen,
-            step_penalty=0.01,
-            defender=self.defender,   
-        )
-        game = env.state()
         
         # Store episode data
         states = []      # FEN strings
         actions = []     # Move indices
         rewards = []     # Immediate rewards
-        players = []     # Which player made the move (0=white, 1=black)
         
         for step in range(max_steps):
-            current_fen = game.to_fen()
-            side_to_move = game.get_side_to_move()
-            
-            if side_to_move == cp.Color.WHITE:  # White turn - use policy
-                legal_moves = self.get_legal_move_indices(game)
-                
-                if not legal_moves:
-                    break  # No legal moves available
-                
-                # Get action probabilities
-                fen_tensor = parse_fen(current_fen).unsqueeze(0)
-                with torch.no_grad():
-                    action_probs = self.policy.get_action_probs(fen_tensor, legal_moves)
-                    action_probs = action_probs.squeeze(0).cpu().numpy()
-                
-                # Extract probabilities for legal moves only
-                legal_probs = action_probs[legal_moves]  # Remove the extra [0,] indexing
-                # Add small epsilon to avoid zero probabilities
-                legal_probs = legal_probs + 1e-8
-                # Normalize to ensure they sum to 1
-                legal_probs = legal_probs / legal_probs.sum()
-                
-                # Sample from legal moves
-                selected_legal_idx = np.random.choice(len(legal_moves), p=legal_probs)
-                action_idx = legal_moves[selected_legal_idx]
-                
-                # Convert to move
-                move_str = self.idx_to_move[action_idx]
-                move = cp.Move.from_strings(game, move_str[:2], move_str[2:4])
-                
-                # Take step
-                step_result = env.step(move)
+            current_fen = env.state().to_fen()
 
-                # Store data
-                states.append(current_fen)
-                actions.append(action_idx)
-                rewards.append(step_result.reward)
-                players.append(cp.Color.WHITE)  
+            legal_moves = self.get_legal_move_indices(env)
+
+            if not legal_moves:
+                break  # No legal moves available
             
-            if game.is_game_over():
+            # Get action probabilities
+            fen_tensor = parse_fen(current_fen).unsqueeze(0)
+            with torch.no_grad():
+                action_probs = self.policy.get_action_probs(fen_tensor, legal_moves)
+                action_probs = action_probs.squeeze(0).cpu().numpy()
+            
+            # Extract probabilities for legal moves only
+            legal_probs = action_probs[legal_moves]  # Remove the extra [0,] indexing
+            # Add small epsilon to avoid zero probabilities
+            legal_probs = legal_probs + 1e-8
+            # Normalize to ensure they sum to 1
+            legal_probs = legal_probs / legal_probs.sum()
+            
+            # Sample from legal moves 
+            selected_legal_idx = np.random.choice(len(legal_moves), p=legal_probs)
+            action_idx = legal_moves[selected_legal_idx]
+            
+            # Convert to move
+            move_str = self.idx_to_move[action_idx]
+            move = cp.Move.from_strings(env.state(), move_str[:2], move_str[2:4])
+            
+            # Take step
+            step_result = env.step(move)
+
+            # Store data
+            states.append(current_fen)
+            actions.append(action_idx)
+            rewards.append(step_result.reward)  
+            
+            if env.state().is_game_over():
                 break
         
-        # Calculate DTM (Distance to Mate) only if checkmate achieved (positive reward)
-        # DTM should count white moves only when the game ends in mate
-        if step_result.reward > 0:
-            DTM = len([p for p in players if p == cp.Color.WHITE])  # Count white moves to mate
+        # Calculate DTM (Distance to Mate) only if checkmate achieved 
+        if env.state().is_checkmate():
+            DTM = 2*(len(states) - 0.5) # since we consider a full move composed by w and b moves
         else:
-            DTM = float('inf')  # No mate achieved
+            DTM = float('inf')  
 
-        # Cap max steps and give draw penalty if not checkmate
-        if not step_result.done:
-            rewards[-1] = -0.5
-        
-        return states, actions, rewards, players, DTM
-    
+        return states, actions, rewards, DTM
+
     def calculate_returns(self, rewards: List[float]) -> List[float]:
         """
         Calculate discounted returns for each timestep.
@@ -311,12 +285,12 @@ class REINFORCE:
             
         return returns
 
-    def train_episode(self, starting_fen: str):
+    def train_episode(self, env):
         """
         Train on a single episode (legacy method for backward compatibility).
         """
-        states, actions, rewards, players, DTM = self.sample_episode(starting_fen)
-        
+        states, actions, rewards, DTM = self.sample_episode(env)
+
         if not states:
             logger.info("No moves made in episode")
             return None, DTM
@@ -329,13 +303,12 @@ class REINFORCE:
         episode_returns = []
         
         for step in range(len(states)):
+            env.reset_from_fen(states[step])
             fen_tensor = parse_fen(states[step]).unsqueeze(0)
-            
-            # Create temporary game to get legal moves
-            temp_game = cp.Game()
-            temp_game.reset_from_fen(states[step])
-            legal_moves = self.get_legal_move_indices(temp_game)
-            
+
+            # Get legal moves
+            legal_moves = self.get_legal_move_indices(env)
+
             # Get log probabilities
             log_prob_dist = self.policy.get_log_probs(fen_tensor, legal_moves)
             log_prob = log_prob_dist[0, actions[step]]
@@ -358,8 +331,7 @@ class REINFORCE:
         return loss.item(), DTM
 
     def train(self, 
-              endgames,
-              n_episodes: int = config['n_episodes']):
+              endgames):
         """
         Train the policy on multiple endgame positions with batch updates.
         
@@ -373,9 +345,13 @@ class REINFORCE:
         accumulated_loss = []
 
         # Create progress bar
-        with tqdm(total=n_episodes, desc="Training") as pbar:
+        with tqdm(total=len(endgames), desc="Training") as pbar:
             for endgame in endgames:
-                loss, DTM = self.train_episode(endgame)
+                env = Env.from_fen(
+                    endgame,
+                    defender=self.defender,   
+                )
+                loss, DTM = self.train_episode(env)
 
                 accumulated_loss.append(loss)
 
@@ -384,12 +360,11 @@ class REINFORCE:
                     accumulated_dtm.append(DTM)
                 
                 # Update progress bar with recent metrics
-                recent_loss = np.mean(accumulated_loss[-100:]) if len(accumulated_loss) >= 100 else np.mean(accumulated_loss)
-                recent_dtm = np.mean(accumulated_dtm[-100:]) if len(accumulated_dtm) >= 100 else (np.mean(accumulated_dtm) if accumulated_dtm else float('inf'))
-                
+                mean_loss = np.mean(accumulated_loss)
+                mean_dtm = (np.mean(accumulated_dtm) if accumulated_dtm else float('inf'))
                 pbar.set_postfix({
-                    'Loss': f'{recent_loss:.3f}' if recent_loss is not None else 'N/A',
-                    'DTM': f'{recent_dtm:.1f}' if recent_dtm != float('inf') else 'inf'
+                    'Loss': f'{mean_loss:.3f}' if mean_loss is not None else 'N/A',
+                    'DTM': f'{mean_dtm:.1f}' if mean_dtm != float('inf') else 'inf'
                 })
                 pbar.update(1)
 

@@ -250,14 +250,14 @@ def get_stats(csv_path: str) -> Dict[str, Union[int, Dict[int, int]]]:
 if __name__ == "__main__":
     # Example usage and testing
     print("Dataset statistics:")
-    stats = get_stats(csv_path='../../../syzygy-tables/krk_dtz.csv')
+    stats = get_stats(csv_path='../../../tablebase/krk/krk_test.csv')
     print(f"Total positions: {stats['total_positions']}")
     print(f"Unique DTZ values: {stats['unique_dtz_values']}")
     print("DTZ distribution:", dict(sorted(stats['dtz_distribution'].items())))
     
     print("\nSampling 20 positions: 10 from DTZ=1, 5 from DTZ=3, 5 from DTZ=11")
     try:
-        positions = sample_endgames(csv_path='../../../syzygy-tables/krk_dtz.csv', dtz_counts={1: 10, 3: 5, 11: 5})
+        positions = sample_endgames(csv_path='../../../tablebase/krk/krk_test.csv', dtz_counts={1: 10, 3: 5, 11: 5})
         print(f"Successfully sampled {len(positions)} positions")
         
         # Show first few positions

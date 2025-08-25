@@ -1,13 +1,13 @@
 {
     "alpha": 0.001,
-    "gamma": 0.95,
+    "gamma": 1.0,
     "epsilon": 0.003,
     "endgame_sampling": {
         "3": 100
     },
     "log_level": "INFO",
-    "n_episodes": 1000000,
-    "max_steps": 100,
+    "n_episodes": 10000,
+    "max_steps": 25,
     "filepath_train": "output/weights.pth",
     "filepath_test": "output/weights.pth"
 }

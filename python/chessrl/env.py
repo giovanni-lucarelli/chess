@@ -68,9 +68,11 @@ class SyzygyDefender:
             board.push(mv)
             try:
                 score = abs(self.tb.probe_dtz(board))
-            except Exception:
-                score = 0
-                raise RuntimeError(f"Failed to probe DTZ for position {board.fen()}")
+            except Exception as e:
+                # Handle file descriptor limit or other tablebase errors gracefully
+                print(f"Warning: Syzygy probe failed for position {board.fen()}: {e}", file=sys.stderr)
+                board.pop()
+                continue
             board.pop()
             if (score > best_score and best_score!=0) or (score==0):
                 best_score, best = score, mv
@@ -198,7 +200,7 @@ class Env:
     def result_white_pov(self) -> float:
         return self.game.result()
 
-    def display_state(self, save_path: str) -> None:
+    def display_state(self, save_path: str = None) -> None:
         # Your Board::print appears to return a string in bindings; print it if available.
         try:
             plot_game(
