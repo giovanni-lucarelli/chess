@@ -89,51 +89,34 @@ class StepResult:
 # ---------- Env ---------------------------------------------------------------
 
 class Env:
-    """
-    Fast Python wrapper around chess_py.Game with optional defender absorption.
-
-    - Accepts agent move as either a chess_py.Move or a UCI string.
-    - If not terminal and side-to-move becomes Black, optionally queries a defender
-      (Lichess or Syzygy) and applies Black's best reply inside the same step.
-    - Rewards:
-        * Terminal: return full game result (White POV: +1/0/-1), no step penalty.
-        * Non-terminal: return -step_penalty.
-      No gamma discount is applied (gamma kept only for interface parity).
-    """
-
+    
     __slots__ = (
         "game",
         "gamma",
-        "step_penalty",
         "defender",
         "absorb_black_reply",
         "two_ply_cost",     
         "draw_penalty",     
-        "ply",
-        "exact_plies"
+        "ply"
     )
 
     def __init__(
             self, 
             game: cp.Game, 
             gamma: float = 1.0, 
-            step_penalty: float = 0.0, 
             defender: Any | None = None,
             absorb_black_reply: bool = True,
             two_ply_cost: float = 2.0, 
             draw_penalty: float = 1000.0,
-            exact_plies=True,
             ):
         
         self.game = game
         self.gamma = gamma
-        self.step_penalty = step_penalty  # (non più usato quando absorb_black_reply=True)
         self.defender = defender
         self.absorb_black_reply = absorb_black_reply
         self.two_ply_cost = two_ply_cost
         self.draw_penalty = draw_penalty
         self.ply = 0
-        self.exact_plies = exact_plies
 
 
     # --- Constructors ---------------------------------------------------------
@@ -143,13 +126,12 @@ class Env:
         cls,
         fen: str,
         gamma: float = 1.0,
-        step_penalty: float = 0.0,
         defender: Any | None = None,
         absorb_black_reply: bool = True,
     ) -> "Env":
         g = cp.Game()
         g.reset_from_fen(fen)
-        return cls(g, gamma=gamma, step_penalty=step_penalty,
+        return cls(g, gamma=gamma,
                    defender=defender, absorb_black_reply=absorb_black_reply,
                    two_ply_cost=2.0, draw_penalty=1000.0)
 
