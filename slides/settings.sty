@@ -1,0 +1,62 @@
+\usetheme[progressbar=frametitle]{metropolis}
+\usepackage{appendixnumberbeamer}
+% \usepackage[italian]{babel}
+\usepackage{bbm}
+\usepackage{colortbl}
+\usepackage[table]{xcolor}
+
+\usepackage{booktabs}
+\usepackage[scale=2]{ccicons}
+
+\usepackage{pgfplots}
+\usepgfplotslibrary{dateplot}
+
+\usepackage{xspace}
+\newcommand{\themename}{\textbf{\textsc{metropolis}}\xspace}
+
+% color palette: https://coolors.co/palette/8c1c13-bf4342-e7d7c1-a78a7f-735751
+
+\definecolor{bluchiaro}{RGB}{168, 218, 220}
+\definecolor{blu}{RGB}{69, 123, 157}
+\definecolor{bluscuro}{RGB}{115, 87, 81}
+\definecolor{chiarissimo}{RGB}{241, 250, 238}
+\definecolor{rosso}{RGB}{140, 28, 19}
+\setbeamercolor{title separator}{fg=bluscuro, bg=bluscuro}
+\setbeamercolor{frametitle}{fg=white, bg=bluscuro}
+\setbeamercolor{progress bar}{fg=rosso, bg=chiarissimo}
+\setbeamercolor{normal text}{fg=black, bg=white}
+\usepackage{csquotes}
+\usepackage{listings}
+
+\setbeamercolor{alerted text}{fg=rosso}
+
+%coding settings
+\usepackage{xcolor}
+
+%New colors defined below
+\definecolor{codegreen}{rgb}{0,0.6,0}
+\definecolor{codegray}{rgb}{0.5,0.5,0.5}
+\definecolor{codepurple}{rgb}{0.58,0,0.82}
+\definecolor{backcolour}{rgb}{0.95,0.95,0.92}
+
+%Code listing style named "mystyle"
+\lstdefinestyle{mystyle}{
+  backgroundcolor=\color{backcolour}, commentstyle=\color{codegreen},
+  keywordstyle=\color{magenta},
+  numberstyle=\tiny\color{codegray},
+  stringstyle=\color{codepurple},
+  basicstyle=\fontsize{6}{8}\ttfamily,
+  breakatwhitespace=false,         
+  breaklines=true,                 
+  captionpos=b,                    
+  keepspaces=false,                
+  numbersep=5pt,                  
+  showspaces=false,                
+  showstringspaces=false,
+  showtabs=false,                  
+  tabsize=2
+}
+
+%"mystyle" code listing set
+\lstset{style=mystyle}
+\newcommand{\customcite}[1]{\citeauthor{#1}, \citetitle{#1}, \citeyear{#1}}
