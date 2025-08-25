@@ -12,13 +12,54 @@ config_path = os.path.join(os.path.dirname(__file__), 'config.json')
 config = load_config(config_path)
 logging.basicConfig(level=config['log_level'], format = '%(asctime)s - %(levelname)s - %(message)s')
 logger = logging.getLogger(__name__)
+import argparse
+from chessrl.utils.endgame_loader import get_all_endgames_from_dtz, get_stats
+import numpy as np
 
 # chess
-from TD_Control import TD_Control
+from chessrl.algorithms.TD_Control.TD_Control import TD_Control
 
 if __name__ == '__main__':
-    QLearning = TD_Control(config["endgame_type"], config["TD_error_algorithm"], config["n_episodes"], config["n_starting_positions"], config['max_steps'], config["gamma"], config["alpha"], config["epsilon"], config["savepath_q_learning"])
-    QLearning.train()
-    optimal_policy = QLearning.save_greedy_policy()
+    parser = argparse.ArgumentParser(description='Train REINFORCE on chess endgames')
+    parser.add_argument('--td_error_algorithm', type=str, choices=['QLearning', 'SARSA'],
+                        help='TD error algorithm to use: QLearning or SARSA. Default: QLearning')
+    parser.add_argument('--max_dtz', type=int, default=32, 
+                        help='Maximum DTZ value for testing (range will be >0 and <max_dtz). Default: 32')
+    parser.add_argument('--csv_path', type=str, default='../../../../syzygy-tables/krk_dtz.csv',
+                       help='Path to the DTZ CSV file. Default: ../../../../syzygy-tables/krk_dtz.csv')
+    args = parser.parse_args()
+
+    td_algo = TD_Control()
+    stats = get_stats(csv_path=args.csv_path)
+
+    available_dtz_values = np.sort([d for d in stats['dtz_distribution'] if d > 0 and d < args.max_dtz]) 
+    # !!! SORTING AND NOT SAMPLING MEANS USING A BASIC FORM OF CURRICULUM LEARNING !!!
+    train_endgames = []
+    weights = {}
+    
+    # define distribution over DTZ of how many samples to use given the total episodes
+    for dtz in available_dtz_values:
+        weights[dtz] = np.log(dtz + 1) 
+
+    # Normalize weights to sum to 1
+    total_weight = sum(weights.values())
+    normalized_weights = {k: v/total_weight for k, v in weights.items()} 
+
+    for dtz in available_dtz_values:
+        n_samples = int(normalized_weights[dtz] * config['n_episodes'])
+        endgames = get_all_endgames_from_dtz(csv_path=args.csv_path, dtz=dtz)
+        samples = np.random.choice(endgames, size=n_samples, replace=True)
+        train_endgames.extend(samples)
+
+    logger.info(f"Starting training for {config['n_episodes']} episodes using this distribution:")
+    for dtz, weight in normalized_weights.items():
+        logger.info(f"DTZ {dtz}: {weight:.4f} - Episodes: {int(weight * config['n_episodes'])}")
+    logger.info(f"Sum: {sum(normalized_weights.values()):.4f}")
+    logger.info(f"Total training samples prepared: {len(train_endgames)}")
+    td_algo.train(endgames = train_endgames, td_error_algorithm=args.td_error_algorithm)
+
+
+
+
     
 

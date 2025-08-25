@@ -6,22 +6,5 @@
     "step_penalty": 0.001,
     "gamma": 0.95,
     "epsilon": 0.003,
-    "log_level": "INFO",
-    "endgame_type": "krk",
-    "type_of_tests": "fixed",
-    "TD_error_algorithm": "QLearning",
-    "savepath_q_learning": "output/",
-    "endgames": [
-        "4k3/8/8/8/8/8/1RR5/4K3 b - - 0 1"
-    ],
-    "test_endgames": [
-        "6k1/8/6K1/8/8/8/1R6/8 w - - 0 1",
-        "6k1/8/8/6K1/8/8/1R6/8 w - - 0 1",
-        "8/1k6/3R4/8/8/4K3/8/8 w - - 0 1",
-        "8/8/8/8/8/8/4k3/3R2K1 w - - 0 1",
-        "7k/8/8/8/8/4R3/4K3/8 w - - 0 1",
-	"4k3/8/8/8/8/8/1R6/4K3 w - - 0 1",
-	"8/8/8/4k3/8/3K4/8/1R6 w - - 0 1"
-    ]
-
+    "log_level": "INFO"
 }

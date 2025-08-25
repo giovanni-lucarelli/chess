@@ -162,7 +162,7 @@ class Env:
         g.reset_from_fen(fen)
         return cls(g, gamma=gamma, step_penalty=step_penalty,
                    defender=defender, absorb_black_reply=absorb_black_reply,
-                   two_ply_cost=2.0, draw_penalty=1000.0, exact_plies=True)
+                   two_ply_cost=2.0, draw_penalty=1000.0)
 
     # --- Core step ------------------------------------------------------------
 

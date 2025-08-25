@@ -1,33 +1,44 @@
-# Q-Learning Control
+#!/usr/bin/env python3 
+
+# system
+import os
+
+# utils
 import numpy as np
 import logging 
-import os
 from chessrl.utils.load_config import load_config
 config_path = os.path.join(os.path.dirname(__file__), 'config.json')
 config = load_config(config_path)
 logging.basicConfig(level=config['log_level'], format = '%(asctime)s - %(levelname)s - %(message)s')
 logger = logging.getLogger(__name__)
-import pickle
 from chessrl.utils.endgame_loader import load_all_positions_with_actions
+import pickle
+from tqdm import tqdm
+
+# chess
 from chessrl.env import Env, SyzygyDefender
-from chessrl import chess_py  # Import chess_py module to access Move class
+from chessrl import chess_py  
 
 class TD_Control():
-    def __init__(self, type_of_endgame, td_error_algorithm="QLearning", n_episodes = 2000, n_starting_positions = 10, max_steps = 50, gamma=0.9, alpha=0.1, epsilon = 0.15, save_path = "output/"):
-        self.save_path = save_path + td_error_algorithm + "_policy.pkl"
-        self.starting_positions = n_starting_positions
-        self.td_error_algorithm = td_error_algorithm 
-        self.n_episodes = n_episodes
-        self.max_steps = max_steps
+    def __init__(self,  
+                gamma=config['gamma'], 
+                alpha=config['alpha'], 
+                epsilon = config['epsilon']):
         self.gamma = gamma
         self.alpha = alpha
         self.epsilon = epsilon
-        endgame_path = os.path.join(os.path.dirname(__file__), '..', '..', '..', '..', 'syzygy-tables', type_of_endgame + '_dtz.csv')
+        endgame_path = os.path.join(os.path.dirname(__file__), '..', '..', '..', '..', 'syzygy-tables', 'krk_dtz.csv')
         self.states, self.positions_actions_to_idx, self.Qvalues = load_all_positions_with_actions(endgame_path)
-
     
     # This is the only method that changes between Q-learning and SARSA
-    def single_step_update(self, state, action, reward, new_state, new_legal_actions, done):
+    def single_step_update(self, 
+                           state, 
+                           action, 
+                           reward, 
+                           new_state, 
+                           new_legal_actions, 
+                           done,
+                           td_error_algorithm: str):
         """
         Performs a single TD-learning update step.
         state: current state 
@@ -37,16 +48,27 @@ class TD_Control():
         new_legal_actions: list of legal actions in the new state
         done: whether the episode has ended
         """
-        if self.td_error_algorithm == "QLearning":
-            next_action = self.get_action_greedy(new_state, new_legal_actions)
-        elif self.td_error_algorithm == "SARSA":
-            next_action = self.get_action_epsilon_greedy(new_state, new_legal_actions)
-
-        td_target = reward + (0 if done else self.gamma * self.Qvalues[self.positions_actions_to_idx[(new_state, chess_py.Move.to_uci(next_action))]])
+        if done:
+            td_target = reward
+            next_action = None
+        else:
+            if td_error_algorithm == "QLearning":
+                next_action = self.get_action_greedy(new_state, new_legal_actions)
+            elif td_error_algorithm == "SARSA":
+                next_action = self.get_action_epsilon_greedy(new_state, new_legal_actions)
+            else:
+                raise ValueError(f"Unknown TD algorithm: {td_error_algorithm}")
+            
+            if next_action is None:
+                td_target = reward
+            else:
+                td_target = reward + self.gamma * self.Qvalues[self.positions_actions_to_idx[(new_state, chess_py.Move.to_uci(next_action))]]
         td_error = td_target - self.Qvalues[self.positions_actions_to_idx[(state, action)]]
         
         # Update Q-value
         self.Qvalues[self.positions_actions_to_idx[(state, action)]] += self.alpha * td_error
+
+        return next_action
 
     def get_action_greedy(self, state, legal_moves):
         """
@@ -69,13 +91,14 @@ class TD_Control():
                 best_move = move
         return best_move
 
-    def get_action_epsilon_greedy(self, state, legal_moves):
+    def get_action_epsilon_greedy(self, env):
         """
         Selects an action using epsilon-greedy policy.
         state: current state
         legal_moves: list of legal actions in the current state
         Returns: selected action or, if there are no legal moves, None
         """
+        legal_moves = env.state().legal_moves(env.state().get_side_to_move())
         if len(legal_moves)==0 or legal_moves is None:
             return None
         
@@ -87,7 +110,7 @@ class TD_Control():
             best_value = -np.inf
             best_move = None
             for move in legal_moves:
-                idx = self.positions_actions_to_idx[(state, chess_py.Move.to_uci(move))]
+                idx = self.positions_actions_to_idx[(env.state().to_fen(), chess_py.Move.to_uci(move))]
                 q_val = self.Qvalues[idx]
 
                 if q_val > best_value:
@@ -95,7 +118,7 @@ class TD_Control():
                     best_move = move  # Exploit
             return best_move
     
-    def save_greedy_policy(self):
+    def save_greedy_policy(self, save_path: str):
         """
         Derives the greedy policy from the learned Q-values.
         Returns: policy dictionary mapping states to best actions
@@ -116,59 +139,56 @@ class TD_Control():
             policy[state] = best_move
         
         # Save policy to file
-        with open(self.save_path, "wb") as f:
+        with open(save_path, "wb") as f:
              pickle.dump(policy, f)
 
-    def train(self):
-        performance_traj_Q = np.zeros(self.n_episodes)
+    def train(self, endgames, td_error_algorithm: str, n_episodes: int = config['n_episodes']):
+        TB_PATH = os.path.join(os.path.dirname(__file__), '..', '..', '..', '..', 'syzygy-tables')
+
+        performance_traj_Q = np.zeros(n_episodes)
         
-        logger.info('Starting Q-learning training...')
-        # Generate possible starting positions
-        random_indices = np.random.choice(len(self.states), size=self.starting_positions, replace=False)
-        random_starts = [self.states[i] for i in random_indices]
-        # RUN OVER EPISODES
-
-        for i in range(self.n_episodes):
-            if i % 100 == 0:
-                logger.info(f'Starting episode {i+1}/{self.n_episodes}')
-            random_start = random_starts[i%self.starting_positions]
-
-            TB_PATH = os.path.join(os.path.dirname(__file__), '..', '..', '..', '..', 'syzygy-tables')
-            defender = SyzygyDefender(TB_PATH)
-            env = Env.from_fen(random_start, gamma = self.gamma, defender=defender) 
-            legal_moves = env.state().legal_moves(env.state().get_side_to_move())
-            a = self.get_action_epsilon_greedy(random_start, legal_moves)
-            s = random_start
-            
-            done = False
-            turns = 0 
-            while not done:
-                if turns >= self.max_steps:
-                    break
-                turns += 1
-
-                # Evolve one step
-                step_result = env.step(a)
-                new_s = env.to_fen()
-                done = step_result.done 
-
-                r = step_result.reward
-                # Keeps track of performance for each episode
-                performance_traj_Q[i] += r
+        logger.info(f'Starting {td_error_algorithm} training...')
+        with tqdm(total=n_episodes, desc="Training") as pbar:  
+            for endgame in endgames:
+                env = Env.from_fen(endgame['fen'], gamma = self.gamma, defender=SyzygyDefender(TB_PATH)) 
+                a = self.get_action_epsilon_greedy(env)
+                s = endgame['fen']
                 
-                if (env.state().is_game_over()):
-                    new_actions = []
-                else:
-                    new_actions = env.state().legal_moves(env.state().get_side_to_move())
+                # Skip if no legal moves available
+                if a is None:
+                    logger.debug(f"No legal moves available for position {s}")
+                    continue
+                
+                counter = 0 
+                while True:
+                    if counter >= config['max_steps']:
+                        logger.debug(f"Reached max steps of {config['max_steps']}, ending episode.")
+                        break
 
-                # Choose new action index
-                new_a = self.get_action_epsilon_greedy(new_s, new_actions)
-                
-                # Single update with (S, A, R', S')
-                self.single_step_update(s, chess_py.Move.to_uci(a), r, new_s, new_actions, done)
-                
-                a = new_a
-                s = new_s
+                    # Evolve one step
+                    step_result = env.step(a)
+                    new_s = env.to_fen()
+                    done = step_result.done 
+
+                    r = step_result.reward
+                    performance_traj_Q[counter] += r
+                    
+                    if (env.state().is_game_over()):
+                        new_actions = []
+                    else:
+                        new_actions = env.state().legal_moves(env.state().get_side_to_move())
+                    
+                    # Single update with (S, A, R', S')
+                    new_a = self.single_step_update(s, chess_py.Move.to_uci(a), r, new_s, new_actions, done, td_error_algorithm=td_error_algorithm)
+                    
+                    if done or new_a is None:
+                        break
+                        
+                    a = new_a
+                    s = new_s
+                    counter += 1
+                pbar.update(1)
+            self.save_greedy_policy(f'output/{td_error_algorithm}_policy.pkl')
         
         logger.info('Training completed.')
 

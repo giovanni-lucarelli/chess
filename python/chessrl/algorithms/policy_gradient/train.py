@@ -57,10 +57,5 @@ if __name__ == '__main__':
     reinforce.train(train_endgames)
     logger.info("Training completed successfully")
 
-    # Save the trained model
-    logger.info("Saving trained model...")
-    reinforce.save_model()
-    logger.info(f"Model saved to {config['filepath_train']}")
-
 
 
