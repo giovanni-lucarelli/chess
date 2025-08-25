@@ -2,6 +2,7 @@
     "n_episodes": 5000,
     "n_starting_positions": 10,
     "max_steps": 50,
+    "endgame_type": "krk",
     "alpha": 0.05,
     "step_penalty": 0.001,
     "gamma": 0.95,

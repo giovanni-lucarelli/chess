@@ -21,12 +21,14 @@ from chessrl.algorithms.TD_Control.TD_Control import TD_Control
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Train REINFORCE on chess endgames')
-    parser.add_argument('--td_error_algorithm', type=str, choices=['QLearning', 'SARSA'],
+    parser.add_argument('--td_error_algorithm', type=str, default="QLearning", choices=['QLearning', 'SARSA'],
                         help='TD error algorithm to use: QLearning or SARSA. Default: QLearning')
     parser.add_argument('--max_dtz', type=int, default=32, 
                         help='Maximum DTZ value for testing (range will be >0 and <max_dtz). Default: 32')
-    parser.add_argument('--csv_path', type=str, default='../../../../syzygy-tables/krk_dtz.csv',
-                       help='Path to the DTZ CSV file. Default: ../../../../syzygy-tables/krk_dtz.csv')
+    endgame_type = config["endgame_type"]
+    endgame_path = os.path.join(os.path.dirname(__file__), '..', '..', '..', '..', 'tablebase', endgame_type, f"{endgame_type}_full.csv")
+    parser.add_argument('--csv_path', type=str, default=endgame_path,
+                       help='Path to the DTZ CSV file.')
     args = parser.parse_args()
 
     td_algo = TD_Control()
