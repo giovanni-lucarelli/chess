@@ -109,8 +109,7 @@ class Env:
         "absorb_black_reply",
         "two_ply_cost",     
         "draw_penalty",     
-        "ply",
-        "exact_plies"
+        "ply"
     )
 
     def __init__(
@@ -122,7 +121,6 @@ class Env:
             absorb_black_reply: bool = True,
             two_ply_cost: float = 2.0, 
             draw_penalty: float = 1000.0,
-            exact_plies=True,
             ):
         
         self.game = game
@@ -133,7 +131,6 @@ class Env:
         self.two_ply_cost = two_ply_cost
         self.draw_penalty = draw_penalty
         self.ply = 0
-        self.exact_plies = exact_plies
 
 
     # --- Constructors ---------------------------------------------------------
