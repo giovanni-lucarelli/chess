@@ -1,0 +1,129 @@
+\documentclass[12pt]{beamer}
+
+\usepackage{settings}
+
+
+\title{Chess Endgames Solver}
+\subtitle{A Reinforcement Learning Approach}
+\date{\today}
+\author[longname]{Valeria De Stasio, Christian Faccio, Giovanni Lucarelli}
+\titlegraphic{\hfill\includegraphics[height=1.3cm]{images/logo100_orizzontale.pdf}}
+
+% add graphics path
+\graphicspath{{../assets},{./images}}
+
+\begin{document}
+
+\maketitle
+
+\begin{frame}{Project Overview}
+  * goal of the Project
+
+  * used algorithms
+  
+  * metrics overview ?
+\end{frame}
+
+\section{Chess Programming Background}
+\begin{frame}{Brief History of Chess Programming}
+  
+\end{frame}
+
+\begin{frame}{Endgame Phase}
+  * what is an Endgame
+
+  * usual approach to solve it in modern chess programming (syzygy and tb)
+
+\end{frame}
+
+\begin{frame}{Simple Endgame: (our) Problem Definition}
+  
+  Simple Endgames that we want to solve:
+
+  * winning for white
+
+  * kings and one (or more) heavy piece for white
+
+  * the number of states is already huge
+  
+  Rules that we use:
+
+  * piece movement
+
+  * no 3 repetition
+
+\end{frame}
+
+\begin{frame}{Assessment Metrics Overview}
+
+  * DTM, DTZ etc
+  * success, top1 etc
+  
+\end{frame}
+
+\section{MDP Formulation}
+
+\begin{frame}{MDP: States}
+  * States $\mathcal{S}$: all legal endgame positions, augmented with side-to-move (no turn number, no 50 moves rule)
+  
+  * Terminal State $\bar{\mathcal{S}}$: checkmate or draw (insufficient material), once reached the game ends.
+  
+\end{frame}
+
+\begin{frame}{MDP: Actions}
+
+  * Actions: legal moves for the current player.
+  
+\end{frame}
+
+\begin{frame}{MDP: Transition}
+
+  * Transition function: deterministic update given current state and chosen action, followed by the opponent's (black) deterministic reply
+
+  Instead of storing $\mathcal{P}$, chess engines implement functions that *define* $\mathcal{P}$ procedurally:
+      
+  * $legal_moves(s)$ — generates valid actions in state $s$
+  
+  * $apply_move(s, a)$ — returns the next state $s'$
+  
+  * $is_terminal(s')$ — checks if game is over
+
+  % TODO: (substitute with our function signatures)
+
+\end{frame}
+
+
+\begin{frame}{MDP: Reward}
+
+  * Rewards (Chess): +1 for win, -1 for loss, 0 otherwise.
+
+    Rewards (simple endgames): -2 per ply, -1000 for draw
+
+\end{frame}
+
+\section{RL Algorithms}
+
+\section{Results}
+
+\begin{frame}{Policy interpretability through human chess principles}
+  
+\end{frame}
+
+\begin{frame}{Video Animation of optimal ply vs our policy
+}
+  maybe for a mate in 5 or more
+
+\end{frame}
+
+
+{\setbeamercolor{palette primary}{fg=white, bg=bluscuro}
+\begin{frame}[standout]
+\thispagestyle{empty}
+  {\LARGE Thank You!}
+\end{frame}
+}
+
+
+
+
+\end{document}

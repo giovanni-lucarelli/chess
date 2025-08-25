@@ -146,7 +146,6 @@ class Env:
         step_penalty: float = 0.0,
         defender: Any | None = None,
         absorb_black_reply: bool = True,
-        exact_plies: bool = True,
     ) -> "Env":
         g = cp.Game()
         g.reset_from_fen(fen)
