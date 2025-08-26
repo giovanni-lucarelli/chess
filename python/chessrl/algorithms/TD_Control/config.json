@@ -1,5 +1,5 @@
 {
-    "n_episodes": 50000,
+    "n_episodes": 500000,
     "n_starting_positions": 10,
     "max_steps": 50,
     "endgame_type": "krk",

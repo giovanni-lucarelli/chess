@@ -6,7 +6,6 @@ sys.path.insert(0, '../../')
 
 # utils
 import os
-import glob
 import logging
 import argparse 
 from chessrl.utils.load_config import load_config
@@ -16,12 +15,9 @@ logging.basicConfig(level=config['log_level'], format = '%(asctime)s - %(levelna
 logger = logging.getLogger(__name__)
 import matplotlib.pyplot as plt # type: ignore
 from chessrl.utils.endgame_loader import load_positions
-import numpy as np
 
 # chess
-from chessrl.utils.plot_chess import plot_game
-from chessrl.algorithms.policy_gradient.reinforce import Policy, REINFORCE
-from chessrl import chess_py as cp
+from chessrl.algorithms.policy_gradient.reinforce import REINFORCE
 from chessrl import Env, SyzygyDefender
 
 if __name__ == '__main__':
@@ -57,7 +53,7 @@ if __name__ == '__main__':
 
         counter = 0
         while True:
-            move = reinforce.policy.predict(env, reinforce.move_to_idx)
+            move = reinforce.policy.predict(env)
             step = env.step(move)
             counter += 1
             

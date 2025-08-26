@@ -14,6 +14,7 @@ import matplotlib.pyplot as plt
 from chessrl.utils.load_config import load_config
 from chessrl.utils.fen_parsing import parse_fen
 from typing import List
+from chessrl.utils.io import save_policy_jsonl
 
 import os
 config_path = os.path.join(os.path.dirname(__file__), 'config.json')
@@ -24,6 +25,33 @@ logger = logging.getLogger(__name__)
 # chess
 from chessrl import Env, SyzygyDefender
 from chessrl import chess_py as cp
+
+def _build_move_mappings():
+        """
+        Build mappings between chess moves and action indices.
+        Using custom square naming to match C++ implementation.
+        move_to_idx -> a1:0 
+        idx_to_move -> 0:a1
+        """
+        idx = 0
+        
+        # Generate square names manually (a1, b1, ..., h8)
+        files = "abcdefgh"
+        ranks = "12345678"
+        squares = [f + r for r in ranks for f in files]
+        
+        # Generate all possible moves (from_square, to_square)
+        for from_sq in squares:
+            for to_sq in squares:
+                if from_sq != to_sq:
+                    move_str = from_sq + to_sq
+                    move_to_idx[move_str] = idx
+                    idx_to_move[idx] = move_str
+                    idx += 1
+
+move_to_idx = {}
+idx_to_move = {}
+_build_move_mappings()
 
 class Policy(nn.Module):
     """
@@ -58,6 +86,8 @@ class Policy(nn.Module):
             nn.Linear(256, 4096) # 4096 are the possible actions (for simple endgames)
         )
 
+        pairs = []
+
     def forward(self, fen):
         # fen can be either a string or already a tensor
         if isinstance(fen, str):
@@ -71,6 +101,15 @@ class Policy(nn.Module):
         x = self.global_pool(x)    # → [batch, 128, 1, 1]
         x = x.view(x.size(0), -1)  # → [batch, 128]
         x = self.fc(x)             # → [batch, 4096]
+
+        # adding to pairs the pair (fen,move) using the move with highest probability
+        # Create a game object from the FEN to use with Move.from_uci
+        if isinstance(fen, str):
+            temp_env = Env.from_fen(fen)
+            move = cp.Move.from_uci(temp_env.game, idx_to_move[x[0].argmax().item()]) # idx -> uci -> Move
+            self.pairs.append((fen, move))
+            save_policy_jsonl(self.pairs, f"../../../../artifacts/policies/reinforce_policy.jsonl")
+
         return x
     
     def get_action_probs(self, fen, legal_moves=None):
@@ -110,7 +149,7 @@ class Policy(nn.Module):
         else:
             return torch.log_softmax(logits, dim=-1)
     
-    def predict(self, env, move_to_idx):
+    def predict(self, env):
         """
         Predict the best move for the given game state.
         
@@ -171,34 +210,6 @@ class REINFORCE:
         # Initialize Syzygy defender for black moves
         self.defender = SyzygyDefender(tb_path=tb_path)
 
-        # For converting between moves and indices
-        self.move_to_idx = {}
-        self.idx_to_move = {}
-        self._build_move_mappings()
-
-    def _build_move_mappings(self):
-        """
-        Build mappings between chess moves and action indices.
-        Using custom square naming to match C++ implementation.
-        move_to_idx -> a1:0 
-        idx_to_move -> 0:a1
-        """
-        idx = 0
-        
-        # Generate square names manually (a1, b1, ..., h8)
-        files = "abcdefgh"
-        ranks = "12345678"
-        squares = [f + r for r in ranks for f in files]
-        
-        # Generate all possible moves (from_square, to_square)
-        for from_sq in squares:
-            for to_sq in squares:
-                if from_sq != to_sq:
-                    move_str = from_sq + to_sq
-                    self.move_to_idx[move_str] = idx
-                    self.idx_to_move[idx] = move_str
-                    idx += 1
-
     def get_legal_move_indices(self, env):
         """
         Get indices of legal moves for the current position.
@@ -208,8 +219,8 @@ class REINFORCE:
         # Get legal moves for the current side
         for move in env.state().legal_moves(cp.Color.WHITE):
             move_str = cp.Move.to_uci(move)[:4]
-            if move_str in self.move_to_idx:
-                legal_moves_idx.append(self.move_to_idx[move_str])
+            if move_str in move_to_idx:
+                legal_moves_idx.append(move_to_idx[move_str])
         return legal_moves_idx
     
     def sample_episode(self, env, max_steps: int = config['max_steps']):
@@ -249,7 +260,7 @@ class REINFORCE:
             action_idx = legal_moves[selected_legal_idx]
             
             # Convert to move
-            move_str = self.idx_to_move[action_idx]
+            move_str = idx_to_move[action_idx]
             move = cp.Move.from_strings(env.state(), move_str[:2], move_str[2:4])
             
             # Take step
