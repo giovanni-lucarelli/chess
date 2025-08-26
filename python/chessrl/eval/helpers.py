@@ -119,7 +119,7 @@ def vi_move_from_values(V, tb_path):
         best_u, best_val = ms[0], float("-inf")
         for u in ms:
             e = Env.from_fen(
-            fen, gamma=1.0, step_penalty=0.0,
+            fen, gamma=1.0,
             defender=SyzygyDefender(tb_path), absorb_black_reply=True
             )
             sr = e.step(u)
