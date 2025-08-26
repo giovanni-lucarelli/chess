@@ -86,7 +86,7 @@ class Policy(nn.Module):
             nn.Linear(256, 4096) # 4096 are the possible actions (for simple endgames)
         )
 
-        pairs = []
+        self.pairs = []
 
     def forward(self, fen):
         # fen can be either a string or already a tensor
@@ -101,15 +101,6 @@ class Policy(nn.Module):
         x = self.global_pool(x)    # → [batch, 128, 1, 1]
         x = x.view(x.size(0), -1)  # → [batch, 128]
         x = self.fc(x)             # → [batch, 4096]
-
-        # adding to pairs the pair (fen,move) using the move with highest probability
-        # Create a game object from the FEN to use with Move.from_uci
-        if isinstance(fen, str):
-            temp_env = Env.from_fen(fen)
-            move = cp.Move.from_uci(temp_env.game, idx_to_move[x[0].argmax().item()]) # idx -> uci -> Move
-            self.pairs.append((fen, move))
-            save_policy_jsonl(self.pairs, f"../../../../artifacts/policies/reinforce_policy.jsonl")
-
         return x
     
     def get_action_probs(self, fen, legal_moves=None):
@@ -187,8 +178,10 @@ class Policy(nn.Module):
         # Return the corresponding move
         for idx, move in legal_moves:
             if idx == best_legal_idx:
+                self.pairs.append((fen, move))
+                save_policy_jsonl(self.pairs, f"../../../../artifacts/policies/reinforce_policy.jsonl")
                 return move
-        
+            
         return None
     
 class REINFORCE:
@@ -276,6 +269,7 @@ class REINFORCE:
         
         # Calculate DTM (Distance to Mate) only if checkmate achieved 
         if env.state().is_checkmate():
+            rewards[-1] = 1000
             DTM = 2*(len(states) - 0.5) # since we consider a full move composed by w and b moves
         else:
             DTM = float('inf')  

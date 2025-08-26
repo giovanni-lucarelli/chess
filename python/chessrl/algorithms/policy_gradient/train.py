@@ -56,7 +56,7 @@ if __name__ == '__main__':
             endgames = get_all_endgames_from_dtz(csv_path=args.csv_path, dtz=dtz)
             endgame_fens = [pos['fen'] for pos in endgames]
             if len(endgame_fens) > 0:
-                samples = np.random.choice(endgame_fens, size=min(n_samples, len(endgame_fens)), replace=True)
+                samples = np.random.choice(endgame_fens, size=n_samples, replace=True)
                 train_endgames.extend(samples)
         
         logger.info(f"Starting training for {config['n_episodes']} episodes using DTZ distribution:")

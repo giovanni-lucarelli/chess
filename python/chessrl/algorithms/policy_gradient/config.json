@@ -2,9 +2,6 @@
     "alpha": 0.001,
     "gamma": 1.0,
     "epsilon": 0.003,
-    "endgame_sampling": {
-        "3": 100
-    },
     "log_level": "INFO",
     "n_episodes": 500000,
     "max_steps": 25,
