@@ -5,7 +5,7 @@ def evaluate(move_fn, fens, tb_path, dtm_oracle, optimal_moves=None, budget=None
     rows = []
     for fen in fens:
         env = Env.from_fen(
-            fen, gamma=1.0, step_penalty=0.0,
+            fen, gamma=1.0,
             defender=SyzygyDefender(tb_path), absorb_black_reply=True
         )
         total_s, n = 0.0, 0
