@@ -269,7 +269,7 @@ class REINFORCE:
         
         # Calculate DTM (Distance to Mate) only if checkmate achieved 
         if env.state().is_checkmate():
-            rewards[-1] = 1000
+            rewards[-1] = 100 # change from original +1 -> +100
             DTM = 2*(len(states) - 0.5) # since we consider a full move composed by w and b moves
         else:
             DTM = float('inf')  
@@ -298,7 +298,7 @@ class REINFORCE:
 
         if not states:
             logger.info("No moves made in episode")
-            return None, DTM
+            return 0.0, DTM
         
         # Calculate returns for each time step
         returns = self.calculate_returns(rewards)
@@ -324,13 +324,25 @@ class REINFORCE:
         # Calculate loss with numerical stability
         log_probs_tensor = torch.stack(log_probs)
         returns_tensor = torch.tensor(episode_returns, dtype=torch.float32)
+        # Normalize returns only if we have more than 1 element
+        if len(returns_tensor) > 1 and returns_tensor.std() > 0:
+            returns_tensor = (returns_tensor - returns_tensor.mean()) / (returns_tensor.std() + 1e-8)
+        elif len(returns_tensor) == 1:
+            # For single-step episodes, just scale down the return
+            returns_tensor = returns_tensor / 100.0  # Scale down single-step returns 
         
         # REINFORCE loss: -E[log π(a|s) * G]
         loss = -torch.mean(log_probs_tensor * returns_tensor)
+
+        # Check for NaN or inf
+        if torch.isnan(loss) or torch.isinf(loss):
+            logger.warning(f"Invalid loss detected: {loss.item()}, skipping update")
+            return 0.0, DTM
         
-        # Optimize
+        # Optimize with gradient clipping
         self.optimizer.zero_grad()
         loss.backward()
+        torch.nn.utils.clip_grad_norm_(self.policy.parameters(), max_norm=0.5)
         self.optimizer.step()
         
         return loss.item(), DTM

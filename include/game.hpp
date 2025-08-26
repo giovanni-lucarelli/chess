@@ -111,15 +111,15 @@ public:
         return false;
     }
 
-    /// +1 for White win, -1 for Black win, 0 otherwise
+    /// +1 for White win, -1 for Black win, -50 for draw, -2 otherwise
     double result() const {
         if (!is_game_over()) 
             return -2.0;
         if (is_checkmate()) 
             // if it’s checkmate, the *side to move* just lost
-            return (get_side_to_move() == WHITE ? -0.0 : +0.0);
+            return (get_side_to_move() == WHITE ? -1.0 : +1.0);
         // stalemate ⇒ draw
-        return -1000.0;
+        return -50.0;
     }
     
     /* --------------------------------- Actions -------------------------------- */

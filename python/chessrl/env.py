@@ -109,7 +109,8 @@ class Env:
             defender: Any | None = None,
             absorb_black_reply: bool = True,
             two_ply_cost: float = 2.0, 
-            draw_penalty: float = 1000.0,
+            draw_penalty: float = 50.0,
+            checkmate_reward: float = 100.0
             ):
         
         self.game = game
@@ -155,7 +156,10 @@ class Env:
 
         # Terminal after White's move? (mate or draw)
         if self.game.is_game_over():
-            reward = -1.0 if self.game.is_checkmate() else -self.draw_penalty
+            if self.game.is_checkmate():
+                reward = self.checkmate_reward
+            else:
+                reward = -self.draw_penalty
             return StepResult(reward=reward, done=True, info=info)
 
         # --- 2) assorbi la miglior risposta del Nero ---

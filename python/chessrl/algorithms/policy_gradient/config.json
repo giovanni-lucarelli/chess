@@ -1,7 +1,7 @@
 {
-    "alpha": 0.001,
-    "gamma": 1.0,
-    "epsilon": 0.003,
+    "alpha": 0.0011,
+    "gamma": 0.99,
+    "epsilon": 0.01,
     "log_level": "INFO",
     "n_episodes": 500000,
     "max_steps": 25,
