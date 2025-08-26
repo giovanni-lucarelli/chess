@@ -120,7 +120,7 @@ class Policy(nn.Module):
     
     def get_log_probs(self, fen, legal_moves=None):
         """
-        Get log probabilities for gradient computation.
+        Get log probabilities for gradient computation with entropy bonus.
         """
         logits = self.forward(fen)
         
@@ -131,12 +131,15 @@ class Policy(nn.Module):
                 mask[0, move_idx] = 0
             masked_logits = logits + mask
             
-            # For numerical stability, subtract max of legal moves before log_softmax
-            legal_logits = logits[0, legal_moves]
-            max_legal_logit = legal_logits.max()
-            masked_logits = masked_logits - max_legal_logit
+            # Compute log probabilities
+            log_probs = torch.log_softmax(masked_logits, dim=-1)
             
-            return torch.log_softmax(masked_logits, dim=-1)
+            # Add small entropy bonus to encourage exploration
+            probs = torch.exp(log_probs)
+            entropy = -(probs * log_probs).sum()
+            
+            # Scale down the entropy bonus
+            return log_probs + 0.01 * entropy  # Small entropy coefficient
         else:
             return torch.log_softmax(logits, dim=-1)
     
@@ -269,7 +272,7 @@ class REINFORCE:
         
         # Calculate DTM (Distance to Mate) only if checkmate achieved 
         if env.state().is_checkmate():
-            rewards[-1] = 100 # change from original +1 -> +100
+            rewards[-1] = 100.0 + (max_steps - len(states)) * 0.5  # Reward faster mates more
             DTM = 2*(len(states) - 0.5) # since we consider a full move composed by w and b moves
         else:
             DTM = float('inf')  
@@ -342,7 +345,11 @@ class REINFORCE:
         # Optimize with gradient clipping
         self.optimizer.zero_grad()
         loss.backward()
-        torch.nn.utils.clip_grad_norm_(self.policy.parameters(), max_norm=0.5)
+        grad_norm = torch.nn.utils.clip_grad_norm_(self.policy.parameters(), max_norm=1.0)
+        # Skip update if gradients are too large even after clipping
+        if grad_norm > 100:
+            logger.warning(f"Large gradient norm: {grad_norm:.2f}, skipping update")
+            return 0.0, DTM
         self.optimizer.step()
         
         return loss.item(), DTM
@@ -360,28 +367,36 @@ class REINFORCE:
 
         accumulated_dtm = []
         accumulated_loss = []
+        wins = 0
+        total_episodes = 0
 
         # Create progress bar
         with tqdm(total=len(endgames), desc="Training") as pbar:
-            for endgame in endgames:
+            for i, endgame in enumerate(endgames):
                 env = Env.from_fen(
                     endgame,
                     defender=self.defender,   
                 )
                 loss, DTM = self.train_episode(env)
 
-                accumulated_loss.append(loss)
+                total_episodes += 1
+
+                if loss != 0.0:
+                    accumulated_loss.append(loss)
 
                 # Store DTM for plotting
                 if DTM is not None and DTM != float('inf'):
                     accumulated_dtm.append(DTM)
+                    wins += 1
                 
                 # Update progress bar with recent metrics
                 mean_loss = np.mean(accumulated_loss)
                 mean_dtm = (np.mean(accumulated_dtm) if accumulated_dtm else float('inf'))
                 pbar.set_postfix({
                     'Loss': f'{mean_loss:.3f}' if mean_loss is not None else 'N/A',
-                    'DTM': f'{mean_dtm:.1f}' if mean_dtm != float('inf') else 'inf'
+                    'DTM': f'{mean_dtm:.1f}' if mean_dtm != float('inf') else 'inf',
+                    'Wins': wins,
+                    'Total Episodes': total_episodes
                 })
                 pbar.update(1)
 
