@@ -129,6 +129,7 @@ class TD_Control():
         logger.info(f'Starting {td_error_algorithm} training...')
         with tqdm(total=len(endgames), desc="Training") as pbar:  
             for endgame in endgames:
+                self.epsilon *= config['epsilon_decay'] # epsilon decay
                 env = Env.from_fen(endgame, gamma = self.gamma, defender=self.defender) 
                 a = self.get_action_epsilon_greedy(env.state().to_fen(), env.state().legal_moves(env.state().get_side_to_move()))
                 s = endgame

@@ -60,8 +60,10 @@ if __name__ == '__main__':
                 train_endgames.extend(samples)
         
         logger.info(f"Starting training for {config['n_episodes']} episodes using DTZ distribution:")
+        weight_sum = 0
         for dtz, weight in normalized_weights.items():
-            logger.info(f"DTZ {dtz}: {weight:.4f} - Episodes: {int(weight * config['n_episodes'])}")
+            weight_sum += weight
+            logger.info(f"DTZ {dtz}: {weight_sum:.4f} - Episodes: {int(weight_sum * config['n_episodes'])}")
         logger.info(f"Sum: {sum(normalized_weights.values()):.4f}")
         
     else:  # random sampling method

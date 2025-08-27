@@ -99,6 +99,7 @@ class Env:
         "absorb_black_reply",
         "two_ply_cost",     
         "draw_penalty",     
+        "checkmate_reward",
         "ply"
     )
 
@@ -119,6 +120,7 @@ class Env:
         self.absorb_black_reply = absorb_black_reply
         self.two_ply_cost = two_ply_cost
         self.draw_penalty = draw_penalty
+        self.checkmate_reward = checkmate_reward
         self.ply = 0
 
 
@@ -131,12 +133,16 @@ class Env:
         gamma: float = 1.0,
         defender: Any | None = None,
         absorb_black_reply: bool = True,
+        two_ply_cost: float = 2.0, 
+        draw_penalty: float = 50.0,
+        checkmate_reward: float = 100.0
     ) -> "Env":
         g = cp.Game()
         g.reset_from_fen(fen)
         return cls(g, gamma=gamma,
                    defender=defender, absorb_black_reply=absorb_black_reply,
-                   two_ply_cost=2.0, draw_penalty=1000.0)
+                   two_ply_cost=two_ply_cost, draw_penalty=draw_penalty,
+                   checkmate_reward=checkmate_reward)
 
     # --- Core step ------------------------------------------------------------
 

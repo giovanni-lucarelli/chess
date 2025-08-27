@@ -1,11 +1,11 @@
 {
-    "n_episodes": 500000,
-    "n_starting_positions": 10,
+    "n_episodes": 1000000,
     "max_steps": 50,
     "endgame_type": "krk",
     "alpha": 0.05,
-    "step_penalty": 0.001,
-    "gamma": 0.95,
-    "epsilon": 0.003,
+    "step_penalty": 0.0,
+    "gamma": 0.99,
+    "epsilon": 0.3,
+    "epsilon_decay": 0.999993,
     "log_level": "INFO"
 }
