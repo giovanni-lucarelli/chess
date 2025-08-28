@@ -15,6 +15,9 @@ logging.basicConfig(level=config['log_level'], format = '%(asctime)s - %(levelna
 logger = logging.getLogger(__name__)
 import matplotlib.pyplot as plt # type: ignore
 from chessrl.utils.endgame_loader import load_positions
+from chessrl.utils.fen_parsing import parse_fen_cached
+from chessrl.utils.move_idx import build_move_mappings
+import torch
 
 # chess
 from chessrl.algorithms.policy_gradient.reinforce import REINFORCE
@@ -33,10 +36,16 @@ if __name__ == '__main__':
     args = parser.parse_args()
     
     reinforce = REINFORCE()
-    reinforce.load_model(filepath=args.weights)
+    checkpoint = torch.load(args.weights)
+    reinforce.policy.load_state_dict(checkpoint['model_state_dict'])
+    
+    # Build move mappings for converting indices to moves
+    move_to_idx, idx_to_move = build_move_mappings()
+    fen_cache = {}
     
     positions, dtz_groups = load_positions(csv_path = args.csv_path)
-    test_endgames = [pos['fen'] for pos in positions][:1000]
+    # obtain only the FENs with DTZ=1
+    test_endgames = [pos['fen'] for pos in positions if pos['dtz'] == 1]
 
     endgames_won = 0
     testing_stats = []
@@ -53,7 +62,40 @@ if __name__ == '__main__':
 
         counter = 0
         while True:
-            move = reinforce.policy.predict(env)
+            # Get legal moves for current position
+            from chessrl import chess_py as cp
+            legal_move_indices = []
+            for move in env.state().legal_moves(cp.Color.WHITE):
+                move_str = cp.Move.to_uci(move)[:4]
+                if move_str in move_to_idx:
+                    legal_move_indices.append(move_to_idx[move_str])
+            
+            if not legal_move_indices:
+                logger.debug('No legal moves available')
+                break
+            
+            # Convert environment to tensor for prediction
+            current_fen = env.to_fen()
+            state_tensor = parse_fen_cached(current_fen, fen_cache).unsqueeze(0).to(reinforce.device)
+            
+            # Get policy logits and apply legal move mask
+            with torch.no_grad():
+                logits = reinforce.policy.forward(state_tensor)[0]  # Remove batch dimension
+                
+                # Create mask for legal moves
+                mask = torch.zeros(4096, device=reinforce.device)
+                mask[legal_move_indices] = 1
+                
+                # Apply mask and get probabilities
+                masked_logits = logits.masked_fill(mask == 0, float('-inf'))
+                action_probs = torch.softmax(masked_logits, dim=-1)
+                
+                # Select best legal move
+                best_move_idx = torch.argmax(action_probs).item()
+            
+            move_str = idx_to_move[best_move_idx]
+            move = cp.Move.from_strings(env.state(), move_str[:2], move_str[2:4])
+            
             step = env.step(move)
             counter += 1
             

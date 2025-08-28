@@ -24,25 +24,6 @@ def parse_piece_placement(placement):
     
     return board
 
-def parse_castling(castling_str):
-    """Convert castling rights to binary vector"""
-    rights = torch.zeros(4)  # [K, Q, k, q]
-    if 'K' in castling_str: rights[0] = 1
-    if 'Q' in castling_str: rights[1] = 1  
-    if 'k' in castling_str: rights[2] = 1
-    if 'q' in castling_str: rights[3] = 1
-    return rights
-
-def parse_en_passant(ep_str):
-    """Convert en passant square to one-hot encoding"""
-    en_passant = torch.zeros(64)
-    if ep_str != '-':
-        file = ord(ep_str[0]) - ord('a')  # a=0, b=1, ...
-        rank = int(ep_str[1]) - 1         # 1=0, 2=1, ...
-        square_idx = rank * 8 + file
-        en_passant[square_idx] = 1
-    return en_passant
-
 def parse_fen(fen):
     """
     Since we consider simple endgames (no pawns, no castling) where 
@@ -50,7 +31,21 @@ def parse_fen(fen):
     """
     parts = fen.split(' ')
     
-    # 1. Board state (8x8x12 piece planes)
+    # Board state (8x8x12 piece planes)
     board_tensor = parse_piece_placement(parts[0])  # [8, 8, 12]
     
     return board_tensor
+
+def parse_fen_cached(fen: str, fen_cache) -> torch.Tensor:
+        """
+        Parse FEN with caching to avoid repeated computation.
+        """
+        if fen not in fen_cache:
+            if len(fen_cache) >= 300000:
+                # Remove oldest entries if cache is full
+                fen_cache.pop(next(iter(fen_cache)))
+            
+            parsed = parse_fen(fen).permute(2, 0, 1)
+            fen_cache[fen] = parsed
+        
+        return fen_cache[fen]

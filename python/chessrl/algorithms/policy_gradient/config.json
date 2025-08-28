@@ -1,10 +1,11 @@
 {
-    "alpha": 0.0001,
+    "alpha": 0.001,
     "gamma": 0.99,
-    "epsilon": 0.1,
     "log_level": "INFO",
-    "n_episodes": 100000,
+    "n_episodes": 10000,
     "max_steps": 50,
-    "filepath_train": "output/weights.pth",
-    "filepath_test": "output/weights.pth"
+    "batch_size": 32,
+    "model_path": "output/weights.pth",
+    "csv_path": "../../../../tablebase/krk/krk_train.csv",
+    "test_path": "../../../../tablebase/krk/krk_test.csv"
 }
