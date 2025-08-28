@@ -4,6 +4,7 @@ from typing import Any, Optional
 import sys
 import requests
 from functools import lru_cache
+import random
 
 # Prefer the packaged module name
 try:
@@ -77,6 +78,45 @@ class SyzygyDefender:
             if (score > best_score and best_score!=0) or (score==0):
                 best_score, best = score, mv
         return best.uci() if best else None
+    
+
+class RandomDefender:
+    """
+    Uniform random Black reply.
+    Returns a UCI string or None if terminal / invalid.
+    """
+    def __init__(self, seed: Optional[int] = None):
+        # Dedicated RNG for reproducibility
+        self.rng = random.Random(seed)
+
+    def best_reply_uci(self, fen: str) -> str | None:
+        try:
+            g = cp.Game()
+            g.reset_from_fen(fen)
+        except Exception:
+            return None
+
+        # refuse to move if it's not Black to move
+        if g.get_side_to_move() != cp.Color.BLACK:
+            return None
+
+        if g.is_game_over():
+            return None
+
+        # Generate legal moves for black
+        try:
+            legal_moves = list(g.legal_moves(cp.Color.BLACK))  # list[cp.Move]
+        except Exception:
+            return None
+
+        if not legal_moves:
+            return None
+
+        mv = self.rng.choice(legal_moves)           # uniform choice
+        try:
+            return cp.Move.to_uci(mv)
+        except Exception:
+            return None
 
 
 # ---------- Step result (Python-side) -----------------------------------------
