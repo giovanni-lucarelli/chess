@@ -1,12 +1,12 @@
 import time, pandas as pd
-from chessrl.env import Env, SyzygyDefender
+from chessrl.env import Env
 
-def evaluate(move_fn, fens, tb_path, dtm_oracle, optimal_moves=None, budget=None, max_plies=300):
+def evaluate(move_fn, defender, fens, dtm_oracle, optimal_moves=None, budget=None, max_plies=300):
     rows = []
     for fen in fens:
         env = Env.from_fen(
             fen, gamma=1.0,
-            defender=SyzygyDefender(tb_path), absorb_black_reply=True
+            defender=defender, absorb_black_reply=True
         )
         total_s, n = 0.0, 0
         first = None

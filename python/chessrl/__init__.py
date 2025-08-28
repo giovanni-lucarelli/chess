@@ -1,4 +1,4 @@
-from .env import Env, StepResult, LichessDefender, SyzygyDefender
+from .env import Env, StepResult, LichessDefender, SyzygyDefender, RandomDefender
 
 from .algorithms.mcts import MCTS
 
