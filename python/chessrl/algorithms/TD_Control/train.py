@@ -26,6 +26,7 @@ if __name__ == '__main__':
     positions, dtz_groups = load_positions(csv_path=f'../../../../tablebase/{ENDGAME_TYPE}/{ENDGAME_TYPE}_train.csv')
     endgames = [pos['fen'] for pos in positions]
     train_endgames = np.random.choice(endgames, size=config['n_episodes'], replace=False)
+    logger.info(f'Loaded {len(train_endgames)} training positions for endgame {ENDGAME_TYPE}')
 
     for td_error_algorithm in ["QLearning", "SARSA"]:
         td_algo = TD_Control()

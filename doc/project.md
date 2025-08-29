@@ -85,7 +85,7 @@ A major drawback to the DP methods is that they involve operations over the enti
 Large state sets do create difficulties, but these are inherent diffculties of the problem, not of DP as a solution method. In fact, DP is comparatively better suited to handling large state spaces than competing methods such as direct search and linear programming.
 
 In our specific case the number of states is:
-- 182676 states (including terminal states) and 3383416 state-action pairs (excluding terminal states since there are no possible actions) in the KRvK endgame
+- 182676 states (including terminal states, 175168 excluding terminal states) and 3383416 state-action pairs (excluding terminal states since there are no possible actions) in the KRvK endgame
 -  in the KQvK endgame
 -  in the KBBvK endgame
 

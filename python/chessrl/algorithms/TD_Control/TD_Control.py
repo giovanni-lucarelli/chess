@@ -35,7 +35,7 @@ class TD_Control():
         self.endgame_type = endgame_type
         endgame_path = os.path.join(os.path.dirname(__file__), '..', '..', '..', '..', 'tablebase', self.endgame_type, f"{self.endgame_type}_full.csv")
         self.states, self.positions_actions_to_idx, self.Qvalues = load_all_positions_with_actions(endgame_path)
-        # self.defender = SyzygyDefender(f'../../../../tablebase/{self.endgame_type}')
+        logger.info(f'Loaded {len(self.Qvalues)} state-action pairs for endgame {self.endgame_type}')
         if defender_type == "SyzygyDefender":
             self.defender = SyzygyDefender(f'../../../../tablebase/{self.endgame_type}')
         elif defender_type == "RandomDefender":
@@ -141,11 +141,10 @@ class TD_Control():
         
         logger.info(f'Starting {td_error_algorithm} training...')
         with tqdm(total=len(endgames), desc="Training") as pbar:  
-            for endgame in endgames:
-                self.epsilon *= config['epsilon_decay'] # epsilon decay
-                env = Env.from_fen(endgame, gamma = self.gamma, defender=self.defender) 
+            for s in endgames:
+                done = False
+                env = Env.from_fen(s, gamma = self.gamma, defender=self.defender) 
                 a = self.get_action_epsilon_greedy(env.state().to_fen(), env.state().legal_moves(env.state().get_side_to_move()))
-                s = endgame
                 
                 # Skip if no legal moves available
                 if a is None:
