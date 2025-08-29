@@ -124,7 +124,7 @@ class REINFORCE:
                 # Get action probabilities for entire batch
                 with torch.no_grad():
                     # Forward pass for entire batch
-                    batch_logits = self.policy.forward(fen_tensors)
+                    batch_logits = self.policy.forward(fen_tensors) # shape [batch_size, 4096]
                     
                     # Process each episode in the batch
                     for batch_idx, env_idx in enumerate(active_indices):
@@ -138,7 +138,6 @@ class REINFORCE:
                         # Apply mask and get probabilities
                         masked_logits = logits.masked_fill(mask == 0, float('-inf'))
                         action_probs = torch.softmax(masked_logits, dim=-1)
-                        log_probs = torch.log_softmax(masked_logits, dim=-1)
                         
                         # Sample action
                         legal_probs = action_probs[legal_moves].cpu().numpy()
