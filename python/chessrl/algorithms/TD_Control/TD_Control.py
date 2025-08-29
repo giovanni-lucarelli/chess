@@ -24,11 +24,14 @@ class TD_Control():
                 gamma=config['gamma'], 
                 epsilon = config['epsilon'],
                 endgame_type=config['endgame_type'],
-                defender_type=config['defender_type']
+                defender_type=config['defender_type'],
+                lr_v = config['lr_v'],
+                tstar=config['tstar']
                 ):
-        # self.max_steps = config['max_steps']
+        self.tstar = tstar
         self.gamma = gamma
         self.epsilon = epsilon
+        self.lr_v = lr_v
         self.endgame_type = endgame_type
         endgame_path = os.path.join(os.path.dirname(__file__), '..', '..', '..', '..', 'tablebase', self.endgame_type, f"{self.endgame_type}_full.csv")
         self.states, self.positions_actions_to_idx, self.Qvalues = load_all_positions_with_actions(endgame_path)
@@ -57,7 +60,8 @@ class TD_Control():
         reward: reward received 
         new_state: resulting state 
         new_legal_actions: list of legal actions in the new state
-        done: whether the episode has ended
+        done: whether the new_state is terminal
+        td_error_algorithm: "QLearning" or "SARSA"
         """
         if done:
             td_target = reward
@@ -77,7 +81,7 @@ class TD_Control():
         td_error = td_target - self.Qvalues[self.positions_actions_to_idx[(state, action)]]
         
         # Update Q-value
-        self.Qvalues[self.positions_actions_to_idx[(state, action)]] += self.alpha * td_error
+        self.Qvalues[self.positions_actions_to_idx[(state, action)]] += self.lr_v * td_error
 
         return next_action
 
@@ -131,6 +135,9 @@ class TD_Control():
 
     def train(self, endgames, td_error_algorithm: str, n_episodes: int = config['n_episodes']):
         performance_traj_Q = np.zeros(n_episodes)
+
+        epsilon_0 = self.epsilon
+        lr_v_0 = self.lr_v
         
         logger.info(f'Starting {td_error_algorithm} training...')
         with tqdm(total=len(endgames), desc="Training") as pbar:  
@@ -146,7 +153,8 @@ class TD_Control():
                     continue
                 
                 counter = 0 
-                while True:
+                while not done:
+                    counter += 1
 
                     # if counter >= self.max_steps:
                     #     logger.debug(f"Reached max steps of {self.max_steps}, ending episode.")
@@ -165,16 +173,18 @@ class TD_Control():
                     else:
                         new_actions = env.state().legal_moves(env.state().get_side_to_move())
                     
-                    self.alpha = 1./(counter + 1)
                     # Single update with (S, A, R', S')
                     new_a = self.single_step_update(s, chess_py.Move.to_uci(a), r, new_s, new_actions, done, td_error_algorithm=td_error_algorithm)
-                    
-                    if done:
-                        break
-                        
+                                            
                     a = new_a
                     s = new_s
-                    counter += 1
+
+                    if counter > self.tstar:
+                        # UPDATE OF LEARNING
+                        self.lr_v = lr_v_0/(1 + 0.003*(counter - self.tstar)**0.75)
+                        # UPDATE OF EPSILON
+                        self.epsilon = epsilon_0/(1. + 0.005*(counter - self.tstar)**1.05)
+
 
                 pbar.update(1)
         

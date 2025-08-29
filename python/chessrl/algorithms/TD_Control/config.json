@@ -1,8 +1,10 @@
 {
     "n_episodes": 100000,
     "endgame_type": "krk",
+    "tstar": 2000,
     "gamma": 1.0,
-    "epsilon": 0.3,
+    "epsilon": 0.05,
+    "lr_v": 0.15,
     "epsilon_decay": 0.999993,
     "log_level": "INFO",
     "defender_type": "SyzygyDefender"
