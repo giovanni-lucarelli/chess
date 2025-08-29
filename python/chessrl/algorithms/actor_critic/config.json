@@ -1,5 +1,6 @@
 {
-    "n_episodes": 10,
+    "n_episodes": 1000,
+    "max_steps": 200,
     "csv_path": "../../../../tablebase/krk/krk_train.csv",
     "tb_path": "../../../../tablebase/krk/",
     "log_level": "INFO"

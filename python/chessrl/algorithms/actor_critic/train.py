@@ -32,16 +32,16 @@ if __name__ == "__main__":
     fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(12, 5))
     # Loss curve
     ax1.plot(losses)
-    ax1.set_xlabel('Batch')
+    ax1.set_xlabel('Episode')
     ax1.set_ylabel('Loss')
     ax1.set_title('Training Loss')
     ax1.grid(True)
 
     # Rewards curve
     ax2.plot(rewards)
-    ax2.set_xlabel('Batch')
+    ax2.set_xlabel('Episode')
     ax2.set_ylabel('Average Reward')
-    ax2.set_title('Average Reward per Batch')
+    ax2.set_title('Average Reward per Episode')
     ax2.grid(True)
 
     plt.tight_layout()

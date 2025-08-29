@@ -58,7 +58,7 @@ class ActorCritic():
         self.lr_v = lr_v
         
         # Stores the Value Approximation weights
-        self.w = np.zeros((*[9604],))
+        self.w = np.zeros(5) # 5 features
 
         self.defender = SyzygyDefender(tb_path=tb_path)
 
@@ -103,18 +103,20 @@ class ActorCritic():
         """
         Uses a single step to update the values, using Temporal Difference delta for V values.
         """
-        
         # ---------------------
         # CRITIC UPDATE -------
         # ---------------------
+
+        V_s = np.dot(self.w, s)
         
         if done:
-            delta = (r + 0 - self.w[(*s,)])            
+            delta = r - V_s         
         else:
-            delta = (r + self.gamma * self.w[(*new_s,)] - self.w[(*s,)])
+            V_new_s = np.dot(self.w, new_s)
+            delta = r + self.gamma * V_new_s - V_s
             
         # --------------------
-        self.w[(*s,)] += self.lr_v * delta
+        self.w += self.lr_v * delta * np.array(s)
         
         # -------------------------
         # Now Actor update --------
@@ -133,51 +135,59 @@ class ActorCritic():
         return loss.item()
 
     def train(self, endgames):
-        # Stochastically determined time-horizon!
-        # Episode can end either by terminal state OR "killed" at each step with probability 1-gamma.
-        gamma_discount = 1
-
-        performance_traj_ActorCritic = np.zeros(len(endgames))
-
         losses = []
         rewards = []
 
-        # RUN OVER EPISODES
-        for i, s in enumerate(endgames):
-            done = False
-            x = self.obtain_features(s)
-            count = 0
-            while not done:
+        pbar = tqdm(enumerate(endgames), desc="Training Actor-Critic", unit="episode", total=len(endgames))
+        for endgame_idx, s in pbar:
+                done = False
+                x = self.obtain_features(s)
+                counter = 0
+                # Step by step (in the episode created by the endgame)
+                while not done:
+                    env = Env.from_fen(
+                        s,
+                        two_ply_cost=0.0,
+                        draw_penalty=1000.0,
+                        checkmate_reward=1000.0,
+                        defender = self.defender
+                    ) # create environment
+                    
+                    # Legal moves idx for this state
+                    legal_moves_idx = get_legal_move_indices(env)
 
-                env = Env.from_fen(
-                    s,
-                    defender = self.defender
-                )
-                
-                # Legal moves idx for this state
-                legal_moves_idx = get_legal_move_indices(env)
+                    # Select action from policy
+                    a_idx, a_log_prob = self.policy.get_action(env, legal_moves_idx) # use neural network policy to get action
+                    a = idx_to_move[a_idx] # returning UCI
 
-                # Select action from policy
-                a_idx, a_log_prob = self.policy.get_action(env, legal_moves_idx)
-                a = idx_to_move[a_idx] # returning UCI
+                    # Evolve one step
+                    step_result = env.step(a)
 
-                # Evolve one step
-                step_result = env.step(a)
+                    new_s = env.state().to_fen()   
+                    r = step_result.reward  
+                    done = step_result.done
+                    if counter == config['max_steps']:
+                        r = -10000.0 # large negative reward if max steps reached
+                        done = True   
+                        logger.info(f"Episode {endgame_idx} reached max steps ({config['max_steps']}).")
+                    if done and r == 1000.0:
+                        # divide checkmate reward by number of steps to encourage faster mates
+                        r = r / (counter + 1)  
+                        logger.info(f"Episode {endgame_idx} ended in checkmate in {counter+1} steps.")
 
-                new_s = env.state().to_fen()   
-                r = step_result.reward      
-                done = step_result.done
+                    new_x = self.obtain_features(new_s) 
 
-                new_x = self.obtain_features(new_s) 
+                    loss = self.single_step_update(x,a_log_prob,r,new_x,done)    
+                    
+                    losses.append(loss)
+                    rewards.append(r)
 
-                loss = self.single_step_update([x],a_log_prob,r,[new_x],done)    
-                
-                losses.append(loss)
-                rewards.append(r)
+                    s = new_s # update state
+                    x = new_x # update features
 
-                x = new_x  
+                    counter +=1
 
-                count += 1
+                    
 
         return losses, rewards
         
