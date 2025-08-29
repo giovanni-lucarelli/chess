@@ -38,7 +38,7 @@ class ResidualBlock(nn.Module):
 
 class Policy(nn.Module):
     """
-    AlphaZero-style policy network optimized for batch processing and GPU.
+    AlphaZero-style policy network optimized for batch processing and GPU/MPS.
     """
     
     def __init__(self, 
@@ -92,16 +92,33 @@ class Policy(nn.Module):
         return policy
     
     def get_action(self, env, legal_moves_idx): 
+        """
+        Get action from policy network, ensuring proper device placement.
+        """
+        # Parse FEN and prepare tensor
         fen_tensor = parse_fen(env.to_fen()).unsqueeze(0).permute(0,3,1,2)  # [1, 8, 8, 12] -> [1, 12, 8, 8]
+        
+        # Move to same device as model
+        device = next(self.parameters()).device
+        fen_tensor = fen_tensor.to(device)
+        
+        # Get logits from network
         logits = self.forward(fen_tensor) # action space [0, 4095]
         legal_logits = logits[0, legal_moves_idx]
         action_probs = torch.softmax(legal_logits, dim=-1)
+
+        # normalize to avoid numerical issues
+        action_probs = action_probs.clamp(min=1e-10)  # avoid zeros
+        action_probs = action_probs / action_probs.sum()
         
+        # Sample action (no grad needed for sampling)
         with torch.no_grad():
             action_idx = torch.multinomial(action_probs, 1).item()
             action = legal_moves_idx[action_idx]
         
-        log_action_prob = torch.log(action_probs[action_idx]).squeeze()
+        # Keep log prob for gradient computation
+        log_action_prob = torch.log(action_probs[action_idx])
+        
         return action, log_action_prob # returns index in [0, 4095]
     
     def predict(self, state_tensor):
@@ -115,6 +132,11 @@ class Policy(nn.Module):
             Best move index (0-4095)
         """
         self.eval()
+        
+        # Ensure tensor is on the same device as model
+        device = next(self.parameters()).device
+        state_tensor = state_tensor.to(device)
+        
         with torch.no_grad():
             logits = self.forward(state_tensor)
             probs = F.softmax(logits, dim=-1)

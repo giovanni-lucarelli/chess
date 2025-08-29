@@ -63,8 +63,6 @@ class ActorCritic():
 
         self.policy = Policy()
         self.optimizer = torch.optim.Adam(self.policy.parameters(), lr=lr_a)
-
-
     
     def obtain_features(self,fen):
         """
@@ -114,8 +112,7 @@ class ActorCritic():
         if len(f) < 5:
             raise ValueError(f"Feature vector has insufficient elements: {len(f)} < 5")
         return (((f[0]*self.mult[1] + f[1])*self.mult[2] + f[2])*self.mult[3] + f[3])*self.mult[4] + f[4]
-    
-    # -------------------   
+      
     def single_step_update(self, s, a_log_prob, r, new_s, done):
         """
         Uses a single step to update the values, using Temporal Difference delta for V values.
@@ -197,8 +194,5 @@ class ActorCritic():
                     x = new_x # update features
 
                     counter +=1
-
-                    
-
         return losses, rewards
         
