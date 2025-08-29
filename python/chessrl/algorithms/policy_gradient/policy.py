@@ -4,7 +4,6 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 import logging
-from chessrl.utils.io import save_policy_jsonl
 
 logger = logging.getLogger(__name__)
 
