@@ -25,6 +25,7 @@ from chessrl import Env, SyzygyDefender
 from chessrl import chess_py as cp
 from chessrl.algorithms.policy_gradient.policy import Policy
 from chessrl.utils.move_idx import build_move_mappings
+from chessrl.utils.fen_parsing import parse_fen
 
 move_to_idx, idx_to_move = build_move_mappings()
 
@@ -66,6 +67,37 @@ class ActorCritic():
         self.defender = SyzygyDefender(tb_path=tb_path)
 
         self.policy = Policy()
+    
+    def obtain_features(fen):
+        """
+        Extract features from FEN:
+        - Distance of black king from nearest side of the board.
+        - Horizontal & vertical distances of each white piece from black king
+        (0 if adjacent).
+        """
+        board = parse_fen(fen)  # [8, 8, 12]
+        
+        # Find black king position
+        bk_pos = torch.nonzero(board[:, :, 11], as_tuple=False)
+        if bk_pos.size(0) == 0:
+            raise ValueError("No black king found in FEN")
+        bk_row, bk_col = bk_pos[0].tolist()
+        
+        # Distance of black king from side
+        dist_side = min(bk_row, 7 - bk_row, bk_col, 7 - bk_col)
+        
+        features = [dist_side]
+        
+        # Loop over white pieces (indices 0..5)
+        for piece_idx in range(6):
+            positions = torch.nonzero(board[:, :, piece_idx], as_tuple=False)
+            for r, c in positions.tolist():
+                dx = max(0, abs(c - bk_col) - 1)
+                dy = max(0, abs(r - bk_row) - 1)
+                features.extend([dx, dy])
+        
+        return features
+
     
     # -------------------   
     def single_step_update(self, s, a, r, new_s, done):
