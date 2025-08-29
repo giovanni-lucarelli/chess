@@ -134,6 +134,7 @@ class Env:
     
     __slots__ = (
         "game",
+        "fen",
         "gamma",
         "defender",
         "absorb_black_reply",

@@ -294,17 +294,17 @@ class REINFORCE:
             loss, dtms = self.train_batch(episodes_data)
             
             all_losses.append(loss)
+            all_rewards = [ep['rewards'] for ep in episodes_data]
             all_dtms.extend(dtms)
 
             # Update progress bar
-            avg_loss = np.mean(all_losses)
-            avg_dtm = np.mean(all_dtms) 
+            avg_loss = np.mean(all_losses) if all_losses else 0.0
+            avg_reward = np.mean([r for rewards in all_rewards for r in rewards]) if all_rewards else 0.0
+            avg_dtm = np.mean(all_dtms) if all_dtms else float('inf')
             
             pbar.set_postfix({
                 'avg_loss': f'{avg_loss:.4f}',
-                'avg_dtm': f'{avg_dtm:.1f}' if avg_dtm != float('inf') else 'N/A',
-                'wins': f'{sum(1 for d in all_dtms if d > 0):d}',
-                'batch_size': len(batch_endgames)
+                'avg_reward': f'{avg_reward:.4f}'
             })
         
         # Save final model
@@ -312,9 +312,10 @@ class REINFORCE:
             'model_state_dict': self.policy.state_dict(),
             'optimizer_state_dict': self.optimizer.state_dict(),
             'losses': all_losses,
+            'rewards': all_rewards,
             'dtms': all_dtms
         }, config['model_path'])
         
         logger.info(f"Training completed. Final avg loss: {np.mean(all_losses):.4f}")
         
-        return all_losses, all_dtms
+        return all_losses, all_rewards, all_dtms
