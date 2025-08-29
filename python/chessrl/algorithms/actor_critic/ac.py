@@ -23,7 +23,7 @@ logger = logging.getLogger(__name__)
 # chess
 from chessrl import Env, SyzygyDefender
 from chessrl import chess_py as cp
-from chessrl.algorithms.policy_gradient.policy import Policy
+from chessrl.algorithms.actor_critic.policy import Policy
 from chessrl.utils.move_idx import build_move_mappings
 from chessrl.utils.fen_parsing import parse_fen
 
@@ -45,7 +45,7 @@ class ActorCritic():
     def __init__(self,  
                  tb_path: str = config['tb_path'],
                  gamma=1, 
-                 lr_v=0.01,
+                 lr_v=0.025,
                  lr_a=0.001):
         """
         Calculates optimal policy using in-policy Temporal Difference control
@@ -63,10 +63,11 @@ class ActorCritic():
         self.defender = SyzygyDefender(tb_path=tb_path)
 
         self.policy = Policy()
+        self.optimizer = torch.optim.Adam(self.policy.parameters(), lr=lr_a)
 
 
     
-    def obtain_features(fen):
+    def obtain_features(self, fen):
         """
         Extract features from FEN:
         - Distance of black king from nearest side of the board.
@@ -98,7 +99,7 @@ class ActorCritic():
 
     
     # -------------------   
-    def single_step_update(self, s, a, r, new_s, done):
+    def single_step_update(self, s, a_log_prob, r, new_s, done):
         """
         Uses a single step to update the values, using Temporal Difference delta for V values.
         """
@@ -119,45 +120,27 @@ class ActorCritic():
         # Now Actor update --------
         # -------------------------
 
-
         # REINFORCE loss
-        loss = -torch.mean(log_probs_tensor * delta)
-
-        self.lr_a
-        
-        # Check for NaN or inf
-        if torch.isnan(loss) or torch.isinf(loss):
-            logger.warning(f"Invalid loss detected: {loss.item()}, skipping batch")
-            return 0.0, []
+        delta_torch = torch.tensor(delta, dtype=torch.float32)
+        loss = - (delta_torch * a_log_prob).mean()
         
         # Optimize
         self.optimizer.zero_grad()
-        loss.backward()
+        loss.backward() # calculates gradients
         torch.nn.utils.clip_grad_norm_(self.policy.parameters(), max_norm=1.0)
-        self.optimizer.step()
+        self.optimizer.step() # updates weights
 
-            
-        for act in range(self.action_size):
-            # If the action "act" is that which was really chosen in the trajectory
-            if (a == act):
-                self.Theta[(*s, act) ] += self.lr_a * delta * (1 - policy[act])
-            # Else if the action "act" has not been performed
-            else:
-                self.Theta[(*s, act) ] += self.lr_a * delta * (- policy[act])
+        return loss.item()
 
     def train(self, endgames):
-        # Initialize learning rates
-        # Note the difference in values!
-        #Two time-scales!
-        lr_v_0 = 0.025
-
-        lr_v = lr_v_0
-
         # Stochastically determined time-horizon!
         # Episode can end either by terminal state OR "killed" at each step with probability 1-gamma.
         gamma_discount = 1
 
         performance_traj_ActorCritic = np.zeros(len(endgames))
+
+        losses = []
+        rewards = []
 
         # RUN OVER EPISODES
         for i, s in enumerate(endgames):
@@ -175,7 +158,7 @@ class ActorCritic():
                 legal_moves_idx = get_legal_move_indices(env)
 
                 # Select action from policy
-                a_idx = self.policy.get_action(env, legal_moves_idx)
+                a_idx, a_log_prob = self.policy.get_action(env, legal_moves_idx)
                 a = idx_to_move[a_idx] # returning UCI
 
                 # Evolve one step
@@ -187,8 +170,15 @@ class ActorCritic():
 
                 new_x = self.obtain_features(new_s) 
 
-                self.single_step_update([x],a,r,[new_x],done)    
+                loss = self.single_step_update([x],a_log_prob,r,[new_x],done)    
+                
+                losses.append(loss)
+                rewards.append(r)
 
                 x = new_x  
 
                 count += 1
+
+        return losses, rewards
+        
+

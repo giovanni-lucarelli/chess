@@ -4,11 +4,11 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 import logging
-import random
+import numpy as np
 
 logger = logging.getLogger(__name__)
 
-from chessrl.utils.move_idx import build_move_mappings
+from chessrl.utils.fen_parsing import parse_fen
 
 class ResidualBlock(nn.Module):
     """
@@ -104,18 +104,23 @@ class Policy(nn.Module):
         policy = self.policy_conv(out)
         policy = self.policy_bn(policy)
         policy = F.relu(policy, inplace=True)
-        policy = policy.view(policy.size(0), -1)  # Flatten for FC layer
+        policy = policy.reshape(policy.size(0), -1)  # Flatten for FC layer
         policy = self.policy_fc(policy)
         
         return policy
     
     def get_action(self, env, legal_moves_idx): 
+        fen_tensor = parse_fen(env.to_fen()).unsqueeze(0).permute(0,3,1,2)  # [1, 8, 8, 12] -> [1, 12, 8, 8]
+        logits = self.forward(fen_tensor) # action space [0, 4095]
+        legal_logits = logits[0, legal_moves_idx]
+        action_probs = torch.softmax(legal_logits, dim=-1)
+        
         with torch.no_grad():
-            logits = self.forward(env.state()) # action space [0, 4095]
-            legal_logits = logits[legal_moves_idx]
-            action_probs = torch.softmax(legal_logits, dim=-1) # sum=1
-            action = random.choice(legal_moves_idx, p=action_probs) # both vectors have same dimension
-        return action # returns index in [0, 4095]
+            action_idx = torch.multinomial(action_probs, 1).item()
+            action = legal_moves_idx[action_idx]
+        
+        log_action_prob = torch.log(action_probs[action_idx]).squeeze()
+        return action, log_action_prob # returns index in [0, 4095]
     
     def predict(self, state_tensor):
         """
