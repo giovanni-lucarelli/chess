@@ -20,10 +20,12 @@ import numpy as np
 from chessrl.algorithms.TD_Control.TD_Control import TD_Control
 
 if __name__ == '__main__':
-    # !!! if you want to train on random sampled endgames without considering DTZ, you can simply use:
-    positions, dtz_groups = load_positions(csv_path = '../../../../tablebase/krk/krk_train.csv')
+
+    ENDGAME_TYPE = config["endgame_type"]
+    # Load positions
+    positions, dtz_groups = load_positions(csv_path=f'../../../../tablebase/{ENDGAME_TYPE}/{ENDGAME_TYPE}_train.csv')
     endgames = [pos['fen'] for pos in positions]
-    train_endgames = np.random.choice(endgames, size=config['n_episodes'], replace=True)
+    train_endgames = np.random.choice(endgames, size=config['n_episodes'], replace=False)
 
     for td_error_algorithm in ["QLearning", "SARSA"]:
         td_algo = TD_Control()

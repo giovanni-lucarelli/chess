@@ -16,25 +16,30 @@ from chessrl.utils.io import save_policy_jsonl, save_values
 from tqdm import tqdm
 
 # chess
-from chessrl.env import Env, SyzygyDefender
+from chessrl.env import Env, SyzygyDefender, RandomDefender
 from chessrl import chess_py  
 
 class TD_Control():
     def __init__(self,  
                 gamma=config['gamma'], 
-                alpha=config['alpha'], 
                 epsilon = config['epsilon'],
-                endgame_type=config['endgame_type']
+                endgame_type=config['endgame_type'],
+                defender_type=config['defender_type']
                 ):
+        # self.max_steps = config['max_steps']
         self.gamma = gamma
-        self.alpha = alpha
         self.epsilon = epsilon
         self.endgame_type = endgame_type
         endgame_path = os.path.join(os.path.dirname(__file__), '..', '..', '..', '..', 'tablebase', self.endgame_type, f"{self.endgame_type}_full.csv")
         self.states, self.positions_actions_to_idx, self.Qvalues = load_all_positions_with_actions(endgame_path)
-        self.defender = SyzygyDefender('../../../../tablebase/krk')
+        # self.defender = SyzygyDefender(f'../../../../tablebase/{self.endgame_type}')
+        if defender_type == "SyzygyDefender":
+            self.defender = SyzygyDefender(f'../../../../tablebase/{self.endgame_type}')
+        elif defender_type == "RandomDefender":
+            self.defender = RandomDefender()
+        else:
+            raise ValueError(f"Unknown defender type: {defender_type}")
 
-    
     # This is the only method that changes between Q-learning and SARSA
     def single_step_update(self, 
                            state, 
@@ -43,7 +48,8 @@ class TD_Control():
                            new_state, 
                            new_legal_actions, 
                            done,
-                           td_error_algorithm: str):
+                           td_error_algorithm: str
+                           ):
         """
         Performs a single TD-learning update step.
         state: current state 
@@ -141,9 +147,10 @@ class TD_Control():
                 
                 counter = 0 
                 while True:
-                    if counter >= config['max_steps']:
-                        logger.debug(f"Reached max steps of {config['max_steps']}, ending episode.")
-                        break
+
+                    # if counter >= self.max_steps:
+                    #     logger.debug(f"Reached max steps of {self.max_steps}, ending episode.")
+                    #     break
 
                     # Evolve one step
                     step_result = env.step(a)
@@ -158,15 +165,17 @@ class TD_Control():
                     else:
                         new_actions = env.state().legal_moves(env.state().get_side_to_move())
                     
+                    self.alpha = 1./(counter + 1)
                     # Single update with (S, A, R', S')
                     new_a = self.single_step_update(s, chess_py.Move.to_uci(a), r, new_s, new_actions, done, td_error_algorithm=td_error_algorithm)
                     
-                    if done or new_a is None:
+                    if done:
                         break
                         
                     a = new_a
                     s = new_s
                     counter += 1
+
                 pbar.update(1)
         
         policy = {}
