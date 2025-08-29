@@ -62,24 +62,6 @@ class Policy(nn.Module):
         self.policy_conv = nn.Conv2d(filters, policy_head_filters, kernel_size=1, bias=False)
         self.policy_bn = nn.BatchNorm2d(policy_head_filters)
         self.policy_fc = nn.Linear(policy_head_filters * 8 * 8, action_size)
-        
-        # Initialize weights
-        self._initialize_weights()
-        
-    def _initialize_weights(self):
-        """
-        Proper weight initialization for chess networks.
-        """
-        for module in self.modules():
-            if isinstance(module, nn.Conv2d):
-                nn.init.kaiming_normal_(module.weight, mode='fan_out', nonlinearity='relu')
-            elif isinstance(module, nn.BatchNorm2d):
-                nn.init.constant_(module.weight, 1)
-                nn.init.constant_(module.bias, 0)
-            elif isinstance(module, nn.Linear):
-                nn.init.xavier_uniform_(module.weight)
-                if module.bias is not None:
-                    nn.init.constant_(module.bias, 0)
     
     def forward(self, x):
         """

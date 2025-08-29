@@ -175,8 +175,8 @@ class Env:
         defender: Any | None = None,
         absorb_black_reply: bool = True,
         two_ply_cost: float = 2.0, 
-        draw_penalty: float = 50.0,
-        checkmate_reward: float = 100.0
+        draw_penalty: float = 1000.0,
+        checkmate_reward: float = 1000.0
     ) -> "Env":
         g = cp.Game()
         g.reset_from_fen(fen)

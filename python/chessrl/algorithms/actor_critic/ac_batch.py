@@ -10,6 +10,9 @@ import torch
 import logging
 from tqdm import tqdm 
 from chessrl.utils.load_config import load_config
+from chessrl.utils.fen_parsing import parse_fen_cached
+from typing import List, Tuple, Dict
+
 
 import os
 config_path = os.path.join(os.path.dirname(__file__), 'config.json')
@@ -113,7 +116,7 @@ class ActorCritic():
             delta = r + self.gamma * V_new_s - V_s
             
         # --------------------
-        self.w += self.lr_v * delta * np.array(s) # gradient is just the features (linear approx)
+        self.w += self.lr_v * delta * np.array(s) # the gradient is just the features (linear approx)
         
         # -------------------------
         # Now Actor update --------
@@ -131,30 +134,32 @@ class ActorCritic():
 
         return loss.item()
 
+
     def train(self, endgames):
         losses = []
         rewards = []
 
-        pbar = tqdm(enumerate(endgames), desc="Training Actor-Critic", unit="episode", total=len(endgames))
-        for endgame_idx, s in pbar:
-                done = False
-                x = self.obtain_features(s)
+        n_episodes = len(endgames)
+        n_batches = n_episodes // 32
+
+        pbar = tqdm(range(n_batches), desc="Training Actor-Critic", unit="batch", total=n_batches)
+        for batch_idx in pbar:
+                start_idx = batch_idx * 32
+                end_idx = start_idx + 32
+                s = endgames[start_idx:end_idx]
+
+                done = [False] * 32
+                x = self.obtain_features(s) #TODO: update for batch
                 counter = 0
-                # Step by step (in the episode created by the endgame)
-                while not done:
-                    env = Env.from_fen(
-                        s,
-                        two_ply_cost=0.0,
-                        draw_penalty=1000.0,
-                        checkmate_reward=1000.0,
-                        defender = self.defender
-                    ) # create environment
+                # Step by step (in the episodes created by the endgames)
+                while not all(done): 
+                    envs = [Env.from_fen(s, two_ply_cost=0.0, draw_penalty=1000.0, checkmate_reward=1000.0, defender=self.defender) if not d else None for s, d in zip(s, done)]
                     
                     # Legal moves idx for this state
-                    legal_moves_idx = get_legal_move_indices(env)
+                    legal_moves_idx = get_legal_move_indices(envs) #TODO: update for batch
 
                     # Select action from policy
-                    a_idx, a_log_prob = self.policy.get_action(env, legal_moves_idx) # use neural network policy to get action
+                    a_idx, a_log_prob = self.policy.get_action(envs, legal_moves_idx) # use neural network policy to get action TODO: update for batch
                     a = idx_to_move[a_idx] # returning UCI
 
                     # Evolve one step
@@ -164,13 +169,11 @@ class ActorCritic():
                     r = step_result.reward  
                     done = step_result.done
                     if counter == config['max_steps']:
-                        r = -10000.0 # large negative reward if max steps reached
+                        #r = -10000.0 # large negative reward if max steps reached
                         done = True   
-                        logger.info(f"Episode {endgame_idx} reached max steps ({config['max_steps']}).")
-                    if done and r == 1000.0:
+                    if done and step_result.is_checkmate:
                         # divide checkmate reward by number of steps to encourage faster mates
                         r = r / (counter + 1)  
-                        logger.info(f"Episode {endgame_idx} ended in checkmate in {counter+1} steps.")
 
                     new_x = self.obtain_features(new_s) 
 
@@ -188,3 +191,4 @@ class ActorCritic():
 
         return losses, rewards
         
+
