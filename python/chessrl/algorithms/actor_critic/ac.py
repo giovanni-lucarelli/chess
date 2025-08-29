@@ -56,17 +56,15 @@ class ActorCritic():
         
         # the learning rate for value
         self.lr_v = lr_v
-        # the learning rate for actor
-        self.lr_a = lr_a
         
         # Stores the Value Approximation weights
-        self.w = np.zeros((*self.space_size,))
-        # Stores the Policy parametrization
-        self.Theta = np.zeros( (*self.space_size, self.action_size) )
+        self.w = np.zeros((*[9604],))
 
         self.defender = SyzygyDefender(tb_path=tb_path)
 
         self.policy = Policy()
+
+
     
     def obtain_features(fen):
         """
@@ -110,14 +108,9 @@ class ActorCritic():
         # ---------------------
         
         if done:
-            # -----------------------
-            delta = (r + 0 - self.w[(*s,)])
-            
+            delta = (r + 0 - self.w[(*s,)])            
         else:
-            # --------------------------
-            delta = (r + 
-                      self.gamma * self.w[(*new_s,)]
-                                 - self.w[(*s,)])
+            delta = (r + self.gamma * self.w[(*new_s,)] - self.w[(*s,)])
             
         # --------------------
         self.w[(*s,)] += self.lr_v * delta
@@ -125,7 +118,24 @@ class ActorCritic():
         # -------------------------
         # Now Actor update --------
         # -------------------------
-        policy = self.get_policy(s)
+
+
+        # REINFORCE loss
+        loss = -torch.mean(log_probs_tensor * delta)
+
+        self.lr_a
+        
+        # Check for NaN or inf
+        if torch.isnan(loss) or torch.isinf(loss):
+            logger.warning(f"Invalid loss detected: {loss.item()}, skipping batch")
+            return 0.0, []
+        
+        # Optimize
+        self.optimizer.zero_grad()
+        loss.backward()
+        torch.nn.utils.clip_grad_norm_(self.policy.parameters(), max_norm=1.0)
+        self.optimizer.step()
+
             
         for act in range(self.action_size):
             # If the action "act" is that which was really chosen in the trajectory
@@ -140,10 +150,8 @@ class ActorCritic():
         # Note the difference in values!
         #Two time-scales!
         lr_v_0 = 0.025
-        lr_a_0 = 0.001
 
         lr_v = lr_v_0
-        lr_a = lr_a_0
 
         # Stochastically determined time-horizon!
         # Episode can end either by terminal state OR "killed" at each step with probability 1-gamma.
