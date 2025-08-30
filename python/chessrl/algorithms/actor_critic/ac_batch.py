@@ -11,6 +11,7 @@ import torch.nn.functional as F
 import logging
 from tqdm import tqdm 
 from chessrl.utils.load_config import load_config
+import torch.nn as nn
 
 import os
 config_path = os.path.join(os.path.dirname(__file__), 'config.json')
@@ -185,23 +186,63 @@ class ActorCritic():
         # Get policy outputs for all states at once
         logits = self.policy(batch_states)  # [batch_size, 4096]
         
+        # Check for NaN in logits before computing loss
+        if torch.isnan(logits).any():
+            logger.warning("NaN detected in policy logits, reinitializing network")
+            # Reinitialize the policy network
+            def init_weights(m):
+                if isinstance(m, (nn.Linear, nn.Conv2d)):
+                    nn.init.xavier_uniform_(m.weight)
+                    if m.bias is not None:
+                        nn.init.constant_(m.bias, 0)
+            self.policy.apply(init_weights)
+            return [], []  # Skip this update
+        
         # Compute log probabilities for the actions taken
         log_probs = []
         for i, action_idx in enumerate(actions):
             action_logits = logits[i]
+            # Apply numerical stability for softmax
+            action_logits = torch.clamp(action_logits, min=-50, max=50)
+            action_logits = action_logits - torch.max(action_logits)
             action_probs = F.softmax(action_logits, dim=-1)
+            
+            # Add epsilon to prevent log(0)
+            action_probs = action_probs + 1e-8
             log_prob = torch.log(action_probs[action_idx])
             log_probs.append(log_prob)
         
         log_probs = torch.stack(log_probs)
         deltas_torch = torch.tensor(deltas, dtype=torch.float32).to(self.device)
         
+        # Check for NaN in loss computation
+        if torch.isnan(log_probs).any():
+            logger.warning("NaN detected in log probabilities, skipping update")
+            return [], []
+        
         # REINFORCE loss with baseline (advantage)
         loss = -(deltas_torch * log_probs).mean()
+        
+        # Check if loss is NaN
+        if torch.isnan(loss):
+            logger.warning("NaN detected in loss, skipping update")
+            return [], []
         
         # Optimize
         self.optimizer.zero_grad()
         loss.backward()
+        
+        # Check for NaN gradients
+        has_nan_grad = False
+        for param in self.policy.parameters():
+            if param.grad is not None and torch.isnan(param.grad).any():
+                has_nan_grad = True
+                break
+        
+        if has_nan_grad:
+            logger.warning("NaN gradients detected, skipping optimizer step")
+            return [], []
+        
         torch.nn.utils.clip_grad_norm_(self.policy.parameters(), max_norm=1.0)
         self.optimizer.step()
         

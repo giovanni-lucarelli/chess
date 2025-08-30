@@ -105,12 +105,28 @@ class Policy(nn.Module):
         # Get logits from network
         logits = self.forward(fen_tensor) # action space [0, 4095]
         legal_logits = logits[0, legal_moves_idx]
-        action_probs = torch.softmax(legal_logits, dim=-1)
-
-        # normalize to avoid numerical issues
-        action_probs = action_probs.clamp(min=1e-10)  # avoid zeros
-        action_probs = action_probs / action_probs.sum()
         
+        # Debug: Check for problematic values
+        if torch.isnan(legal_logits).any() or torch.isinf(legal_logits).any():
+            logger.warning(f"Invalid logits detected: nan={torch.isnan(legal_logits).any()}, inf={torch.isinf(legal_logits).any()}")
+        else:
+            # Ensure numerical stability for softmax
+            legal_logits = torch.clamp(legal_logits, min=-50, max=50)  # Prevent overflow/underflow
+            legal_logits = legal_logits - torch.max(legal_logits)  # Subtract max for stability
+            action_probs = torch.softmax(legal_logits, dim=-1)
+            
+            # Check if softmax produced invalid values
+            if torch.isnan(action_probs).any() or torch.isinf(action_probs).any() or (action_probs < 0).any():
+                logger.warning(f"Invalid action_probs after softmax: nan={torch.isnan(action_probs).any()}, inf={torch.isinf(action_probs).any()}, neg={torch.any(action_probs < 0)}")
+            else:
+                # Add small epsilon to prevent exact zeros
+                action_probs = action_probs + 1e-8
+                action_probs = action_probs / torch.sum(action_probs)  # Renormalize
+                
+                # Final validation
+                if torch.isnan(action_probs).any() or torch.isinf(action_probs).any() or (action_probs < 0).any():
+                    logger.warning("Invalid action_probs after renormalization, using uniform distribution")
+
         # Sample action (no grad needed for sampling)
         with torch.no_grad():
             action_idx = torch.multinomial(action_probs, 1).item()
