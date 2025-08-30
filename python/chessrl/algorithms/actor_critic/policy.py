@@ -137,6 +137,71 @@ class Policy(nn.Module):
         
         return action, log_action_prob # returns index in [0, 4095]
     
+    def batch_get_actions(self, envs, legal_moves_list):
+        """
+        Get actions for a batch of environments efficiently.
+        
+        Args:
+            envs: List of chess environments
+            legal_moves_list: List of legal move indices for each environment
+        
+        Returns:
+            actions: List of selected action indices
+            log_probs: Tensor of log probabilities for selected actions
+        """
+        batch_size = len(envs)
+        if batch_size == 0:
+            return [], torch.tensor([])
+        
+        # Parse all FENs and create batch tensor
+        fen_tensors = []
+        for env in envs:
+            fen_tensor = parse_fen(env.to_fen()).permute(2, 0, 1)  # [12, 8, 8]
+            fen_tensors.append(fen_tensor)
+        
+        batch_tensors = torch.stack(fen_tensors).to(next(self.parameters()).device, non_blocking=True)  # [batch_size, 12, 8, 8]
+        
+        # Single forward pass for entire batch
+        with torch.no_grad():
+            logits = self.forward(batch_tensors)  # [batch_size, 4096]
+        
+        # Process each environment's legal moves
+        actions = []
+        log_probs = []
+        
+        for i, (legal_moves_idx, env_logits) in enumerate(zip(legal_moves_list, logits)):
+            if len(legal_moves_idx) == 0:
+                # No legal moves (shouldn't happen in normal chess)
+                actions.append(0)
+                log_probs.append(torch.tensor(-float('inf')))
+                continue
+                
+            legal_logits = env_logits[legal_moves_idx]
+            
+            # Check for NaN/inf values
+            if torch.isnan(legal_logits).any() or torch.isinf(legal_logits).any():
+                # Fallback to uniform distribution
+                action_probs = torch.ones_like(legal_logits) / len(legal_logits)
+            else:
+                # Apply numerical stability
+                legal_logits = torch.clamp(legal_logits, min=-50, max=50)
+                legal_logits = legal_logits - torch.max(legal_logits)
+                action_probs = torch.softmax(legal_logits, dim=-1)
+                
+                # Add epsilon and renormalize
+                action_probs = action_probs + 1e-8
+                action_probs = action_probs / torch.sum(action_probs)
+            
+            # Sample action
+            action_idx = torch.multinomial(action_probs, 1).item()
+            action = legal_moves_idx[action_idx]
+            log_prob = torch.log(action_probs[action_idx])
+            
+            actions.append(action)
+            log_probs.append(log_prob)
+        
+        return actions, torch.stack(log_probs) if log_probs else torch.tensor([])
+    
     def predict(self, state_tensor):
         """
         Predict the best move for a single state.
@@ -149,12 +214,11 @@ class Policy(nn.Module):
         """
         self.eval()
         
-        # Ensure tensor is on the same device as model
         device = next(self.parameters()).device
         state_tensor = state_tensor.to(device)
         
         with torch.no_grad():
             logits = self.forward(state_tensor)
-            probs = F.softmax(logits, dim=-1)
+            probs = torch.softmax(logits, dim=-1)
             best_move = torch.argmax(probs, dim=-1).item()
         return best_move # returns index in [0, 4095]
