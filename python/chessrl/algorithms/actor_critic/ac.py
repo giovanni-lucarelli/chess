@@ -55,8 +55,8 @@ class ActorCritic():
         self.lr_v = lr_v
         
         # Stores the Value Approximation weights
-        self.w = np.zeros(9604)
-        self.mult = [7,7,7,7,4]
+        self.w = np.zeros(12544)
+        self.mult = [8,8,7,7,4]
 
 
         self.defender = SyzygyDefender(tb_path=tb_path)
@@ -92,12 +92,22 @@ class ActorCritic():
             "N": 1,
             "P": 0
         }
+
+        # Find distances for white king
+        wk_pos = torch.nonzero(board[:, :, 5], as_tuple=False).tolist()
+        wk_pos.sort()
+        for r, c in wk_pos:
+            dx = max(0, abs(c - bk_col) - 1)
+            dy = max(0, abs(r - bk_row) - 1)
+            features.extend([dx, dy])
         
-        for piece_symbol in ["K", "Q", "R", "B", "N", "P"]:
+        for piece_symbol in ["R"]:
             piece_idx = white_piece_order[piece_symbol]
             positions = torch.nonzero(board[:, :, piece_idx], as_tuple=False).tolist()
             # Sort by row, then col
             positions.sort()
+            if len(positions) == 0:
+                features.extend([7, 7])
             
             for r, c in positions:
                 dx = max(0, abs(c - bk_col) - 1)
@@ -105,6 +115,7 @@ class ActorCritic():
                 features.extend([dx, dy])
         
         return features
+    
     def features_to_index(self, f):
         """
         Convert feature list to a unique index for value function lookup.
