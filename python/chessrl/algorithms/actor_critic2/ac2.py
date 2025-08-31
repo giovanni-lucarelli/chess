@@ -23,7 +23,7 @@ class ActorCritic:
                  tb_path, 
                  gamma=0.99, 
                  lr_v=0.02, 
-                 lr_a=1e-3,
+                 lr_a=1e-2,
                  hidden=(128,128,64)
                  ):
         self.gamma = gamma
@@ -59,7 +59,7 @@ class ActorCritic:
         self.optimizer.step()
         return float(loss.item()), float(delta)
 
-    def train(self, fens, epochs=3, max_steps=128, device=None):
+    def train(self, fens, epochs=3, max_steps=50, device=None):
         device = device or torch.device('cuda' if torch.cuda.is_available() else 'cpu')
         self.policy.to(device).train()
 

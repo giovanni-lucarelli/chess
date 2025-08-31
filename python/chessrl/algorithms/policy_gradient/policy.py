@@ -1,124 +1,76 @@
-#!/usr/bin/env python3 
-
+# policy_mlp.py
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-import logging
+from torch.distributions import Categorical
+from chessrl.utils.fen_parsing import parse_fen
 
-logger = logging.getLogger(__name__)
+def _norm01_to_pm1(v):  # 0..7 -> [-1,1]
+    return (v - 3.5) / 3.5
 
-class ResidualBlock(nn.Module):
+def extract_coords7_from_fen(fen: str) -> torch.Tensor:
     """
-    Residual block with batch normalization optimized for GPU.
+    Return [wx, wy, rx, ry, bx, by, side] normalized to [-1,1].
+    Assumes parse_fen -> [8,8,12] with channels:
+      white: P=0,N=1,B=2,R=3,Q=4,K=5 ; black king k=11
     """
-    def __init__(self, channels):
-        super(ResidualBlock, self).__init__()
-        self.conv1 = nn.Conv2d(channels, channels, kernel_size=3, padding=1, bias=False)
-        self.bn1 = nn.BatchNorm2d(channels)
-        self.conv2 = nn.Conv2d(channels, channels, kernel_size=3, padding=1, bias=False)
-        self.bn2 = nn.BatchNorm2d(channels)
-        
-    def forward(self, x):
-        residual = x
-        
-        out = self.conv1(x)
-        out = self.bn1(out)
-        out = F.relu(out, inplace=True)  # inplace for memory efficiency
-        
-        out = self.conv2(out)
-        out = self.bn2(out)
-        
-        out += residual
-        out = F.relu(out, inplace=True)
-        
-        return out
+    board = parse_fen(fen)  # [8,8,12]
+    wk = torch.nonzero(board[:,:,5],  as_tuple=False)[0].tolist()  # row, col
+    wr = torch.nonzero(board[:,:,3],  as_tuple=False)[0].tolist()
+    bk = torch.nonzero(board[:,:,11], as_tuple=False)[0].tolist()
+    wy, wx = wk; ry, rx = wr; by, bx = bk
+    side = 1.0 if fen.split()[1] == 'w' else -1.0
+    return torch.tensor([
+        _norm01_to_pm1(wx), _norm01_to_pm1(wy),
+        _norm01_to_pm1(rx), _norm01_to_pm1(ry),
+        _norm01_to_pm1(bx), _norm01_to_pm1(by),
+        side
+    ], dtype=torch.float32)
 
 class Policy(nn.Module):
     """
-    AlphaZero-style policy network optimized for batch processing and GPU.
+    Coordinate MLP: input 7 floats -> 4096 logits (masked to legal moves at sampling).
     """
-    
-    def __init__(self, 
-                 input_channels=12,
-                 filters=128,            
-                 residual_blocks=6,      
-                 policy_head_filters=16, 
-                 action_size=4096):
-        super(Policy, self).__init__()
-        
-        # Initial convolution
-        self.initial_conv = nn.Conv2d(input_channels, filters, kernel_size=3, padding=1, bias=False)
-        self.initial_bn = nn.BatchNorm2d(filters)
-        
-        # Residual blocks
-        self.residual_blocks = nn.ModuleList([
-            ResidualBlock(filters) for _ in range(residual_blocks)
-        ])
-        
-        # Policy head
-        self.policy_conv = nn.Conv2d(filters, policy_head_filters, kernel_size=1, bias=False)
-        self.policy_bn = nn.BatchNorm2d(policy_head_filters)
-        self.policy_fc = nn.Linear(policy_head_filters * 8 * 8, action_size)
-        
-        # Initialize weights
-        self._initialize_weights()
-        
-    def _initialize_weights(self):
-        """
-        Proper weight initialization for chess networks.
-        """
-        for module in self.modules():
-            if isinstance(module, nn.Conv2d):
-                nn.init.kaiming_normal_(module.weight, mode='fan_out', nonlinearity='relu')
-            elif isinstance(module, nn.BatchNorm2d):
-                nn.init.constant_(module.weight, 1)
-                nn.init.constant_(module.bias, 0)
-            elif isinstance(module, nn.Linear):
-                nn.init.xavier_uniform_(module.weight)
-                if module.bias is not None:
-                    nn.init.constant_(module.bias, 0)
-    
-    def forward(self, x):
-        """
-        Forward pass.
-        
-        Args:
-            x: Batch of board states [batch_size, 12, 8, 8]
-        
-        Returns:
-            Policy logits [batch_size, 4096]
-        """
-        # Initial convolution
-        out = self.initial_conv(x)
-        out = self.initial_bn(out)
-        out = F.relu(out, inplace=True)
-        
-        # Residual blocks
-        for block in self.residual_blocks:
-            out = block(out)
-        
-        # Policy head
-        policy = self.policy_conv(out)
-        policy = self.policy_bn(policy)
-        policy = F.relu(policy, inplace=True)
-        policy = policy.view(policy.size(0), -1)  # Flatten for FC layer
-        policy = self.policy_fc(policy)
-        
-        return policy
-    
-    def predict(self, state_tensor):
-        """
-        Predict the best move for a single state.
-        
-        Args:
-            state_tensor: Single board state tensor [1, 12, 8, 8]
-        
-        Returns:
-            Best move index (0-4095)
-        """
+    def __init__(self, action_size=4096, hidden=(128,128,64)):
+        super().__init__()
+        h1,h2,h3 = hidden
+        self.net = nn.Sequential(
+            nn.Linear(7, h1), nn.ReLU(),
+            nn.Linear(h1, h2), nn.ReLU(),
+            nn.Linear(h2, h3), nn.ReLU(),
+            nn.Linear(h3, action_size)
+        )
+
+    def forward(self, x7):  # x7: [B,7]
+        return self.net(x7)
+
+    @torch.no_grad()
+    def predict_from_fen(self, fen: str):
         self.eval()
-        with torch.no_grad():
-            logits = self.forward(state_tensor)
-            probs = F.softmax(logits, dim=-1)
-            best_move = torch.argmax(probs, dim=-1).item()
-        return best_move # returns index in [0, 4095]
+        device = next(self.parameters()).device
+        x7 = extract_coords7_from_fen(fen).unsqueeze(0).to(device)
+        probs = F.softmax(self.forward(x7), dim=-1)
+        return int(torch.argmax(probs, dim=-1).item())
+
+    def get_action(self, env, legal_moves_idx):
+        """
+        Samples an action among legal moves.
+        Returns (action_idx_in_[0..4095], log_prob)
+        """
+        device = next(self.parameters()).device
+        x7 = extract_coords7_from_fen(env.to_fen()).unsqueeze(0).to(device)
+        logits = self.forward(x7)  # [1,4096]
+        legal_logits = logits[0, legal_moves_idx]
+        dist = Categorical(logits=legal_logits)
+        a_off = dist.sample()                       # index in 0..len(legal)-1
+        logp = dist.log_prob(a_off)
+        a_idx = legal_moves_idx[a_off.item()]       # map back to 0..4095
+        return a_idx, logp
+    
+    @torch.no_grad()
+    def get_action_greedy(self, env, legal_moves_idx):
+        device = next(self.parameters()).device
+        x7 = extract_coords7_from_fen(env.to_fen()).unsqueeze(0).to(device)
+        logits = self.forward(x7)[0]
+        j = torch.argmax(logits[legal_moves_idx]).item()
+        return legal_moves_idx[j]
