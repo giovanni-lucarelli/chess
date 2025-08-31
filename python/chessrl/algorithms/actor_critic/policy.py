@@ -91,51 +91,42 @@ class Policy(nn.Module):
         
         return policy
     
-    def get_action(self, env, legal_moves_idx): 
+    def get_action(self, state, legal_moves_idx, predict=False): 
         """
         Get action from policy network, ensuring proper device placement.
         """
+        if predict:
+            self.eval()
+
         # Parse FEN and prepare tensor
-        fen_tensor = parse_fen(env.to_fen()).unsqueeze(0).permute(0,3,1,2)  # [1, 8, 8, 12] -> [1, 12, 8, 8]
+        state_tensor = parse_fen(state).unsqueeze(0).permute(0,3,1,2)  # [1, 8, 8, 12] -> [1, 12, 8, 8]
         
         # Move to same device as model
         device = next(self.parameters()).device
-        fen_tensor = fen_tensor.to(device)
-        
-        # Get logits from network
-        logits = self.forward(fen_tensor) # action space [0, 4095]
-        legal_logits = logits[0, legal_moves_idx]
-        
-        # Debug: Check for problematic values
-        if torch.isnan(legal_logits).any() or torch.isinf(legal_logits).any():
-            logger.warning(f"Invalid logits detected: nan={torch.isnan(legal_logits).any()}, inf={torch.isinf(legal_logits).any()}")
-        else:
-            # Ensure numerical stability for softmax
-            legal_logits = torch.clamp(legal_logits, min=-50, max=50)  # Prevent overflow/underflow
-            legal_logits = legal_logits - torch.max(legal_logits)  # Subtract max for stability
-            action_probs = torch.softmax(legal_logits, dim=-1)
-            
-            # Check if softmax produced invalid values
-            if torch.isnan(action_probs).any() or torch.isinf(action_probs).any() or (action_probs < 0).any():
-                logger.warning(f"Invalid action_probs after softmax: nan={torch.isnan(action_probs).any()}, inf={torch.isinf(action_probs).any()}, neg={torch.any(action_probs < 0)}")
-            else:
-                # Add small epsilon to prevent exact zeros
-                action_probs = action_probs + 1e-8
-                action_probs = action_probs / torch.sum(action_probs)  # Renormalize
-                
-                # Final validation
-                if torch.isnan(action_probs).any() or torch.isinf(action_probs).any() or (action_probs < 0).any():
-                    logger.warning("Invalid action_probs after renormalization, using uniform distribution")
+        state_tensor = state_tensor.to(device)
 
-        # Sample action (no grad needed for sampling)
+        # Get logits, mask them for legal moves, sample an action based on those probs
+        # (or select the one with highest prob if in prediction)
+        logits = self.forward(state_tensor) # action space [0, 4095]
+        logits = logits.squeeze(0) # [4096]
+        logits_actions_dict = {k: logits[k] for k in range(4096)} # dict <move_idx, <logit_value>> -> {0: tensor(0.0245, grad_fn=<SelectBackward0>),...}
+        legal_logits = {k: logits_actions_dict[k] for k in legal_moves_idx} # select only legal move' logits -> {2: tensor(0.7702, grad_fn=<SelectBackward0>),...}
+        idxs = list(legal_logits.keys()) # list of legal move indices <move_idx> -> [2,3,4]
+        values = torch.stack([legal_logits[k] for k in idxs]) # stack legal logits <logit_value> -> tensor([ 0.7702, -0.3072,  0.0914], grad_fn=<StackBackward0>)
+        legal_probs = torch.softmax(values, dim=0) # obtain legal move probabilities -> tensor([0.5412, 0.1843, 0.2745], grad_fn=<SoftmaxBackward0>)
+        legal_probs_dict = {k: v for k, v in zip(idxs, legal_probs)} # dict <move_idx, <probability>> -> {2: tensor(0.5412, grad_fn=<UnbindBackward0>),...}
+        
         with torch.no_grad():
-            action_idx = torch.multinomial(action_probs, 1).item()
-            action = legal_moves_idx[action_idx]
+            if predict:
+                action_idx = max(legal_probs_dict, key=legal_probs_dict.get) # selects best action on reduced action space (only legal moves) -> 2
+            else:
+                selected_idx = torch.multinomial(legal_probs, 1).item() # samples action on reduced action space (only legal moves) -> idx
+                action_idx = idxs[selected_idx] # -> 2
         
-        # Keep log prob for gradient computation
-        log_action_prob = torch.log(action_probs[action_idx])
+        # Keep log prob for gradient computation - this needs gradients enabled
+        log_legal_prob = torch.log(legal_probs_dict[action_idx]) # -> tensor(-0.6139, grad_fn=<LogBackward0>)
         
-        return action, log_action_prob # returns index in [0, 4095]
+        return action_idx, log_legal_prob # returns index in [0, 4095] and relative log probability -> 2, tensor(-0.6139, grad_fn=<LogBackward0>)
     
     def batch_get_actions(self, envs, legal_moves_list):
         """
@@ -201,24 +192,3 @@ class Policy(nn.Module):
             log_probs.append(log_prob)
         
         return actions, torch.stack(log_probs) if log_probs else torch.tensor([])
-    
-    def predict(self, state_tensor):
-        """
-        Predict the best move for a single state.
-        
-        Args:
-            state_tensor: Single board state tensor [1, 12, 8, 8]
-        
-        Returns:
-            Best move index (0-4095)
-        """
-        self.eval()
-        
-        device = next(self.parameters()).device
-        state_tensor = state_tensor.to(device)
-        
-        with torch.no_grad():
-            logits = self.forward(state_tensor)
-            probs = torch.softmax(logits, dim=-1)
-            best_move = torch.argmax(probs, dim=-1).item()
-        return best_move # returns index in [0, 4095]
