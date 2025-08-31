@@ -6,7 +6,7 @@ sys.path.insert(0, '../../../')
 
 # utils
 import numpy as np
-import torch  
+import torch
 import logging
 from tqdm import tqdm 
 from chessrl.utils.load_config import load_config
@@ -57,7 +57,6 @@ class ActorCritic():
         # Stores the Value Approximation weights
         self.w = np.zeros(12544)
         self.mult = [8,8,7,7,4]
-
 
         self.defender = SyzygyDefender(tb_path=tb_path)
 
