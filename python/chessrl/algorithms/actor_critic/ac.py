@@ -159,50 +159,72 @@ class ActorCritic():
 
     def train(self, endgames):
         losses = []
-        rewards = []
+        rewards_traj = np.zeros(len(endgames))
 
         pbar = tqdm(enumerate(endgames), desc="Training Actor-Critic", unit="episode", total=len(endgames))
-        for endgame_idx, s in pbar:
-                done = False
-                x = self.obtain_features(s)
-                counter = 0
-                # Step by step (in the episode created by the endgame)
-                while not done:
-                    env = Env.from_fen(
-                        s,
-                        two_ply_cost=0.0,
-                        draw_penalty=1000.0,
-                        checkmate_reward=1000.0,
-                        defender = self.defender
-                    ) # create environment
-                    
-                    # Legal moves idx for this state
-                    legal_moves_idx = get_legal_move_indices(env)
+        for endgame_idx, s in pbar: # s is the FEN
+            done = False
+            x = self.obtain_features(s)
+            counter = 0
+            env = Env.from_fen(
+                    s,
+                    two_ply_cost=0.0,
+                    draw_penalty=1.0,
+                    checkmate_reward=1.0,
+                    defender = self.defender
+                ) # create environment
+            
+            # Step by step (in the episode started with the endgame)
+            while not done:
+                # Legal moves idx for this state
+                legal_moves_idx = get_legal_move_indices(env)
 
-                    # Select action from policy
-                    a_idx, a_log_prob = self.policy.get_action(env, legal_moves_idx) # use neural network policy to get action
-                    a = idx_to_move[a_idx] # returning UCI
+                # Select action from policy
+                a_idx, a_log_prob = self.policy.get_action(env.to_fen(), legal_moves_idx) # use neural network policy to get action
+                a = idx_to_move[a_idx] # returning UCI
 
-                    # Evolve one step
-                    step_result = env.step(a)
+                # Evolve one step
+                step_result = env.step(a)
 
-                    new_s = env.state().to_fen()   
-                    r = step_result.reward  
-                    done = step_result.done
-                    if counter == config['max_steps']:
-                        done = True   
-                        logger.info(f"Episode {endgame_idx} reached max steps ({config['max_steps']}).")
-                    
-                    new_x = self.obtain_features(new_s) 
+                new_s = env.state().to_fen()   
+                r = step_result.reward  
+                done = step_result.done
+                if counter == config['max_steps']:
+                    done = True   
+                
+                new_x = self.obtain_features(new_s) 
 
-                    loss = self.single_step_update(x,a_log_prob,r,new_x,done)    
-                    
-                    losses.append(loss)
-                    rewards.append(r)
+                loss = self.single_step_update(x,a_log_prob,r,new_x,done)    
+                
+                losses.append(loss)
+                rewards_traj[endgame_idx] += r
 
-                    s = new_s # update state
-                    x = new_x # update features
+                s = new_s # update state
+                x = new_x # update features
 
-                    counter +=1
-        return losses, rewards
+                counter += 1
+
+            # saving checkpoint
+            if endgame_idx % (len(endgames)/10) == 0:
+                self.save_checkpoint(f"output/checkpoint_ac_original_{endgame_idx}.pth")
+
+        # Save final model
+        self.save_checkpoint(f"output/checkpoint_ac_original_final.pth")
+
+        return losses, rewards_traj.tolist()
+    
+    def save_checkpoint(self, filepath):
+        """Save model checkpoint"""
+        torch.save({
+            'model_state_dict': self.policy.state_dict(),
+            'optimizer_state_dict': self.optimizer.state_dict(),
+        }, filepath)
+        logger.info(f"Saved checkpoint to {filepath}")
+    
+    def load_checkpoint(self, filepath):
+        """Load model checkpoint"""
+        checkpoint = torch.load(filepath, map_location=self.device)
+        self.policy.load_state_dict(checkpoint['model_state_dict'])
+        self.optimizer.load_state_dict(checkpoint['optimizer_state_dict'])
+        logger.info(f"Loaded checkpoint from {filepath}")
         

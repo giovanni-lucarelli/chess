@@ -11,6 +11,7 @@ import torch.nn.functional as F
 import logging
 from tqdm import tqdm 
 from chessrl.utils.load_config import load_config
+import torch.nn as nn
 
 import os
 config_path = os.path.join(os.path.dirname(__file__), 'config.json')
@@ -174,34 +175,91 @@ class ActorCritic():
         # ACTOR UPDATE (MPS/GPU) --
         # -------------------------
         
-        # Prepare batch of states for forward pass
+        # Prepare batch of states for forward pass (minimize CPU-GPU transfers)
         batch_states = []
         for fen in fens:
             state_tensor = parse_fen(fen).permute(2, 0, 1)  # [12, 8, 8]
             batch_states.append(state_tensor)
         
-        batch_states = torch.stack(batch_states).to(self.device)  # [batch_size, 12, 8, 8]
+        # Single tensor transfer to device
+        batch_states = torch.stack(batch_states).to(self.device, non_blocking=True)  # [batch_size, 12, 8, 8]
         
         # Get policy outputs for all states at once
         logits = self.policy(batch_states)  # [batch_size, 4096]
         
-        # Compute log probabilities for the actions taken
+        # Check for NaN in logits before computing loss
+        if torch.isnan(logits).any():
+            logger.warning("NaN detected in policy logits, reinitializing network")
+            # Reinitialize the policy network
+            def init_weights(m):
+                if isinstance(m, (nn.Linear, nn.Conv2d)):
+                    nn.init.xavier_uniform_(m.weight)
+                    if m.bias is not None:
+                        nn.init.constant_(m.bias, 0)
+            self.policy.apply(init_weights)
+            return [], []  # Skip this update
+        
+        # Compute log probabilities for the actions taken (with legal move masking)
         log_probs = []
         for i, action_idx in enumerate(actions):
+            # Get legal moves for this state
+            env = Env.from_fen(fens[i], gamma=self.gamma, defender=self.defender)
+            legal_moves_idx = get_legal_move_indices(env)
+            
+            if not legal_moves_idx or action_idx not in legal_moves_idx:
+                # Skip this sample if no legal moves or action is illegal
+                logger.warning(f"Illegal action {action_idx} or no legal moves for FEN: {fens[i]}")
+                continue
+            
+            # Filter logits to legal moves only
             action_logits = logits[i]
-            action_probs = F.softmax(action_logits, dim=-1)
-            log_prob = torch.log(action_probs[action_idx])
+            legal_logits = action_logits[legal_moves_idx]
+            
+            # Apply numerical stability for softmax on legal moves only
+            legal_logits = torch.clamp(legal_logits, min=-50, max=50)
+            legal_logits = legal_logits - torch.max(legal_logits)
+            legal_probs = F.softmax(legal_logits, dim=-1)
+            
+            # Add epsilon to prevent log(0)
+            legal_probs = legal_probs + 1e-8
+            legal_probs = legal_probs / torch.sum(legal_probs)  # Renormalize
+            
+            # Find the action's position in the legal moves list
+            action_pos = legal_moves_idx.index(action_idx)
+            log_prob = torch.log(legal_probs[action_pos])
             log_probs.append(log_prob)
         
         log_probs = torch.stack(log_probs)
-        deltas_torch = torch.tensor(deltas, dtype=torch.float32).to(self.device)
+        deltas_torch = torch.tensor(deltas, dtype=torch.float32).to(self.device, non_blocking=True)
+        
+        # Check for NaN in loss computation
+        if torch.isnan(log_probs).any():
+            logger.warning("NaN detected in log probabilities, skipping update")
+            return [], []
         
         # REINFORCE loss with baseline (advantage)
         loss = -(deltas_torch * log_probs).mean()
         
+        # Check if loss is NaN
+        if torch.isnan(loss):
+            logger.warning("NaN detected in loss, skipping update")
+            return [], []
+        
         # Optimize
         self.optimizer.zero_grad()
         loss.backward()
+        
+        # Check for NaN gradients
+        has_nan_grad = False
+        for param in self.policy.parameters():
+            if param.grad is not None and torch.isnan(param.grad).any():
+                has_nan_grad = True
+                break
+        
+        if has_nan_grad:
+            logger.warning("NaN gradients detected, skipping optimizer step")
+            return [], []
+        
         torch.nn.utils.clip_grad_norm_(self.policy.parameters(), max_norm=1.0)
         self.optimizer.step()
         
@@ -228,8 +286,12 @@ class ActorCritic():
         self.experience_buffer['dones'].append(done)
         self.experience_buffer['fens'].append(fen)
         
-        # Perform batch update if buffer is full
-        if len(self.experience_buffer['states']) >= self.batch_size:
+        # Perform batch update more frequently for better GPU utilization
+        # Update when buffer reaches 75% capacity or has accumulated significant data
+        buffer_size = len(self.experience_buffer['states'])
+        update_threshold = max(self.batch_size // 4, 8)  # Update every 1/4 batch or min 8 samples
+        
+        if buffer_size >= update_threshold:
             return self.batch_update()
         return None
 
@@ -239,71 +301,122 @@ class ActorCritic():
         
         # Set policy to training mode
         self.policy.train()
-
-        pbar = tqdm(enumerate(endgames), desc="Training Actor-Critic (Batch)", unit="episode", total=len(endgames))
-        for endgame_idx, s in pbar:
-            done = False
-            x = self.obtain_features(s)
-            counter = 0
-            episode_rewards = []
+        
+        # Convert endgames to list if it's a generator
+        endgames_list = list(endgames)
+        total_episodes = len(endgames_list)
+        
+        # Initialize parallel environments
+        max_parallel = min(self.batch_size, 32)  # Limit to prevent memory issues
+        episode_idx = 0
+        
+        pbar = tqdm(total=total_episodes, desc="Training Actor-Critic (True Batch)", unit="episode")
+        
+        while episode_idx < total_episodes:
+            # Initialize batch of episodes
+            active_episodes = []
             
-            # Step by step (in the episode created by the endgame)
-            while not done:
-                env = Env.from_fen(
-                    s,
-                    defender = self.defender
-                ) # create environment
+            # Start new episodes up to batch size
+            for _ in range(min(max_parallel, total_episodes - episode_idx)):
+                if episode_idx >= total_episodes:
+                    break
+                    
+                start_fen = endgames_list[episode_idx]
+                env = Env.from_fen(start_fen, defender=self.defender)
                 
-                # Legal moves idx for this state
-                legal_moves_idx = get_legal_move_indices(env)
-
-                # Select action from policy (on device)
-                a_idx, _ = self.policy.get_action(env, legal_moves_idx)  # We don't need log_prob here
-                a = idx_to_move[a_idx] # returning UCI
-
-                # Evolve one step
-                step_result = env.step(a)
-
-                new_s = env.state().to_fen()   
-                r = step_result.reward  
-                done = step_result.done
-                if counter == config['max_steps']:
-                    done = True   
+                active_episodes.append({
+                    'env': env,
+                    'fen': start_fen,
+                    'counter': 0,
+                    'episode_rewards': [],
+                    'episode_idx': episode_idx
+                })
                 
-                new_x = self.obtain_features(new_s)
-                
-                # Add experience to buffer and potentially update
-                loss = self.add_experience(x, a_idx, r, new_x, done, s)  # Pass action index and current FEN
-                
-                if loss is not None:
-                    losses.append(loss)
-                
-                episode_rewards.append(r)
-                
-                s = new_s # update state
-                x = new_x # update features
-                counter += 1
+                episode_idx += 1
             
-            # Store average reward for this episode
-            if episode_rewards:
-                rewards.append(np.mean(episode_rewards))
-
-            # Save checkpoint 
-            if (endgame_idx + 1) % 10000 == 0:
-                self.save_checkpoint(f'output/checkpoint_ac_{endgame_idx + 1}.pth')
-
-        # Final batch update for remaining experiences
+            # Run episodes in parallel until all complete
+            while active_episodes:
+                # Prepare batch data
+                batch_envs = [ep['env'] for ep in active_episodes]
+                legal_moves_list = [get_legal_move_indices(env) for env in batch_envs]
+                
+                # Batch inference for all active episodes
+                actions, _ = self.policy.batch_get_actions(batch_envs, legal_moves_list)
+                
+                # Process each episode step
+                completed_episodes = []
+                for i, (episode, action_idx) in enumerate(zip(active_episodes, actions)):
+                    env = episode['env']
+                    
+                    # Convert action index to move
+                    try:
+                        action = idx_to_move[action_idx]
+                    except (KeyError, IndexError):
+                        # Fallback to random legal move if action is invalid
+                        legal_moves = list(env.legal_moves)
+                        if legal_moves:
+                            action = str(legal_moves[0])
+                        else:
+                            completed_episodes.append(i)
+                            continue
+                    
+                    # Execute step
+                    current_fen = env.state().to_fen()
+                    current_x = self.obtain_features(current_fen)
+                    
+                    step_result = env.step(action)
+                    
+                    new_fen = env.state().to_fen()
+                    new_x = self.obtain_features(new_fen)
+                    r = step_result.reward
+                    done = step_result.done
+                    
+                    episode['counter'] += 1
+                    episode['episode_rewards'].append(r)
+                    
+                    # Check termination conditions
+                    if done or episode['counter'] >= config['max_steps']:
+                        done = True
+                        completed_episodes.append(i)
+                    
+                    # Add experience to buffer
+                    loss = self.add_experience(current_x, action_idx, r, new_x, done, current_fen)
+                    if loss is not None:
+                        losses.append(loss)
+                
+                # Remove completed episodes (in reverse order to maintain indices)
+                for i in sorted(completed_episodes, reverse=True):
+                    episode = active_episodes.pop(i)
+                    if episode['episode_rewards']:
+                        avg_reward = np.mean(episode['episode_rewards'])
+                        rewards.append(avg_reward)
+                    pbar.update(1)
+                    
+                    # Save checkpoint 
+                    if (episode['episode_idx'] + 1) % 10000 == 0:
+                        self.save_checkpoint(f'output/checkpoint_ac_{episode["episode_idx"] + 1}.pth')
+                    
+                    # Update progress bar
+                    if losses:
+                        pbar.set_postfix(
+                            loss=f"{losses[-1]:.4f}",
+                            avg_reward=f"{rewards[-1] if rewards else 0:.4f}",
+                            active=len(active_episodes)
+                        )
+        
+        # Process any remaining experiences in buffer
         if self.experience_buffer['states']:
             final_loss = self.batch_update()
             if final_loss is not None:
                 losses.append(final_loss)
         
+        pbar.close()
         return losses, rewards
     
     def save_checkpoint(self, filepath):
         """Save model checkpoint"""
         torch.save({
-            'model_state_dict': self.network.state_dict(),
+            'model_state_dict': self.policy.state_dict(),
             'optimizer_state_dict': self.optimizer.state_dict(),
         }, filepath)
         logger.info(f"Saved checkpoint to {filepath}")
@@ -311,6 +424,6 @@ class ActorCritic():
     def load_checkpoint(self, filepath):
         """Load model checkpoint"""
         checkpoint = torch.load(filepath, map_location=self.device)
-        self.network.load_state_dict(checkpoint['model_state_dict'])
+        self.policy.load_state_dict(checkpoint['model_state_dict'])
         self.optimizer.load_state_dict(checkpoint['optimizer_state_dict'])
         logger.info(f"Loaded checkpoint from {filepath}")

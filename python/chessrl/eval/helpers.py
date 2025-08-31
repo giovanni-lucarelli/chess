@@ -4,6 +4,12 @@ from chessrl import chess_py as cp
 import chess, chess.syzygy
 from typing import Callable, Dict, Optional
 from math import inf
+import torch 
+import torch.nn as nn
+from chessrl.utils.fen_parsing import parse_fen
+from chessrl.utils.move_idx import build_move_mappings
+
+move_to_idx, idx_to_move = build_move_mappings()
 
 def legal_moves_uci(fen: str):
     g = cp.Game(); g.reset_from_fen(fen)
@@ -107,6 +113,46 @@ def vi_move_from_policy_map(policy_map: Dict[str, Optional[str]]) -> Callable[[s
             return u
         ms = legal_moves_uci(fen)
         return ms[0] if ms else ""
+    return move_fn
+
+def vi_move_from_policy_nn(policy_nn: nn.Module) -> Callable[[str, Optional[int]], str]:
+    """
+    Returns a move_fn that uses a neural network policy (fen -> uci).
+    Ensures only legal moves are selected.
+    """
+    def move_fn(fen: str, budget: Optional[int] = None) -> str:
+        # Get legal moves first
+        legal_moves = legal_moves_uci(fen)
+        if not legal_moves:
+            return ""
+        
+        # Convert legal moves to indices
+        legal_moves_idx = []
+        for move_uci in legal_moves:
+            move_key = move_uci[:4]  # Take first 4 chars (no promotion piece)
+            if move_key in move_to_idx:
+                legal_moves_idx.append(move_to_idx[move_key])
+        
+        if not legal_moves_idx:
+            return legal_moves[0]  # Fallback to first legal move
+        
+        # Convert FEN to tensor
+        state_tensor = parse_fen(fen).unsqueeze(0).permute(0,3,1,2)  # [1, 8, 8, 12] -> [1, 12, 8, 8]
+        
+        # Move to same device as model
+        device = next(policy_nn.parameters()).device
+        state_tensor = state_tensor.to(device)
+        
+        # Get logits and filter to legal moves only
+        with torch.no_grad():
+            logits = policy_nn.forward(state_tensor)  # [1, 4096]
+            legal_logits = logits[0, legal_moves_idx]
+            best_legal_idx = torch.argmax(legal_logits).item()
+            best_move_idx = legal_moves_idx[best_legal_idx]
+        
+        best_move_uci = idx_to_move[best_move_idx] if best_move_idx is not None else legal_moves[0]
+        return best_move_uci
+
     return move_fn
 
 # ---------- VI: from values V(s) with defender (2-ply greedy) ----------
