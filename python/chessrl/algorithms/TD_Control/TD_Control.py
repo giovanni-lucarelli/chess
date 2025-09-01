@@ -12,7 +12,7 @@ config = load_config(config_path)
 logging.basicConfig(level=config['log_level'], format = '%(asctime)s - %(levelname)s - %(message)s')
 logger = logging.getLogger(__name__)
 from chessrl.utils.endgame_loader import load_all_positions_with_actions
-from chessrl.utils.io import save_policy_jsonl, save_values
+from chessrl.utils.io import save_policy_jsonl
 from tqdm import tqdm
 
 # chess
@@ -206,7 +206,7 @@ class TD_Control():
             policy[state] = best_move
         
         # Save policy to file
-        save_policy_jsonl(policy, f"../../../../artifacts/policies/TD_{td_error_algorithm}_{self.endgame_type}_greedy.jsonl")
+        save_policy_jsonl(policy, f"../../../../artifacts/policies/TD_{td_error_algorithm}_{self.endgame_type}_{config['defender_type']}_greedy.jsonl")
 
         logger.info('Training completed.')
 

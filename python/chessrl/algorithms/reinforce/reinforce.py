@@ -1,3 +1,5 @@
+
+import os
 import numpy as np
 import torch
 from torch.nn.utils import clip_grad_norm_
@@ -5,7 +7,7 @@ from tqdm import tqdm
 from chessrl import Env, SyzygyDefender
 from chessrl import chess_py as cp
 from chessrl.utils.move_idx import build_move_mappings
-from chessrl.algorithms.policy_gradient.policy import Policy
+from chessrl.algorithms.reinforce.policy import Policy
 
 move_to_idx, idx_to_move = build_move_mappings()
 
@@ -16,6 +18,31 @@ def get_legal_move_indices(env):
         if m in move_to_idx:
             legal.append(move_to_idx[m])
     return legal
+
+def evaluate(model_path, fens, max_steps=50):
+    agent = Reinforce(tb_path="../../../../tablebase/krk/")
+    agent.load(model_path, device=torch.device('cpu'))
+    agent.policy.eval()
+    wins = 0
+    for fen in fens:
+        env = Env.from_fen(fen, two_ply_cost=0.0, draw_penalty=1.0, checkmate_reward=1.0,
+                        defender=SyzygyDefender(tb_path="../../../../tablebase/krk/"))
+        steps = 0
+        done = False
+        while not done and steps < max_steps:
+            legal = get_legal_move_indices(env)
+            if len(legal) == 0:
+                break
+            a_idx = agent.policy.predict_from_fen(env.to_fen(), legal)
+            if a_idx is None:
+                break
+            uci = idx_to_move[a_idx]
+            step = env.step(uci)
+            done = step.done
+            steps += 1
+        if env.state().is_checkmate():
+            wins += 1
+    return wins / len(fens)
 
 class Reinforce:
     def __init__(self, 
@@ -96,20 +123,32 @@ class Reinforce:
 
         return loss
 
-    def train(self, fens, epochs=3, max_steps=50, device=None):
+    def train(self, train_fens, test_fens = [None], epochs=3, max_steps=50, device=None):
         device = device or torch.device('cuda' if torch.cuda.is_available() else 'cpu')
         self.policy.to(device).train()
 
         all_losses, all_rewards = [], []
 
         for epoch in range(epochs):
-            np.random.shuffle(fens)
-            pbar = tqdm(fens, desc=f"Epoch {epoch+1}/{epochs}")
+            np.random.shuffle(train_fens)
+            pbar = tqdm(train_fens, desc=f"Epoch {epoch+1}/{epochs}")
             for start_fen in pbar:
                 episode_data = self.sample_episode(fen=start_fen, max_steps=max_steps)
                 loss = self.update_policy(episode_data)
                 all_losses.append(loss)
                 all_rewards.append(np.sum(episode_data['rewards']))
+
+                if len(test_fens) > 0:
+                    # save checkpoint
+                    torch.save(self.policy.state_dict(), 'output/checkpoint.pt')
+
+                    # save win% for this epoch in a csv
+                    with open('output/win_rates.csv', 'a') as f:
+                        sr = evaluate('output/checkpoint.pt', test_fens)
+                        f.write(f"{epoch+1},{sr}\n")
+
+                    # remove checkpoint
+                    os.remove('output/checkpoint.pt')
 
         return all_losses, all_rewards
 

@@ -1,5 +1,5 @@
 {
-    "n_episodes": 1000,
+    "n_episodes": 100000,
     "endgame_type": "krk",
     "tstar": 2000,
     "gamma": 1.0,
@@ -7,5 +7,6 @@
     "lr_v": 0.15,
     "epsilon_decay": 0.999993,
     "log_level": "INFO",
-    "defender_type": "SyzygyDefender"
+    "defender_type": "RandomDefender",
+    "td_error_algorithms": ["QLearning", "SARSA"]
 }

@@ -45,12 +45,17 @@ class Policy(nn.Module):
         return self.net(x7)
 
     @torch.no_grad()
-    def predict_from_fen(self, fen: str):
+    def predict_from_fen(self, fen: str, legal_moves_idx):
         self.eval()
+        if len(legal_moves_idx) == 0:
+            return None
         device = next(self.parameters()).device
         x7 = extract_coords7_from_fen(fen).unsqueeze(0).to(device)
-        probs = F.softmax(self.forward(x7), dim=-1)
-        return int(torch.argmax(probs, dim=-1).item())
+        logits = self.forward(x7)  # [1,4096]
+        legal_logits = logits[0, legal_moves_idx]
+        probs = F.softmax(legal_logits, dim=-1)
+        a_off = torch.argmax(probs, dim=-1).item()
+        return legal_moves_idx[a_off]
 
     def get_action(self, env, legal_moves_idx):
         """

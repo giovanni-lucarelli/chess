@@ -151,8 +151,8 @@ class Env:
             defender: Any | None = None,
             absorb_black_reply: bool = True,
             two_ply_cost: float = 2.0, 
-            draw_penalty: float = 50.0,
-            checkmate_reward: float = 100.0
+            draw_penalty: float = 1000.0,
+            checkmate_reward: float = 1000.0
             ):
         
         self.game = game
@@ -251,7 +251,7 @@ class Env:
                 reward = self.checkmate_reward
             else:
                 reward = -self.draw_penalty
-            return StepResult(reward=reward, done=True, info=info)
+            return [self.game.to_fen()], [reward]
 
         # --- 2) prova tutte le mosse del Nero ---
         if self.absorb_black_reply and self.defender and self._stm_is_black():
