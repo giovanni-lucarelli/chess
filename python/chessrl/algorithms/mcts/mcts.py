@@ -14,16 +14,6 @@ def _copy_game(g: cp.Game) -> cp.Game:
     h.reset_from_fen(g.to_fen())
     return h
 
-# @dataclass
-# class _Node:
-#     from_parent: Optional[cp.Move] = None
-#     visits: int = 0
-#     wins: float = 0.0           # accumulated result from this node’s POV (player)
-#     player: int = 0             # side to move at this node (cp.Color.*)
-#     untried: List[cp.Move] = field(default_factory=list)
-#     children: List["_Node"] = field(default_factory=list)
-#     parent: Optional["_Node"] = None
-
 @dataclass
 class _Node:
     from_parent: Optional[cp.Move] = None
@@ -34,13 +24,7 @@ class _Node:
     children: List["_Node"] = field(default_factory=list)
     parent: Optional["_Node"] = None
 
-    # NEW: identify the position at this node (FEN after 'from_parent' applied; for the root it's the root FEN)
     state_fen: Optional[str] = None
-
-    # (optional but handy) fast lookup from child move UCI -> child node
-    # build it lazily; you can keep it None if you don't want this
-    # move_map: Dict[str, "_Node"] = field(default_factory=dict)
-
 
 from dataclasses import dataclass
 
@@ -50,15 +34,14 @@ class MoveStat:
     visits: int
     pct: float           # fraction of root visits
     q_parent: float      # mean value from the root (White) POV
-    uct_score: float     # UCT at the end (optional, for reference)
+    uct_score: float     # UCT at the end
 
 class MCTS:
     """
     Simple UCT MCTS over chessrl.chess_py.Game.
 
-    By default, playouts are random using the fast C++ Game.
-    Optionally, you can do rollouts through Env to 'absorb' a Black reply or
-    use a defender (Lichess/Syzygy) during simulation.
+    By default, playouts are random using C++ Game class.
+    Optionally, absorb Black reply using a defender (Lichess/Syzygy) during simulation.
 
     Args:
         seconds: wall-clock budget (set 0 to ignore)
@@ -84,7 +67,7 @@ class MCTS:
         absorb_black_reply: bool = True,
         max_playout_ply: int = 200,
         seed: Optional[int] = None,
-        draw_value: float = -0.5,   # <— NEW: penalty for draws in rollout returns
+        draw_value: float = -1.0,   # <— NEW: penalty for draws in rollout returns
     ):
         self.seconds = seconds
         self.iterations = iterations
@@ -126,9 +109,6 @@ class MCTS:
                     self._root = self._promote_child_as_root(c)
                     return self._root
 
-        # (Optional) You could add a shallow search here to handle two plies later
-        # by scanning grandchildren; for now we rebuild if not found.
-
         # Case 3: build fresh root
         self._root = self._make_root_from_state(root_state)
         return self._root
@@ -139,7 +119,7 @@ class MCTS:
 
     def search_with_stats(self, root_state: cp.Game, top_k: int = 5, print_stats: bool = True):
         """Esegue MCTS e restituisce (best_move, lista MoveStat ordinata)."""
-        # NEW: try to reuse a previous subtree that matches this position
+        # try to reuse a previous subtree that matches this position
         root = self._rebase_tree(root_state)
 
         if not root.untried and not root.children:
@@ -158,32 +138,31 @@ class MCTS:
             state = _copy_game(root_state)
             node = root
 
-            # 1) Selection
+            # Selection
             while not node.untried and node.children:
                 node = self._select(node)
                 state.do_move(node.from_parent)
 
-            # 2) Expansion
+            # Expansion
             if node.untried:
                 node = self._expand(node, state)
 
-            # 3) Simulation
+            # Simulation
             result = self._simulate(state)
 
-            # 4) Backprop
+            # Backprop
             self._backprop(node, result)
 
         # ---- calcolo best child e stats ----
         best = None
         best_q = -float("inf")
         for c in root.children:
-            mean_child = c.wins / (c.visits + _EPS)  # POV del child
-            parent_q = -mean_child                   # POV del parent (radice)
+            mean_child = c.wins / (c.visits + _EPS)  # POV child
+            parent_q = -mean_child                   # POV parent (root)
             if parent_q > best_q:
                 best_q, best = parent_q, c
 
         stats = self._root_stats(root)
-        # ordina per q_parent (puoi scegliere "visits" se preferisci)
         stats.sort(key=lambda s: s.q_parent, reverse=True)
 
         if print_stats:
@@ -204,8 +183,8 @@ class MCTS:
         ln_parent = math.log(root.visits + 1.0)
         out: List[MoveStat] = []
         for c in root.children:
-            mean_child = c.wins / (c.visits + _EPS)   # valore medio dal POV del child
-            q_parent = -mean_child                    # valore visto dal POV del parent (Bianco alla radice)
+            mean_child = c.wins / (c.visits + _EPS)   
+            q_parent = -mean_child
             uct = q_parent + self.c_puct * math.sqrt(ln_parent / (c.visits + _EPS))
             out.append(MoveStat(
                 move=c.from_parent,
@@ -228,19 +207,6 @@ class MCTS:
                 best_score, best = uct, c
         return best
 
-    # def _expand(self, node: _Node, state: cp.Game) -> _Node:
-    #     idx = self.rng.randrange(len(node.untried))
-    #     m = node.untried.pop(idx)
-    #     state.do_move(m)
-
-    #     child = _Node()
-    #     child.from_parent = m
-    #     child.parent = node
-    #     child.player = state.get_side_to_move()
-    #     child.untried = state.legal_moves(child.player)
-    #     node.children.append(child)
-    #     return child
-
     def _expand(self, node: _Node, state: cp.Game) -> _Node:
         idx = self.rng.randrange(len(node.untried))
         m = node.untried.pop(idx)
@@ -251,20 +217,17 @@ class MCTS:
         child.parent = node
         child.player = state.get_side_to_move()
         child.untried = state.legal_moves(child.player)
-        child.state_fen = state.to_fen()   # <-- NEW: remember position
+        child.state_fen = state.to_fen()   # remember position
         node.children.append(child)
         return child
 
     def _simulate(self, state: cp.Game) -> float:
         """Return terminal result from White POV (±1) with draw penalized, optionally discounted."""
-        # helper per applicare il segno e la scontistica
         def _ret(z: float, ply: int) -> float:
-            # z: +1 win white, 0 draw, -1 loss white
             if z > 0:
                 return (self.gamma ** ply)
             if z < 0:
                 return -(self.gamma ** ply)
-            # draw
             return self.draw_value * (self.gamma ** ply)
 
         if self.use_env:
@@ -276,28 +239,29 @@ class MCTS:
                 moves = env.state().legal_moves(env.state().get_side_to_move())
                 if not moves:
                     break
-                env.step(moves[self.rng.randrange(len(moves))])
+                _ = env.step(moves[self.rng.randrange(len(moves))])
                 ply += 1
             if env.is_terminal():
-                z = env.state().result()  # +1 / 0 / -1 dal POV del Bianco
+                z = env.result_white_pov()
                 return _ret(z, ply)
-            # cutoff non terminale: nessun segnale
             return 0.0
 
-        # Fast, pure-Game random playout
-        g = _copy_game(state)
+        # Fast, random playout
+        env2 = Env(_copy_game(state), gamma=self.gamma,
+                defender=self.defender,
+                absorb_black_reply=self.absorb_black_reply)
         ply = 0
-        while not g.is_game_over() and ply < self.max_playout_ply:
-            side = g.get_side_to_move()
-            moves = g.legal_moves(side)
+        while not env2.is_terminal() and ply < self.max_playout_ply:
+            moves = env2.state().legal_moves(env2.state().get_side_to_move())
             if not moves:
                 break
-            g.do_move(moves[self.rng.randrange(len(moves))])
+            _ = env2.step(moves[self.rng.randrange(len(moves))])
             ply += 1
-        if g.is_game_over():
-            z = g.result()  # +1 / 0 / -1 dal POV del Bianco
+        if env2.is_terminal():
+            z = env2.result_white_pov()
             return _ret(z, ply)
         return 0.0
+
 
 
     def _backprop(self, node: _Node, result: float) -> None:
@@ -308,4 +272,4 @@ class MCTS:
                 node.wins += result
             else:
                 node.wins -= result
-            node = node.parent
+            node = node.parent      
