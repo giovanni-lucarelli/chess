@@ -150,9 +150,9 @@ class Env:
             gamma: float = 1.0, 
             defender: Any | None = None,
             absorb_black_reply: bool = True,
-            two_ply_cost: float = 2.0, 
-            draw_penalty: float = 1000.0,
-            checkmate_reward: float = 1000.0
+            two_ply_cost: float = 1.0, 
+            draw_penalty: float = 1.0,
+            checkmate_reward: float = 1.0
             ):
         
         self.game = game
@@ -174,9 +174,9 @@ class Env:
         gamma: float = 1.0,
         defender: Any | None = None,
         absorb_black_reply: bool = True,
-        two_ply_cost: float = 2.0, 
-        draw_penalty: float = 1000.0,
-        checkmate_reward: float = 1000.0
+        two_ply_cost: float = 1.0, 
+        draw_penalty: float = 1.0,
+        checkmate_reward: float = 1.0
     ) -> "Env":
         g = cp.Game()
         g.reset_from_fen(fen)
@@ -298,7 +298,13 @@ class Env:
         return self.game.is_game_over()
 
     def result_white_pov(self) -> float:
-        return self.game.result()
+        if not self.game.is_game_over():
+            raise ValueError("Cannot get result: game is not over.")
+        if self.game.is_checkmate():
+            return 1.0
+        if self.game.is_stalemate() or self.game.is_insufficient_material():
+            return 0.0
+        return -1.0
 
     def display_state(self, save_path: str = None) -> None:
         # Your Board::print appears to return a string in bindings; print it if available.
