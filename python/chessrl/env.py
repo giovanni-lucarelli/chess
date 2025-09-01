@@ -228,6 +228,55 @@ class Env:
 
         # --- 3) non terminale ---
         return StepResult(reward=-self.two_ply_cost, done=False, info=info)
+    
+    # --- Multi-step with all possible replies -----------------------------------
+
+    def all_possible_steps(self, move_or_uci: cp.Move | str) -> StepResult:
+        """
+        Applica la mossa del Bianco; se richiesto, prova tutte le mosse del Nero.
+        Ricompense:
+        - non terminale dopo 2 plies   ->  -two_ply_cost
+        - mate dopo mossa del Bianco   ->  -1  
+        - draw (stallo, insuff., 3x)   ->  -draw_penalty
+        """
+        info = {"absorbed_reply": False, "reply_uci": None}
+
+        # --- 1) mossa del Bianco ---
+        self._apply(move_or_uci)
+        self.ply += 1
+
+        # Terminal after White's move? (mate or draw)
+        if self.game.is_game_over():
+            if self.game.is_checkmate():
+                reward = self.checkmate_reward
+            else:
+                reward = -self.draw_penalty
+            return StepResult(reward=reward, done=True, info=info)
+
+        # --- 2) prova tutte le mosse del Nero ---
+        if self.absorb_black_reply and self.defender and self._stm_is_black():
+            fens = []
+            rewards = []
+            legal_moves = list(self.game.legal_moves(cp.Color.BLACK))
+            for reply_uci in legal_moves:
+                copy = Env(
+                            game=cp.Game(),
+                            gamma=self.gamma,
+                            defender=self.defender,
+                            absorb_black_reply=self.absorb_black_reply,
+                            two_ply_cost=self.two_ply_cost)
+                copy.game.reset_from_fen(self.to_fen())
+                copy._apply(reply_uci)
+                info["absorbed_reply"] = True
+                info["reply_uci"] = reply_uci
+                if self.game.is_game_over():
+                    rewards.append(-self.draw_penalty)
+                else:
+                    rewards.append(-self.two_ply_cost)
+                fens.append(copy.to_fen())
+
+        # --- 3) non terminale ---
+        return fens, rewards    
 
 
     # --- Mirrors / conveniences ----------------------------------------------
