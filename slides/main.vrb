@@ -1,0 +1,19 @@
+\frametitle{MDP: Transition}
+
+  Transition probability $\Pr(S_{t+1}=s' | S_t=s, A_t=a)$
+
+  \begin{itemize}
+    \item \textbf{Oracle Defender}: deterministic evolution
+
+  {\scriptsize\begin{verbatim}
+  state.do_move(Move)             // white deterministic
+  state.do_move(oracle.reply())   // black deterministic
+  \end{verbatim}}
+    \item \textbf{Random Defender}: stochastic evolution
+
+  {\scriptsize\begin{verbatim}
+  state.do_move(Move)               // white deterministic
+  state.do_move(random_reply())     // black random
+  \end{verbatim}}
+  \end{itemize}
+
