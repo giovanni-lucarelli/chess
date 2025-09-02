@@ -147,10 +147,10 @@ class Env:
     def __init__(
             self, 
             game: cp.Game, 
-            gamma: float = 1.0, 
+            gamma: float = 0.99, 
             defender: Any | None = None,
             absorb_black_reply: bool = True,
-            two_ply_cost: float = 1.0, 
+            two_ply_cost: float = 0.0, 
             draw_penalty: float = 1.0,
             checkmate_reward: float = 1.0
             ):
@@ -171,10 +171,10 @@ class Env:
     def from_fen(
         cls,
         fen: str,
-        gamma: float = 1.0,
+        gamma: float = 0.99,
         defender: Any | None = None,
         absorb_black_reply: bool = True,
-        two_ply_cost: float = 1.0, 
+        two_ply_cost: float = 0.0, 
         draw_penalty: float = 1.0,
         checkmate_reward: float = 1.0
     ) -> "Env":
