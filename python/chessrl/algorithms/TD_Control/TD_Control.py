@@ -21,12 +21,14 @@ from chessrl import chess_py
 
 class TD_Control():
     def __init__(self,  
+                max_steps = config['max_steps'],
                 epsilon = config['epsilon'],
                 endgame_type=config['endgame_type'],
                 defender_type=config['defender_type'],
                 lr_v = config['lr_v'],
                 tstar=config['tstar']
                 ):
+        self.max_steps = max_steps
         self.gamma = 0.99
         self.tstar = tstar
         self.epsilon = epsilon
@@ -154,9 +156,9 @@ class TD_Control():
                 while not done:
                     counter += 1
 
-                    # if counter >= self.max_steps:
-                    #     logger.debug(f"Reached max steps of {self.max_steps}, ending episode.")
-                    #     break
+                    if counter >= self.max_steps:
+                        logger.debug(f"Reached max steps of {self.max_steps}, ending episode.")
+                        break
 
                     # Evolve one step
                     step_result = env.step(a)
@@ -164,7 +166,6 @@ class TD_Control():
                     done = step_result.done 
 
                     r = step_result.reward
-                    performance_traj_Q[counter] += r
                     
                     if (env.state().is_game_over()):
                         new_actions = []
