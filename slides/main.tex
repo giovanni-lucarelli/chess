@@ -9,7 +9,7 @@
 \author[longname]{Valeria De Stasio, Christian Faccio, Giovanni Lucarelli}
 \titlegraphic{\hfill\includegraphics[height=1.3cm]{images/logo100_orizzontale.pdf}}
 
-% add graphics path
+% add graphics 
 \graphicspath{{../assets},{./images}}
 
 \begin{document}
@@ -29,6 +29,15 @@
   
 \end{frame}
 
+\begin{frame}{Chess Rules}
+
+\end{frame}
+
+\begin{frame}{Our Rules}
+
+\end{frame}
+
+
 \begin{frame}{Endgame Phase}
   * what is an Endgame
 
@@ -45,12 +54,6 @@
   * kings and one (or more) heavy piece for white
 
   * the number of states is already huge
-  
-  Rules that we use:
-
-  * piece movement
-
-  * no 3 repetition
 
 \end{frame}
 
@@ -97,7 +100,9 @@
 
   * Rewards (Chess): +1 for win, -1 for loss, 0 otherwise.
 
-    Rewards (simple endgames): -2 per ply, -1000 for draw
+  * Rewards (simple endgames): -2 per ply, -1000 for draw
+
+  * gamma issue
 
 \end{frame}
 
@@ -113,6 +118,12 @@
 }
   maybe for a mate in 5 or more
 
+\end{frame}
+
+\begin{frame}
+  Future Works
+
+  * zobrist hashing and invariance properties in chess endgames to reduce state space cardinality
 \end{frame}
 
 
