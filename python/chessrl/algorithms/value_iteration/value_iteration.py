@@ -33,11 +33,9 @@ class ValueIteration:
             self,
             tolerance = config['tolerance'],
             n_iterations = config['n_iterations'],
-            step_penalty=config['step_penalty'],
             gamma=config['gamma'],
             endgame_type=config['endgame_type']
     ):
-        self.step_penalty = step_penalty
         self.n_iterations = n_iterations
         self.gamma = gamma
         self.tolerance = tolerance

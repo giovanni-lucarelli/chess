@@ -1,7 +1,6 @@
 {
-    "tolerance": 0.001,
-    "n_iterations": 1,
-    "step_penalty": 1,
+    "tolerance": 0.00001,
+    "n_iterations": 17,
     "gamma": 1,
     "endgame_type": "kqk",
     "log_level": "INFO",
