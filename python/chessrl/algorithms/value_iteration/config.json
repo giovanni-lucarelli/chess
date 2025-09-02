@@ -3,8 +3,8 @@
     "n_iterations": 17,
     "step_penalty": 1,
     "gamma": 1,
-    "endgame_type": "krk",
+    "endgame_type": "kqk",
     "log_level": "INFO",
     "type_of_tests": "fixed",
-    "defender_type": "RandomDefender"
+    "defender_type": "SyzygyDefender"
 }
