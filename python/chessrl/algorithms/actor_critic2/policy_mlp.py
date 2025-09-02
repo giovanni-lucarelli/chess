@@ -53,37 +53,43 @@ class PolicyMLP(nn.Module):
         return int(torch.argmax(probs, dim=-1).item())
 
     # def get_action(self, env, legal_moves_idx):
-    #     """
-    #     Samples an action among legal moves.
-    #     Returns (action_idx_in_[0..4095], log_prob)
-    #     """
     #     device = next(self.parameters()).device
-    #     x7 = extract_coords7_from_fen(env.to_fen()).unsqueeze(0).to(device)
-    #     logits = self.forward(x7)  # [1,4096]
-    #     legal_logits = logits[0, legal_moves_idx]
+    #     x7 = extract_coords7_from_fen(env.state().to_fen()).unsqueeze(0).to(device)
+    #     logits = self.forward(x7)[0]
+    #     legal_logits = logits[0, legal_moves_idx]        
     #     dist = Categorical(logits=legal_logits)
-    #     a_off = dist.sample()                       # index in 0..len(legal)-1
+    #     a_off = dist.sample()
     #     logp = dist.log_prob(a_off)
-    #     a_idx = legal_moves_idx[a_off.item()]       # map back to 0..4095
+    #     a_idx = legal_moves_idx[a_off.item()]
     #     return a_idx, logp
 
-    def get_action(self, env, legal_moves_idx, temperature=1.25):
+    
+    # @torch.no_grad()
+    # def get_action_greedy(self, env, legal_moves_idx):
+    #     device = next(self.parameters()).device
+    #     x7 = extract_coords7_from_fen(env.to_fen()).unsqueeze(0).to(device)
+    #     logits = self.forward(x7)[0]
+    #     j = torch.argmax(logits[legal_moves_idx]).item()
+    #     return legal_moves_idx[j]
+
+    def get_action(self, env, legal_moves_idx):
         device = next(self.parameters()).device
         x7 = extract_coords7_from_fen(env.state().to_fen()).unsqueeze(0).to(device)
-        logits = self.forward(x7)[0]
-        legal_logits = logits[legal_moves_idx] / max(temperature, 1e-6)
+        logits = self.forward(x7)  # [1, A]
+        legal_idx = torch.as_tensor(legal_moves_idx, device=logits.device, dtype=torch.long)
+        legal_logits = logits[0, legal_idx]  # [K]
         dist = Categorical(logits=legal_logits)
         a_off = dist.sample()
         logp = dist.log_prob(a_off)
-        entropy = dist.entropy()
         a_idx = legal_moves_idx[a_off.item()]
-        return a_idx, logp, entropy
+        return a_idx, logp
 
-    
     @torch.no_grad()
     def get_action_greedy(self, env, legal_moves_idx):
         device = next(self.parameters()).device
-        x7 = extract_coords7_from_fen(env.to_fen()).unsqueeze(0).to(device)
-        logits = self.forward(x7)[0]
-        j = torch.argmax(logits[legal_moves_idx]).item()
+        x7 = extract_coords7_from_fen(env.state().to_fen()).unsqueeze(0).to(device)
+        logits = self.forward(x7)  # [1, A]
+        legal_idx = torch.as_tensor(legal_moves_idx, device=logits.device, dtype=torch.long)
+        j = torch.argmax(logits[0, legal_idx]).item()
         return legal_moves_idx[j]
+
