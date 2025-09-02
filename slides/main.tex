@@ -3,9 +3,9 @@
 \usepackage{settings}
 
 
-\title{Chess Endgames Solver}
+\title{Solving Chess Endgames}
 \subtitle{A Reinforcement Learning Approach}
-\date{\today}
+\date{September 5, 2025}
 \author[longname]{Valeria De Stasio, Christian Faccio, Giovanni Lucarelli}
 \titlegraphic{\hfill\includegraphics[height=1.3cm]{images/logo100_orizzontale.pdf}}
 
@@ -16,20 +16,31 @@
 
 \maketitle
 
-\begin{frame}{Project Overview}
-  * goal of the Project
+% \begin{frame}{Project Overview}
+%   * goal of the Project
 
-  * used algorithms
+%   * used algorithms
   
-  * metrics overview ?
-\end{frame}
+%   * metrics overview ?
+% \end{frame}
 
 \section{Chess Programming Background}
 \begin{frame}{Brief History of Chess Programming}
-  
+  \begin{itemize}
+    \item 1890 by the Spanish engineer Leonardo Torres y Quevedo KRK
+    \item 1950 that Claude Shannon published the first article about programming a computer for playing chess.
+    \item 1997 \textit{Deep Blue}: the first computer program to beat the current world champion. 
+    \item Stockfish
+    \item 2017 \textit{Alphazero} defeated Stockfish
+    \item from 2018, more models developed based on Alphazero.
+  \end{itemize}
 \end{frame}
 
 \begin{frame}{Chess Rules}
+  \begin{figure}
+
+    \includegraphics[\textwidth]{images/chess-moves.png}
+  \end{figure}
 
 \end{frame}
 
@@ -41,7 +52,9 @@
 \begin{frame}{Endgame Phase}
   * what is an Endgame
 
-  * usual approach to solve it in modern chess programming (syzygy and tb)
+In parallel, Bellman in 1965 developed the idea of retrograde analysis for computing endgame tables. Using this idea, Thompson and Stiller in the nineties solved all chess endgames with up to five pieces.
+
+In 2012 Makhnychev and Zakharov compiled the **Lomonosov Endgame Tablebase**, which solved all endgame positions with up to seven pieces—some require over 500 moves without a capture. The 7-piece table consumes 140 terabytes; an 8-piece table would be 100  times larger.
 
 \end{frame}
 
@@ -65,6 +78,10 @@
 \end{frame}
 
 \section{MDP Formulation}
+
+\begin{frame}{Markov Game vs MDP}
+
+\end{frame}
 
 \begin{frame}{MDP: States}
   * States $\mathcal{S}$: all legal endgame positions, augmented with side-to-move (no turn number, no 50 moves rule)
