@@ -21,15 +21,14 @@ from chessrl import chess_py
 
 class TD_Control():
     def __init__(self,  
-                gamma=config['gamma'], 
                 epsilon = config['epsilon'],
                 endgame_type=config['endgame_type'],
                 defender_type=config['defender_type'],
                 lr_v = config['lr_v'],
                 tstar=config['tstar']
                 ):
+        self.gamma = 0.99
         self.tstar = tstar
-        self.gamma = gamma
         self.epsilon = epsilon
         self.lr_v = lr_v
         self.endgame_type = endgame_type
@@ -143,7 +142,7 @@ class TD_Control():
         with tqdm(total=len(endgames), desc="Training") as pbar:  
             for s in endgames:
                 done = False
-                env = Env.from_fen(s, gamma = self.gamma, defender=self.defender) 
+                env = Env.from_fen(s, defender=self.defender) 
                 a = self.get_action_epsilon_greedy(env.state().to_fen(), env.state().legal_moves(env.state().get_side_to_move()))
                 
                 # Skip if no legal moves available

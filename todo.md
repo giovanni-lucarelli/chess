@@ -1,8 +1,0 @@
-- [ ] value iterations against random player
-- [ ] value function approx
-    - [ ] add terminal state (insufficient material)
-- [ ] Actor Critic
-    - [ ] change neural network architecture
-    - [ ] check reward system
-    - [ ] fix get_action/predict (softmax)
-- [ ] implement REINFORCE with smaller neural network

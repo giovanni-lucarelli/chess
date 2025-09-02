@@ -76,48 +76,48 @@ class ValueIterationProbabilistic:
             
             # cycle over all the states, where each state is defined by the pieces position
             for state_idx, fen in enumerate(states):
-                    if state_idx % 10000 == 0:  # Adjust frequency as needed
-                        logger.info(f"  Processing state {state_idx+1}/{len(states)} in iteration {i+1}")
+                if state_idx % 10000 == 0:  # Adjust frequency as needed
+                    logger.info(f"  Processing state {state_idx+1}/{len(states)} in iteration {i+1}")
+                
+                maxvalue = -100
+                
+                enviroment = Env.from_fen(fen, gamma = self.gamma, defender=self.defender, two_ply_cost = 2)
+                color = enviroment.state().get_side_to_move()
+
+                # Check if it's already checkmate
+                if (enviroment.is_terminal()):
+                    values[state_to_idx[fen]]= 0
+                    newPolicy[fen] = None
+                    continue
+
+                bestact = enviroment.state().legal_moves(color)[0] 
+
+                legal_moves = enviroment.state().legal_moves(color)
                     
-                    maxvalue = -100
+                # it "tries out" all actions and store the best
+                for A in legal_moves:
+
+                    enviroment = Env.from_fen(fen, gamma = self.gamma, defender = self.defender, two_ply_cost = 2)
+                    # Contains both my move and all possible defender's reply
+                    fens_new, Rs = enviroment.all_possible_steps(A)
                     
-                    enviroment = Env.from_fen(fen, gamma = self.gamma, defender=self.defender)
-                    color = enviroment.state().get_side_to_move()
-
-                    # Check if it's already checkmate
-                    if (enviroment.is_terminal()):
-                        values[state_to_idx[fen]]= 0
-                        newPolicy[fen] = None
-                        continue
-
-                    bestact = enviroment.state().legal_moves(color)[0] 
-
-                    legal_moves = enviroment.state().legal_moves(color)
-                      
-                    # it "tries out" all actions and store the best
-                    for A in legal_moves:
-
-                        enviroment = Env.from_fen(fen, gamma = self.gamma, defender = self.defender)
-                        # Contains both my move and all possible defender's reply
-                        fens_new, Rs = enviroment.all_possible_steps(A)
-                        
-                        # Uniform probability for each legal move
-                        prob = 1 / len(fens_new)
-                        value_action = 0.0
-                        for fen_new, R in zip(fens_new, Rs):                             
-                            try: 
-                                value_action += prob * (R + values[state_to_idx[fen_new]])
-                            except KeyError as e:
-                                logger.info(f"State {enviroment.state().to_fen()} not found in state space, previous {fen}, next move is for {enviroment.state().get_side_to_move()}")
-                                break
-                        
-                        if (value_action > maxvalue):
-                            maxvalue = value_action
-                            bestact = A
-        
-                    # It stores the new value and policy of state S
-                    newValues[state_to_idx[fen]] = maxvalue
-                    newPolicy[fen] = Move.to_uci(bestact)
+                    # Uniform probability for each legal move
+                    prob = 1 / len(fens_new)
+                    value_action = 0.0
+                    for fen_new, R in zip(fens_new, Rs):                             
+                        try: 
+                            value_action += prob * (R + values[state_to_idx[fen_new]])
+                        except KeyError as e:
+                            logger.info(f"State {enviroment.state().to_fen()} not found in state space, previous {fen}, next move is for {enviroment.state().get_side_to_move()}")
+                            break
+                    
+                    if (value_action > maxvalue):
+                        maxvalue = value_action
+                        bestact = A
+    
+                # It stores the new value and policy of state S
+                newValues[state_to_idx[fen]] = maxvalue
+                newPolicy[fen] = Move.to_uci(bestact)
 
             #Estimate change
             err = np.sqrt(np.mean( (newValues - values)**2))

@@ -6,7 +6,7 @@ from chessrl import Env, SyzygyDefender
 from chessrl import chess_py as cp
 from chessrl.utils.move_idx import build_move_mappings
 from policy_mlp import PolicyMLP
-from value_features import value_features_phi8
+from value_features import value_features_phi16
 import random
 
 move_to_idx, idx_to_move = build_move_mappings()
@@ -30,7 +30,7 @@ class ActorCritic:
         self.gamma = gamma
         self.lr_v  = lr_v
         # critic weights for phi in R^8
-        self.w = np.zeros(8, dtype=np.float32)
+        self.w = np.zeros(16, dtype=np.float32)
         self.defender = SyzygyDefender(tb_path=tb_path)
 
         self.policy = PolicyMLP(action_size=4096, hidden=hidden)
@@ -73,7 +73,7 @@ class ActorCritic:
                 s_fen = start_fen
                 done = False
                 steps = 0
-                phi_s = value_features_phi8(s_fen)
+                phi_s = value_features_phi16(s_fen)
 
                 ep_reward = 0.0
                 ep_return_discounted = 0.0
@@ -107,7 +107,7 @@ class ActorCritic:
                     pow_gamma *= self.gamma
 
                     if not done:
-                        phi_sp = value_features_phi8(s_next)
+                        phi_sp = value_features_phi16(s_next)
                     else:
                         phi_sp = None
 

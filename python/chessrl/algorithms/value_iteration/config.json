@@ -1,6 +1,6 @@
 {
     "tolerance": 0.001,
-    "n_iterations": 17,
+    "n_iterations": 1,
     "step_penalty": 1,
     "gamma": 1,
     "endgame_type": "kqk",

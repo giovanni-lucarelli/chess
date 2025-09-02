@@ -78,7 +78,7 @@ class ValueIteration:
                     
                     maxvalue = -100
                     
-                    enviroment = Env.from_fen(fen, gamma = self.gamma, defender=defender)
+                    enviroment = Env.from_fen(fen, gamma = self.gamma, defender=defender, two_ply_cost = 2)
                     color = enviroment.state().get_side_to_move()
 
                     # Check if it's already checkmate
@@ -91,7 +91,7 @@ class ValueIteration:
 
                     # it "tries out" all actions and store the best
                     for A in enviroment.state().legal_moves(color):
-                        enviroment = Env.from_fen(fen, gamma = self.gamma, defender = defender)
+                        enviroment = Env.from_fen(fen, gamma = self.gamma, defender = defender, two_ply_cost= 2)
                         # Contains both my move and the defender's reply
                         stepResult = enviroment.step(A)
                         R = stepResult.reward
