@@ -40,4 +40,4 @@ Many competitions are being held between chess engines: though computers have de
 
 ## References
 
-- [1] Russel, S., Norvig, P. (2021). Artificial Intelligence A Modern Approach. Pearson Education.
+- Russel, S., Norvig, P. (2021). Artificial Intelligence A Modern Approach. Pearson Education.

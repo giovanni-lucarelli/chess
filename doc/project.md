@@ -1,39 +1,15 @@
 # Chess Endgame Solver
 
-The goal of this project is to study learning optimal play in deterministic, perfect-information chess endgames by comparing different RL approaches:
+The **goal** of this project is to study **learning optimal play** in deterministic, perfect-information chess endgames by comparing different RL approaches on one type of endgame: King and Rook vs King.
 
-* value iteration and policy iteration (model based algorithm)
-* Q-learning (value based model free algorithm)
-* REINFORCE (policy based model free algorithm)
-* UCT-style Monte-Carlo Tree Search (with and without learned priors) 
+Formally, two-player chess endgames are deterministic, perfect-information **Markov games**.
+In our experiments, we model from the perspective of one player and incorporate the opponent’s moves into the transition dynamics, yielding a **finite deterministic MDP**. The state includes both the positions of the pieces on the board and the side to move.
 
-on a fixed family of endgames (e.g., King and queen vs king, King and Rook vs King). We model each endgame as a finite discounted MDP with legal chess positions as states and legal moves as actions. 
+We have decided to limit the problem to chess endgames to have a smaller finite state set: in this setting it is possible to form approximations of value functions using tables with one entry for each state (or state–action pair). As written in Sutton and Barto book, this is called the **tabular case**, and the corresponding methods **tabular solution methods**.
 
-Formally, two-player chess endgames are deterministic, perfect-information Markov games.
-In our experiments, we model from the perspective of one player and incorporate the opponent’s moves into the transition dynamics, yielding a finite deterministic MDP with augmented state (`board`, `side-to-move`).
+Furthermore, chess endgames have already been solved and thus we have availability online of **endgame tablebases** that contain the optimal move at each possible game state. The availability of ground-truth solutions assures a more precise and complete evaluation of our algorithms through the measuring of the optimality gap ($\Delta$ DTM).
 
-We have decided to limit the problem to chess endgames to have a smaller finite state set: in this setting it is possible to form approximations of value functions using tables with one entry for each state (or state–action pair). As written in Sutton and Barto book, this is called the **tabular case**, and the corresponding methods tabular methods.
-
-It is important to note that in many cases of practical interest, however, there are far more states than could possibly be entries in a table. In these cases the functions must be approximated, using some sort of more compact parameterized function representation. Reinforcement learning adds to MDPs a focus on approximation and incomplete information for realistically large problems.
-
-Agents train against a perfect opponent from a fixed start-state distribution; evaluation uses ground-truth labels from endgame tablebases (distance-to-mate, DTM). 
-
-**Assessment:**
-We compare methods on optimality gap ($\Delta$ DTM), and computational cost under fixed budgets, with statistical confidence intervals across random seeds.
-
-## MDP formalization
-
-While chess is inherently a two-player zero-sum **Markov game**, in this work we model it from the perspective of the White player only.
-The opponent’s moves are treated as part of the environment dynamics, and the state includes the side-to-move flag.
-This yields a finite, deterministic **Markov Decision Process** (MDP) with:
-
-* **States**: all legal KQK (or KRK) positions, augmented with side-to-move.
-* **Terminal State**: checkmate or stalemate or insufficient pieces, once we reach one of these states the game ends.
-* **Actions**: legal moves for the current player.
-* **Transition function**: deterministic update given current state and chosen action, followed by the opponent’s deterministic reply.
-* **Rewards**: +1 for win, −1 for loss, 0 otherwise.
-* **Rewards**: -2 per ply, −1000 for draw
-
+It is important to note that in many cases of practical interest, however, there are far more states than could possibly be entries in a table. In these cases the functions must be approximated, using some sort of more compact parameterized function representation. This is precisely why we decided to approach the problem using also **approximate solution methods**. The original idea was in fact to develop algorithms that could eventually learn policies to play games with up to 5 pieces.
 
 ## Markov Game formalization
 
@@ -71,52 +47,89 @@ $\sum_{s\in\mathcal{S}}\mu(s)=1$ and $\forall s \in\bar{\mathcal{S}}:\mu(s)=0$
 
 - $R(s,a,s')=R_W(s,a,s') = -R_B(s,a,s')$: +1/−1/0 only when a terminal position is reached (White win, Black win, draw).
 
+## MDP formalization
+
+While chess is inherently a two-player zero-sum **Markov game**, in this work we model it from the perspective of the White player only.
+The opponent’s moves are treated as part of the environment dynamics, and the state includes the side-to-move flag.
+This yields a finite, deterministic **Markov Decision Process** (MDP) with:
+
+* **States**: all legal KRK positions, augmented with side-to-move. We don't keep track of castling rights or en-passant square (useless at this point of the game) and also half-move clock or full-move number (since we don't consider 50-move draws)
+* **Terminal State**: checkmate or stalemate or insufficient pieces, once we reach one of these states the game ends. We do not consider 50-move draw or draw by 3 repeated moves.
+* **Actions**: legal moves for the current player.
+* **Transition function**: deterministic update given current state and chosen action, followed by the opponent’s deterministic reply.
+* **Rewards (version 1)**: +1 for win, −1 for loss, 0 otherwise.
+* **Rewards (version 2)**: -2 per ply, −1000 for draw
+
+> Remark: All variables in the problem are **discrete**, posing well for a tabular approach.
+
 ## Algorithms analysis
+We tried many algorithms to solve the problem: each has its own pros and cons and was motivated by different reasons.
+
+In particular, we focused on:
+* UCT-style Monte-Carlo Tree Search (with and without learned priors) 
+* Value Iteration (model based algorithm)
+* Q-learning (model free algorithm)
+* Actor-Critic (full reinforcement learning algorithm)
+
 
 ### Value Iteration
 
-![alt text](ValueIteration.png)
-
 Value Iteration is a **Dynamic Programming** (DP) algorithm that assure us to find the optimal value function.
-As a Dynamic Programming algorithm, it updates estimates of the values of states based on estimates of the values of successor states. That is, it updates estimates on the basis of other estimates. We call this general idea **bootstrapping**.
+As a Dynamic Programming algorithm, it updates estimates of the values of states based on estimates of the values of successor states. That is, it updates estimates on the basis of other estimates. We call this general idea **bootstrapping**. 
 
-A major drawback to the DP methods is that they involve operations over the entire state set of the MDP, that is, they require sweeps of the state set. If the state set is very large, then even a single sweep can be prohibitively expensive. DP is sometimes thought to be of limited applicability because of the **curse of dimensionality**, the fact that the number of states often grows exponentially with the number of state variables.
-
-Large state sets do create difficulties, but these are inherent diffculties of the problem, not of DP as a solution method. In fact, DP is comparatively better suited to handling large state spaces than competing methods such as direct search and linear programming.
+A major drawback to the DP methods is that they require sweeps of the entire state set. If the state set is very large, then even a single sweep can be prohibitively expensive. We also have to consider that in the worst case, the time that DP methods take to find an optimal policy is **polynomial** in the number of states and actions.
 
 In our specific case the number of states is:
-- 182676 states (including terminal states, 175168 excluding terminal states) and 3383416 state-action pairs (excluding terminal states since there are no possible actions) in the KRvK endgame
--  in the KQvK endgame
--  in the KBBvK endgame
+- **182676** states (including terminal states, 175168 excluding terminal states) and 3383416 state-action pairs (excluding terminal states since there are no possible actions) in the KRvK endgame
+-  **152968** in the KQvK endgame
 
-In practice, DP methods can be used with today’s computers to solve MDPs with millions of states, which make it a feasible solution to our specific problem. If we ignore a few technical details, then, in the worst case, the time that DP methods take to find an optimal policy is **polynomial** in the number of states and actions.
+Since, in practice, DP methods can be used with today’s computers to solve MDPs with **millions** of states, DP is a **feasible** solution to our specific problem.
 
-Both policy iteration and value iteration are widely used, and it is not clear which, if either, is better in general. In practice, these methods usually converge much faster than their theoretical worst-case run times, particularly if they are started with good initial value functions or policies.
+#### Methodoly
+
+We used 2 as the step penalty, 1 as the checkmate reward and 1000 as the draw penalty. The reason is such that the algorithm will always learn to prefer a long mate rather than a quick draw. Also, since from all states it is possible to win the final values will exactly correspond to the number of moves to mate (the draw penalty will never be chosen since it's much lower than the longest mate in 32 plys).
+
+Since the MDP contains terminal states (also called coffin states) we can safely use discount factor $\gamma$=1.
+
+#### Results
+
+The Value Iteration algorithm applied to the MDP against optimal player **converged to the optimal policy**: specifically, it converged after **16** iterations. This comes as no surprise since the longest possible mate with perfect play is exactly 16 turns. At each $i$-th iteration it succesfully found all checkmates up to $i$-th turns.
+
+Both policy iteration and value iteration are widely used, and it is not clear which, if either, is better in general. For this reason, when Value Iteration solved our problem we decided to not implement policy iteration, which would have probably converged to the same optimal result.
+
+One main **disadvantage** of this algorithm is the cost of **memory**: all states must be saved and examined, which would be unfeasible for games with more pieces.
+
+Addionally, this method only converges to the optimal policy because we can use the optimal policy as the policy of the black player. We then experimented to see how would the policy learned by value iteration perform against the ideal player if it was instead computed assuming random moves from the opponent.
 
 
-#### Possible alternative: Asynchronous Value Iteration
-Asynchronous Value Iteration is an in-place iterative DP algorithm that is not organized in terms of systematic sweeps of the state set. This algorithm updates the values of states in any order whatsoever, using whatever values of other states happen to be available. The values of some states may be updated several times before the values of others are updated once. To converge correctly, however, an asynchronous algorithm must continue to update the values of all the states: it can’t ignore any state after some point in the computation.
-
-Of course, avoiding sweeps does not necessarily mean that we can get away with less computation. It just means that an algorithm does not need to get locked into any hopelessly long sweep before it can make progress improving a policy.
-
-We can try to order the updates to let value information propagate from state to state in an e cient way. Some states may not need their values updated as often as others. We might even try to skip updating some states entirely if they are not relevant to optimal behavior.
-
-### TD-Control: Q-Learning and SARSA
-
-![alt text](Sarsa.png)
-![alt text](QLearning.png)
+### TD-Control: Q-Learning
 
 In the previous section we considered transitions from state to state and learned the values of states. Now we consider transitions from state–action pair to state–action pair, and learn the values of state–action pairs. This method can be called one-step, tabular, model-free method.
 
-Obviously, TD methods have an advantage over DP methods in that they do not require a model of the environment, of its reward and next-state probability distributions. The next most obvious advantage of TD methods is that they are naturally implemented in an online, fully incremental fashion. With Monte Carlo methods, for example, one must wait until the end of an episode, because only then is the return known, whereas with TD methods one need wait only one time step.
+We decided to try also a model-free approach to simulate learning against an unknown non-deterministic player. Our main idea was to train Q-learning both against the ideal and random player and see how well it would react to new states that it has never seen before. For training, multiple states are used as starting points so that the algorithm can more easily generalize.
 
-We face the need to trade off exploration and exploitation, thus approaches fall into two main classes: on-policy (Sarsa) and off-policy (Q-Learning).
+The use of this method was also inspired by a thesis we found on the topic: in the work the author used Q learning to find some mates in few training iterations and we wanted to test the efficacy of this algorithm.
 
-In Sarsa, the learned action-value function, Q, directly approximates $q_*$, the optimal action-value function, independent of the policy being followed.
+In Q-Learning, the learned action-value function, Q, directly approximates $q_*$, the optimal action-value function, independent of the policy being followed. Since we don't care how many times the algorithm loses during training we found no reason to train SARSA on the problem (though for completeness we implemented a flag to use it).
 
-In Q-Learning, the learned action-value function, Q, directly approximates $q_*$, the optimal action-value function, independent of the policy being followed. This dramatically simplifies the analysis of the algorithm and enabled early convergence proofs. The policy still has an effect in that it determines which state–action pairs are visited and updated. However, all that is required for correct convergence is that all pairs continue to be updated.
+#### Methodology
 
-To generalize from different starting states we specifically sample different starting positions.
+For episodic algorithms such as Q learning, we had to implement a *max_step* value that would truncate the episode after too many steps.
+
+The initial idea was to make the episode reach its end and keep the step penalty: unfortunately, with episodes taking up to 20 minutes we realized it was unfeasible on our devices. We thus decided to truncate the episodes once it reached 50 steps (we know all states can be won with up to 16 moves). We also took out the step penalty so that the truncated episodes wouldn't affect too much the value of the last action.
+
+However, once we took out the step penalty we needed another way to penalize long mates against short mates: we thus introduced a discount factor $\gamma$=0.99.
+
+As for the parameters $\epsilon$ and $\alpha$ we chose to apply an epsilon decay so that the moves would become increasingly less randomized and a constant learning rate $\alpha$.
+
+At first we wanted to use a decaying $\alpha$ but we realized we obtained better results with a costant one. This unfortunately doesn't assure convergence, but we chose it small $\alpha$=0.05 so that the variance would at least be small (this of course required an high number of steps, 1 million). 
+
+
+
+
+#### Result
+
+After many iterations, the algorithm converges to a suboptimal solution. 
 
 The **convergence properties** of the Sarsa algorithm depend on the nature of the policy’s dependence on Q. For example, one could use "-greedy" or "-soft" policies. Sarsa converges with probability 1 to an optimal policy and action-value function, under the usual conditions on the step sizes, as long as all state–action pairs are visited an infinite number of times and the policy converges in the limit to the greedy policy (which can be arranged, for example, with "-greedy" policies by setting  $\alpha= 1/t$).
 
