@@ -1,8 +1,8 @@
 {
     "tolerance": 0.00001,
-    "n_iterations": 17,
+    "n_iterations": 20,
     "gamma": 1,
-    "endgame_type": "kqk",
+    "endgame_type": "krk",
     "log_level": "INFO",
     "type_of_tests": "fixed",
     "defender_type": "SyzygyDefender"

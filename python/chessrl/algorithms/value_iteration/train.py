@@ -18,7 +18,7 @@ from value_iteration import ValueIteration
 from value_iteration_probabilistic import ValueIterationProbabilistic
 
 if __name__ == '__main__':
-    valueIteration = ValueIteration()
+    valueIteration = ValueIterationProbabilistic()
     
     # For now we are using only RRK vs K
     best_policy = valueIteration.train()
