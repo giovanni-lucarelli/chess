@@ -8,8 +8,113 @@ import torch
 import torch.nn as nn
 from chessrl.utils.fen_parsing import parse_fen
 from chessrl.utils.move_idx import build_move_mappings
+from typing import Callable, Optional
+from chessrl.env import Env, SyzygyDefender
+from chessrl import chess_py as cp
+from chessrl.algorithms.actor_critic2.policy_mlp import PolicyMLP
 
 move_to_idx, idx_to_move = build_move_mappings()
+
+def get_legal_move_indices(env):
+    legal = []
+    for move in env.state().legal_moves(cp.Color.WHITE):
+        m = cp.Move.to_uci(move)[:4]
+        if m in move_to_idx:
+            legal.append(move_to_idx[m])
+    return legal
+
+def policy_mlp_move_from_checkpoint(policy_path: str,
+                                    defender: SyzygyDefender,
+                                    device: torch.device = torch.device("cpu"),
+                                    hidden=(128,128,64),
+                                    greedy: bool = True):
+    """Return move_fn(fen)->uci using a PolicyMLP checkpoint; no critic needed."""
+    policy = PolicyMLP(action_size=4096, hidden=hidden)
+    policy.load_state_dict(torch.load(policy_path, map_location=device))
+    policy.to(device).eval()
+
+    @torch.no_grad()
+    def move_fn(fen: str) -> str:
+        env = Env.from_fen(
+            fen,
+            defender=defender,
+            absorb_black_reply=True,
+            two_ply_cost=0.0,
+            draw_penalty=1.0,
+            checkmate_reward=1.0
+        )
+        legal = get_legal_move_indices(env)
+        if not legal:
+            return ""
+
+        if greedy:
+            a_idx = policy.get_action_greedy(env, legal)
+        else:
+            a_idx, _ = policy.get_action(env, legal)
+
+        return idx_to_move[a_idx]
+    return move_fn
+
+
+
+# def _legal_move_indices_from_env(env) -> list[int]:
+#     """Map env's legal moves (WHITE to move) to 0..4095 indices using first 4 chars."""
+#     legal_idx = []
+#     for mv in env.state().legal_moves(cp.Color.WHITE):
+#         u = cp.Move.to_uci(mv)[:4]
+#         if u in move_to_idx:
+#             legal_idx.append(move_to_idx[u])
+#     return legal_idx
+
+# def ac_move_from_instance(ac, greedy: bool = True) -> Callable[[str], str]:
+#     """
+#     Returns move_fn(fen)->uci using an existing ActorCritic instance.
+#     Reuses ac.defender (SyzygyDefender) to avoid TB reloads.
+#     """
+#     ac.policy.eval()
+
+#     @torch.no_grad()
+#     def move_fn(fen: str) -> str:
+#         env = Env.from_fen(
+#             fen,
+#             defender=ac.defender,
+#             absorb_black_reply=True,
+#             two_ply_cost=0.0,
+#             draw_penalty=1.0,
+#             checkmate_reward=1.0
+#         )
+
+#         legal_idx = _legal_move_indices_from_env(env)
+#         if not legal_idx:
+#             # fallback: any legal move (should be rare)
+#             ms = legal_moves_uci(fen)
+#             return ms[0] if ms else ""
+
+#         if greedy:
+#             a_idx = ac.policy.get_action_greedy(env, legal_idx)
+#         else:
+#             a_idx, _ = ac.policy.get_action(env, legal_idx)
+
+#         return idx_to_move[a_idx]
+#     return move_fn
+
+
+# def ac_move_from_checkpoints(policy_path: str,
+#                              critic_path: str,
+#                              defender: SyzygyDefender,
+#                              device: torch.device = torch.device("cpu"),
+#                              greedy: bool = True) -> Callable[[str], str]:
+#     """
+#     Convenience: build/load ActorCritic once, then return move_fn(fen)->uci.
+#     Reuses the provided defender instance.
+#     """
+#     ac = ActorCritic(tb_path=getattr(defender, "tb_path", ""),
+#                      gamma=0.95, lr_v=2e-2, lr_a=1e-3,
+#                      hidden=(128,128,64))
+#     ac.defender = defender
+#     ac.load(policy_path, critic_path, device=device)
+#     return ac_move_from_instance(ac, greedy=greedy)
+
 
 def legal_moves_uci(fen: str):
     g = cp.Game(); g.reset_from_fen(fen)
@@ -102,7 +207,7 @@ def legal_moves_uci(fen: str) -> list[str]:
 
 # ---------- VI: from saved policy map (fen -> uci) ----------
 
-def vi_move_from_policy_map(policy_map: Dict[str, Optional[str]]) -> Callable[[str, Optional[int]], str]:
+def move_from_policy_map(policy_map: Dict[str, Optional[str]]) -> Callable[[str, Optional[int]], str]:
     """
     Returns a move_fn that uses a precomputed greedy policy (fen -> uci).
     If fen is missing, falls back to any legal move.
@@ -115,7 +220,7 @@ def vi_move_from_policy_map(policy_map: Dict[str, Optional[str]]) -> Callable[[s
         return ms[0] if ms else ""
     return move_fn
 
-def vi_move_from_policy_nn(policy_nn: nn.Module) -> Callable[[str, Optional[int]], str]:
+def move_from_policy_nn(policy_nn: nn.Module) -> Callable[[str, Optional[int]], str]:
     """
     Returns a move_fn that uses a neural network policy (fen -> uci).
     Ensures only legal moves are selected.
@@ -155,54 +260,8 @@ def vi_move_from_policy_nn(policy_nn: nn.Module) -> Callable[[str, Optional[int]
 
     return move_fn
 
-# ---------- VI: from values V(s) with defender (2-ply greedy) ----------
-
-def vi_move_from_values(V, tb_path):
-    def move_fn(fen: str, budget=None) -> str:
-        ms = legal_moves_uci(fen)
-        if not ms:
-            return ""
-        best_u, best_val = ms[0], float("-inf")
-        for u in ms:
-            e = Env.from_fen(
-            fen, gamma=1.0,
-            defender=SyzygyDefender(tb_path), absorb_black_reply=True
-            )
-            sr = e.step(u)
-            if sr.done:
-                val = sr.reward
-            else:
-                val = sr.reward + V.get(e.to_fen(), -1e9)
-            if val > best_val:
-                best_val, best_u = val, u
-        return best_u
-    return move_fn
-
-# ---------- MCTS ----------
-
-# def mcts_move_from_instance(mcts) -> Callable[[str, Optional[int]], str]:
-#     """
-#     Wrap a chessrl.mcts.MCTS instance. 'budget' (if given) sets iterations.
-#     """
-#     def move_fn(fen: str, budget: Optional[int] = None) -> str:
-#         if budget is not None:
-#             try:
-#                 mcts.iterations = int(budget)
-#             except Exception:
-#                 pass
-#         g = game_from_fen(fen)
-#         mv = mcts.search(g)
-#         return cp.Move.to_uci(mv) if mv else ""
-#     return move_fn
-
-def mcts_move_from_instance(mcts, mode="iterations"):
-    def move_fn(fen, budget=None):
-        if budget is not None:
-            if mode == "iterations":
-                mcts.iterations = int(budget)
-                mcts.seconds = 0.0
-            elif mode == "seconds":
-                mcts.seconds = float(budget)
+def mcts_move_from_instance(mcts):
+    def move_fn(fen):
         g = cp.Game(); g.reset_from_fen(fen)
         mv = mcts.search(g)
         return cp.Move.to_uci(mv) if mv else ""

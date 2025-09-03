@@ -1,11 +1,13 @@
 import time, pandas as pd
 from chessrl.env import Env
+import chessrl.chess_py as cp
+from chessrl.algorithms.mcts.mcts import MCTS
 
-def evaluate(move_fn, defender, fens, dtm_oracle, optimal_moves=None, budget=None, max_plies=300):
+def evaluate(move_fn, defender, fens, dtm_oracle, optimal_moves=None, max_plies=300):
     rows = []
     for fen in fens:
         env = Env.from_fen(
-            fen, gamma=1.0,
+            fen,
             defender=defender, absorb_black_reply=True
         )
         total_s, n = 0.0, 0
@@ -19,7 +21,7 @@ def evaluate(move_fn, defender, fens, dtm_oracle, optimal_moves=None, budget=Non
             root_fen = env.to_fen()
 
             t0 = time.perf_counter()
-            uci = move_fn(root_fen, budget=budget)  # greedy or MCTS
+            uci = move_fn(root_fen)  # greedy or MCTS
             total_s += (time.perf_counter() - t0); n += 1
             if first is None:
                 first = uci
@@ -65,7 +67,7 @@ def evaluate(move_fn, defender, fens, dtm_oracle, optimal_moves=None, budget=Non
             "ms_per_move": 1000.0 * total_s / max(n, 1),
             "top1": top1,                 # per-episode fraction in [0,1]
             "top1_decisions": opt_total,  # how many decisions were evaluated
-            "budget": budget,
         })
 
     return pd.DataFrame(rows)
+

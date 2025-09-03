@@ -5,8 +5,8 @@ from tqdm import tqdm
 from chessrl import Env, SyzygyDefender
 from chessrl import chess_py as cp
 from chessrl.utils.move_idx import build_move_mappings
-from policy_mlp import PolicyMLP
-from value_features import value_features_phi16
+from .policy_mlp import PolicyMLP
+from .value_features import value_features_phi16
 import random
 
 move_to_idx, idx_to_move = build_move_mappings()
