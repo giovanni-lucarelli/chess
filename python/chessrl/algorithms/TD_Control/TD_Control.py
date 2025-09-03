@@ -135,12 +135,12 @@ class TD_Control():
             return best_move
 
     def train(self, endgames, td_error_algorithm: str, n_episodes: int = config['n_episodes']):
-        # CHANGED: make it match the loop over `endgames`
         performance_traj_Q = np.zeros(len(endgames), dtype=np.float32)
 
         logger.info(f'Starting {td_error_algorithm} training...')
         with tqdm(total=len(endgames), desc="Training") as pbar:  
             for i, s in enumerate(endgames):
+                
                 self.epsilon *= config['epsilon_decay'] # epsilon decay
 
                 done = False
@@ -192,7 +192,7 @@ class TD_Control():
                     # if counter > self.tstar:
                     #     self.lr_v = lr_v_0/(1 + 0.003*(counter - self.tstar)**0.75)
                     #     self.epsilon = epsilon_0/(1. + 0.005*(counter - self.tstar)**1.05)
-
+                # logger.info(f"performance for episode {i}: {performance_traj_Q[i]}")
                 pbar.update(1)
 
         # >>>>>> ADD THIS BLOCK: save returns to disk (CSV + NPY) <<<<<<

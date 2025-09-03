@@ -150,7 +150,7 @@ class Env:
             gamma: float = 0.99, 
             defender: Any | None = None,
             absorb_black_reply: bool = True,
-            two_ply_cost: float = 0.0, 
+            two_ply_cost: float = 0.01, 
             draw_penalty: float = 1.0,
             checkmate_reward: float = 1.0
             ):
@@ -174,7 +174,7 @@ class Env:
         gamma: float = 0.99,
         defender: Any | None = None,
         absorb_black_reply: bool = True,
-        two_ply_cost: float = 0.0, 
+        two_ply_cost: float = 0.01, 
         draw_penalty: float = 1.0,
         checkmate_reward: float = 1.0
     ) -> "Env":
