@@ -3,7 +3,6 @@ build/
 __pycache__/
 plots/
 .venv/
-*.png
 *.so
 *.egg-info
 typescript
