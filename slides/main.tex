@@ -2,7 +2,6 @@
 
 \usepackage{settings}
 
-
 \title{Solving Chess Endgames}
 \subtitle{A Reinforcement Learning Approach}
 \date{September 5, 2025}
@@ -25,50 +24,150 @@
 % \end{frame}
 
 \section{Chess Programming Background}
-\begin{frame}{Brief History of Chess Programming}
+\begin{frame}
   \begin{itemize}
-    \item 1890 by the Spanish engineer Leonardo Torres y Quevedo KRK
-    \item 1950 that Claude Shannon published the first article about programming a computer for playing chess.
-    \item 1997 \textit{Deep Blue}: the first computer program to beat the current world champion. 
-    \item Stockfish
-    \item 2017 \textit{Alphazero} defeated Stockfish
-    \item from 2018, more models developed based on Alphazero.
+    \item 1890 El Ajedrecista: electro-mechanical KRK solver 
+    \item 1950 Claude Shannon: first article about chess programming
+    \item 1997 \textit{Deep Blue}: first computer program to beat the current world champion
+    \item 2008 \textit{Stockfish}: strong heuristic-based chess engine
+    \item 2017 \textit{Alphazero}: neural network-based approach that defeated Stockfish
+    \item from 2018: more models developed based on \textit{Alphazero}
   \end{itemize}
 \end{frame}
 
 \begin{frame}{Chess Rules}
-  \begin{figure}
+\begin{figure}
+  \includegraphics[width=\textwidth]{images/chess-moves.png}
+\end{figure}
 
-    \includegraphics[\textwidth]{images/chess-moves.png}
-  \end{figure}
-
-\end{frame}
-
-\begin{frame}{Our Rules}
-
-\end{frame}
-
-
-\begin{frame}{Endgame Phase}
-  * what is an Endgame
-
-In parallel, Bellman in 1965 developed the idea of retrograde analysis for computing endgame tables. Using this idea, Thompson and Stiller in the nineties solved all chess endgames with up to five pieces.
-
-In 2012 Makhnychev and Zakharov compiled the **Lomonosov Endgame Tablebase**, which solved all endgame positions with up to seven pieces—some require over 500 moves without a capture. The 7-piece table consumes 140 terabytes; an 8-piece table would be 100  times larger.
+  \begin{itemize}
+    \item \textbf{Win}: checkmate the opponent's king
+    \item \textbf{Draw}: stalemate or insufficient material\footnote{\tiny{threefold repetition and the fifty-move rule are not considered in our implementation}}
+  \end{itemize}
 
 \end{frame}
 
-\begin{frame}{Simple Endgame: (our) Problem Definition}
+\begin{frame}{Elementary Endgames}
+\begin{itemize}
+  \item subset of endgames with few pieces left
+  \item clear theoretical results: forced checkmate or draw
+  \item foundation for learning more complex endgames
+  \item examples: KRK, KQK, KBBK
+  \item solved with tablebases up to 7 pieces
+\end{itemize}
+
+\end{frame}
+
+
+\section{MDP Formulation}
+
+\begin{frame}{Markov Game vs MDP}
+\begin{itemize}
+  \item Chess is a 2-player, turn-based, zero-sum game, formally a Markov Game
+  \item Assume fixed black defender policy: \textbf{oracle} or \textbf{random}
+  \item Black becomes part of the environment: 
   
-  Simple Endgames that we want to solve:
+  Markov Game $\rightarrow$ MDP
+\end{itemize}
+\alert{Remark:} white is always winning in elementary endgames!
+\end{frame}
 
-  * winning for white
+\begin{frame}[fragile]{MDP: States}
+  \begin{itemize}
+    \item State space $\mathcal{S}$: legal pieces positions and side-to-move 
+    \vspace{0.3cm}
+{\scriptsize\begin{verbatim}
+  8/8/K7/8/8/5k2/7R/8 w - - 0 1
 
-  * kings and one (or more) heavy piece for white
+  std::array<std::array<U64, 6>, 2> pieces;
+  Color side_to_move;
+\end{verbatim}}
+\vspace{0.3cm}
+    \item Terminal state space $\bar{\mathcal{S}}\subset\mathcal{S}$: checkmate or draw positions (and stm). Defined procedurally
+    \vspace{0.3cm}
+{\scriptsize\begin{verbatim}
+  state.is_game_over() -> bool
+\end{verbatim}}
+  \end{itemize}  
+\end{frame}
 
-  * the number of states is already huge
+\begin{frame}[fragile]{MDP: Actions}
+\begin{itemize}
+  \item Action space $\mathcal{A}(s)$: set of legal moves for the current player.
+  \item Defined procedurally:
+  \vspace{0.3cm}
+
+  {\scriptsize\begin{verbatim}
+  state.legal_moves() -> std::vector<Move>
+\end{verbatim}}
+\end{itemize}
 
 \end{frame}
+
+\begin{frame}[fragile]{MDP: Transition}
+
+  Transition probability $\Pr(S_{t+1}=s' | S_t=s, A_t=a)$ 
+  
+  \begin{itemize}
+    \item \textbf{Oracle Defender}: deterministic evolution
+
+  {\scriptsize\begin{verbatim}
+  state.do_move(Move)             // white deterministic
+  state.do_move(oracle.reply())   // black deterministic
+  \end{verbatim}}
+    \item \textbf{Random Defender}: stochastic evolution
+    
+  {\scriptsize\begin{verbatim}
+  state.do_move(Move)               // white deterministic
+  state.do_move(random_reply())     // black random
+  \end{verbatim}}
+  \end{itemize}
+  
+\end{frame}
+
+
+\begin{frame}{MDP: Reward}
+
+  \textbf{Goal:} find the fastest mate
+
+  \textbf{Reward:}
+
+  \begin{itemize}
+    \item checkmate: +1
+    \item draw: -1 (always winning for white)
+    \item encourage faster mates 
+    \begin{itemize}
+      \item step penalty: -2
+      \item discount factor $\gamma = 0.99$
+    \end{itemize}
+  \end{itemize}
+
+\end{frame}
+
+\section{RL Algorithms}
+\begin{frame}{Dynamic Programming}
+  % \includegraphics[width=\textwidth]{images/ValueIteration.png}
+  \begin{itemize}
+  \item KRk: 182.676 states
+  \item KQk: 
+  \item KBBk: 
+  \end{itemize}
+\end{frame}
+
+\begin{frame}{What if the adversary is a casual player?}
+\end{frame}
+
+\begin{frame}{Q-Learning}
+
+  \includegraphics[width=\textwidth]{images/QLearning.PNG}
+
+\end{frame}
+
+% \begin{frame}{Full Reinforcement Learning}
+%   \includegraphics[width=\textwidth]{images/AlphaZero.png}
+% \end{frame}
+
+\section{Results}
 
 \begin{frame}{Assessment Metrics Overview}
 
@@ -76,56 +175,6 @@ In 2012 Makhnychev and Zakharov compiled the **Lomonosov Endgame Tablebase**, wh
   * success, top1 etc
   
 \end{frame}
-
-\section{MDP Formulation}
-
-\begin{frame}{Markov Game vs MDP}
-
-\end{frame}
-
-\begin{frame}{MDP: States}
-  * States $\mathcal{S}$: all legal endgame positions, augmented with side-to-move (no turn number, no 50 moves rule)
-  
-  * Terminal State $\bar{\mathcal{S}}$: checkmate or draw (insufficient material), once reached the game ends.
-  
-\end{frame}
-
-\begin{frame}{MDP: Actions}
-
-  * Actions: legal moves for the current player.
-  
-\end{frame}
-
-\begin{frame}{MDP: Transition}
-
-  * Transition function: deterministic update given current state and chosen action, followed by the opponent's (black) deterministic reply
-
-  Instead of storing $\mathcal{P}$, chess engines implement functions that *define* $\mathcal{P}$ procedurally:
-      
-  * $legal_moves(s)$ — generates valid actions in state $s$
-  
-  * $apply_move(s, a)$ — returns the next state $s'$
-  
-  * $is_terminal(s')$ — checks if game is over
-
-  % TODO: (substitute with our function signatures)
-
-\end{frame}
-
-
-\begin{frame}{MDP: Reward}
-
-  * Rewards (Chess): +1 for win, -1 for loss, 0 otherwise.
-
-  * Rewards (simple endgames): -2 per ply, -1000 for draw
-
-  * gamma issue
-
-\end{frame}
-
-\section{RL Algorithms}
-
-\section{Results}
 
 \begin{frame}{Policy interpretability through human chess principles}
   
@@ -143,6 +192,16 @@ In 2012 Makhnychev and Zakharov compiled the **Lomonosov Endgame Tablebase**, wh
   * zobrist hashing and invariance properties in chess endgames to reduce state space cardinality
 \end{frame}
 
+\begin{frame}
+Why is it so difficult to solve chess endgames?
+
+\begin{quote}
+A player can sometimes afford the luxury of an inaccurate move, or even a definite error, in the opening or middlegame without necessarily obtaining a lost position. In the endgame … an error can be decisive, and we are rarely presented with a second chance.
+\end{quote}
+
+\hfill - Paul Keres
+\end{frame}
+
 
 {\setbeamercolor{palette primary}{fg=white, bg=bluscuro}
 \begin{frame}[standout]
@@ -151,6 +210,11 @@ In 2012 Makhnychev and Zakharov compiled the **Lomonosov Endgame Tablebase**, wh
 \end{frame}
 }
 
+\begin{frame}
+  Why $\gamma=0.99$?
+  
+  The longest rkr endgame requires 16 white moves, hence $\gamma^{16} \approx 0.85$ is a good reward for reaching the goal and producing fast mates.
+\end{frame}
 
 
 
