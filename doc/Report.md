@@ -62,7 +62,7 @@ This yields a finite, deterministic **Markov Decision Process** (MDP) with:
 
 > Remark: All variables in the problem are **discrete**, posing well for a tabular approach.
 
-## Algorithms analysis
+## Algorithms motivations and results analysis
 We tried many algorithms to solve the problem: each has its own pros and cons and was motivated by different reasons.
 
 In particular, we focused on:
@@ -112,6 +112,8 @@ The use of this method was also inspired by a thesis we found on the topic: in t
 
 In Q-Learning, the learned action-value function, Q, directly approximates $q_*$, the optimal action-value function, independent of the policy being followed. Since we don't care how many times the algorithm loses during training we found no reason to train SARSA on the problem (though for completeness we implemented a flag to use it).
 
+We kept the algorithm one-step (i.e., we use no eligibility trace) to keep it fully online, incremental and simpler.
+
 #### Methodology
 
 For episodic algorithms such as Q learning, we had to implement a *max_step* value that would truncate the episode after too many steps.
@@ -122,18 +124,53 @@ However, once we took out the step penalty we needed another way to penalize lon
 
 As for the parameters $\epsilon$ and $\alpha$ we chose to apply an epsilon decay so that the moves would become increasingly less randomized and a constant learning rate $\alpha$.
 
-At first we wanted to use a decaying $\alpha$ but we realized we obtained better results with a costant one. This unfortunately doesn't assure convergence, but we chose it small $\alpha$=0.05 so that the variance would at least be small (this of course required an high number of steps, 1 million). 
-
-
-
+At first we wanted to use a decaying $\alpha$ but we realized we obtained better results with a costant one. This unfortunately doesn't assure convergence (as asked by the Robbins Morrow conditions), but we chose it small $\alpha$=0.05 so that the variance would at least be small (this of course required an high number of steps, 1 million). It is interesting to notice that the steps are few at maximum (50) so an adaptive learning rate isn't really useful. (TODO)
 
 #### Result
 
-After many iterations, the algorithm converges to a suboptimal solution. 
+After many iterations, the algorithm converges to a suboptimal solution.
 
-The **convergence properties** of the Sarsa algorithm depend on the nature of the policy’s dependence on Q. For example, one could use "-greedy" or "-soft" policies. Sarsa converges with probability 1 to an optimal policy and action-value function, under the usual conditions on the step sizes, as long as all state–action pairs are visited an infinite number of times and the policy converges in the limit to the greedy policy (which can be arranged, for example, with "-greedy" policies by setting  $\alpha= 1/t$).
+Ideal Q learning vs ideal value iteration: (TODO)
 
-#### Training improvement: prioritized sweeping
+Random Q learning vs Random value iteration: (TODO)
+
+Overall, there aren't really may reasons why one would prefer Q learning over Value iteration: we still have the disadvantage of memory while obtaining a worse performance.
+
+### Actor Critic
+
+Actor critic learns a parameterized policy that can select actions without consulting a value function. A value function is still used to learn the policy parameters, but is not required for action selection.
+
+The reason we tried this method is to expand our experiments: since all the methods used so far are heavy in memory costs we wanted an approximate solution method.
+
+Initially we thought of the Reinforce algorithm, but since the episodes can last so much we noticed quickly that the variance due to Montecarlo was too high. We then moved to the actor-critic method.
+
+Since we have a priori knowledge and we know the general structure of the endgame we can manually construct an approximation of the value function. We have tried different ways of approximating (first with a tabular approximation and finally with a linear combination) based on handpicked features.
+
+Specifically, we use various normalized metrics of distance between the pieces, the distance of the black king from the border and side and some additional features of the board (like black king on light/dark tile).
+
+As for the policy function, since the policy space is quite complex (thousand of possible actions, but only a few legal for each state) we decided to use a simple neural network.
+
+#### Methodology
+
+Since it is an episodic algorithm we again have to introduce the variable *max_steps* to assure that episodes don't go on *ad infinitum*. We kept the step penalty to assure that those partial episodes would still contribute to the learning. Since the terminal state is not assured to be reached we also slowly lowered the discount factor to 0.99.
+
+We are using an on-policy algorithm (otherwise we would in the deadly triad) and as for the learning rates we chose $\alpha_w$=0.002 and $\alpha_{\theta}$=0.003.
+
+The neural network that approximates the policy function is composed of 3 fully connected layers with ReLu activations functions and a final softmax to output the probabilities over all the actions.
+
+We also had to use Curriculum learning, as the episodes that terminated in a win were too sparse. To make the method realistic, we applied curriculum learning only to the first mates.
+
+#### Results
+
+After many iterations, the algorithm converges to the optimal solution and also uses much less memory.
+
+However, the need to train it using curriculum learning poses a strong limitation to this method.
+
+Interestly, we could however use the learned value approximation to evaluate the weights of the features chosen.
+
+
+## Possible improvements
+### Prioritized sweeping
 Simulated transitions are started in state–action pairs selected uniformly at random from all previously experienced pairs. But a uniform selection is usually not the best; planning can be much more efficient if simulated transitions and updates are focused on particular state–action pairs.
 
 Consider how in chess the positive rewards come only from the terminal state: at first only an update along a transition into the goal will meaningfully change values. This example suggests that search might be usefully focused by working backward from goal states. In general, we want to work back not just from goal states but from any state whose value has changed.
