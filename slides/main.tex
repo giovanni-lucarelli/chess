@@ -144,28 +144,80 @@
 
 \end{frame}
 
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
 \section{RL Algorithms}
-\begin{frame}{Dynamic Programming}
-  % \includegraphics[width=\textwidth]{images/ValueIteration.png}
+
+\begin{frame}{Monte Carlo Tree Search}
   \begin{itemize}
-  \item KRk: 182.676 states
-  \item KQk: 
-  \item KBBk: 
+    \item One of the oldest methods to solve chess
+    \item Explore the game tree by simulating moves
   \end{itemize}
 \end{frame}
 
-\begin{frame}{What if the adversary is a casual player?}
+\begin{frame}{Dynamic Programming}
+  \includegraphics[width=\textwidth]{images/ValueIteration.png}
+  \begin{itemize}
+  \item KRk: 182.676 states
+  \item KQk: 152.968 states
+  \item KBBk: ? states
+  \end{itemize}
 \end{frame}
 
-\begin{frame}{Q-Learning}
+\begin{frame}{Choice of parameters}
+  \begin{itemize}
+    \item Step penalty: -2 $\rightarrow$ values = DTZ
+    \item Draw penalty: -100 $\rightarrow$ slow mates > quick draws
+    \item $\gamma = 1$
+    \item $\theta = 0.0001$
+  \end{itemize}
+\end{frame}
 
+\begin{frame}{Random Player}
+  \textit{Strong assumption}: opponent plays optimally!
+  Idea: train against an opponent that plays at random and see how well it can play against an optimal one.
+\end{frame}
+
+\begin{frame}{Q-Learning: model-free approach}
+  Assume no information on transitions!
   \includegraphics[width=\textwidth]{images/QLearning.PNG}
-
+  Off-policy: we don't care about the behavior policy!
 \end{frame}
 
-% \begin{frame}{Full Reinforcement Learning}
-%   \includegraphics[width=\textwidth]{images/AlphaZero.png}
-% \end{frame}
+\begin{frame}{Choice of parameters}
+  \begin{itemize}
+    \item Max steps per episode: 50 $\rightarrow$ if it's too far from mate, agent may never reach terminal state
+    \item Step penalty: 0 $\rightarrow$ otherwise would learn wrong values from early termination
+    \item Draw penalty: -1
+    \item $\gamma = 0.99$
+    \item Learning rate $\alpha = 0.05$
+    \item $\epsilon$-greedy policy with $\epsilon = 0.3$ with decay
+  \end{itemize}
+
+\begin{frame}{Full Reinforcement Learning}
+  \begin{itemize}
+    \item Problem: too many states, \textbf{curse of dimensionality}!
+    \item Idea: use neural networks for policy and linear approximation for value function
+  \end{itemize}
+  \includegraphics[width=\textwidth]{images/Actor-Critic.PNG}
+\end{frame}
+
+\begin{frame}{Approximations}
+  \begin{itemize}
+    \item Policy function approximation: neural network
+    \item State space approximation: linear combination of features
+    \item Feature engineering:
+    \begin{itemize}
+      \item Manhattan distance between kings
+      \item Manhattan distance between black king and white rook 
+      \item File and rank of the kings
+      \item Distance of the Black King from the side of the board
+      \item Distance of the black king from the corner of the board
+      \item Binary indicator of opposition 
+    \end{itemize}
+\end{frame}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 \section{Results}
 
@@ -176,12 +228,27 @@
   
 \end{frame}
 
+\begin{frame}{Why no convergence?}
+  \begin{itemize}
+    \item Difficulties:
+    \begin{itemize}
+      \item too many possible actions at each step
+      \item ideal opponent that never makes mistakes
+      \item very sparse rewards in an episode
+    \end{itemize}
+    \item Possible solutions:
+    \begin{itemize}
+      \item more training time 
+      \item implement draw by repetition and 50-move rule $\rightarrow$ more frequent terminal states
+    \end{itemize}
+  \end{itemize}
+\end{frame}
+
 \begin{frame}{Policy interpretability through human chess principles}
   
 \end{frame}
 
-\begin{frame}{Video Animation of optimal ply vs our policy
-}
+\begin{frame}{Video Animation of optimal ply vs our policy}
   maybe for a mate in 5 or more
 
 \end{frame}
