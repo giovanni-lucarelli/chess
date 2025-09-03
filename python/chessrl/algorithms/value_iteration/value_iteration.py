@@ -75,8 +75,8 @@ class ValueIteration:
                         logger.info(f"  Processing state {state_idx+1}/{len(states)} in iteration {i+1}")
                     
                     maxvalue = -100
-                    
-                    enviroment = Env.from_fen(fen, gamma = self.gamma, defender=defender, two_ply_cost = 2)
+
+                    enviroment = Env.from_fen(fen, gamma = self.gamma, checkmate_reward=config['checkmate_reward'], draw_penalty=config['draw_penalty'], defender=defender, two_ply_cost = 2)
                     color = enviroment.state().get_side_to_move()
 
                     # Check if it's already checkmate
@@ -89,7 +89,7 @@ class ValueIteration:
 
                     # it "tries out" all actions and store the best
                     for A in enviroment.state().legal_moves(color):
-                        enviroment = Env.from_fen(fen, gamma = self.gamma, defender = defender, two_ply_cost= 2)
+                        enviroment = Env.from_fen(fen, gamma = self.gamma, checkmate_reward=config['checkmate_reward'], draw_penalty=config['draw_penalty'], defender=defender, two_ply_cost = 2)
                         # Contains both my move and the defender's reply
                         stepResult = enviroment.step(A)
                         R = stepResult.reward

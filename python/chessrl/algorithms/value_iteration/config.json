@@ -1,5 +1,7 @@
 {
     "tolerance": 0.00001,
+    "draw_penalty": 1000.0,
+    "checkmate_reward": 1.0,
     "n_iterations": 20,
     "gamma": 1,
     "endgame_type": "krk",

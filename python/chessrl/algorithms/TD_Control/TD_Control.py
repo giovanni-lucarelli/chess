@@ -26,10 +26,11 @@ class TD_Control():
                 endgame_type=config['endgame_type'],
                 defender_type=config['defender_type'],
                 lr_v = config['lr_v'],
-                tstar=config['tstar']
+                tstar=config['tstar'],
+                gamma = config['gamma']
                 ):
         self.max_steps = max_steps
-        self.gamma = 0.99
+        self.gamma = gamma
         self.tstar = tstar
         self.epsilon = epsilon
         self.lr_v = lr_v
@@ -132,37 +133,36 @@ class TD_Control():
                     best_value = q_val
                     best_move = move  # Exploit
             return best_move
-    
 
     def train(self, endgames, td_error_algorithm: str, n_episodes: int = config['n_episodes']):
-        performance_traj_Q = np.zeros(n_episodes)
+        # CHANGED: make it match the loop over `endgames`
+        performance_traj_Q = np.zeros(len(endgames), dtype=np.float32)
 
         logger.info(f'Starting {td_error_algorithm} training...')
         with tqdm(total=len(endgames), desc="Training") as pbar:  
-            for s,i in enumerate(endgames):
-
-                epsilon_0 = config['epsilon']
-                lr_v_0 = config['lr_v']
-
-                self.lr_v = lr_v_0
-                self.epsilon = epsilon_0
+            for i, s in enumerate(endgames):
+                self.epsilon *= config['epsilon_decay'] # epsilon decay
 
                 done = False
                 env = Env.from_fen(s, defender=self.defender) 
-                a = self.get_action_epsilon_greedy(env.state().to_fen(), env.state().legal_moves(env.state().get_side_to_move()))
+                a = self.get_action_epsilon_greedy(
+                    env.state().to_fen(), 
+                    env.state().legal_moves(env.state().get_side_to_move())
+                )
                 
                 # Skip if no legal moves available
                 if a is None:
                     logger.debug(f"No legal moves available for position {s}")
+                    pbar.update(1)
                     continue
                 
                 counter = 0 
                 while not done:
                     counter += 1
 
-                    """if counter >= self.max_steps:
+                    if counter >= self.max_steps:
                         logger.debug(f"Reached max steps of {self.max_steps}, ending episode.")
-                        break """
+                        break 
 
                     # Evolve one step
                     step_result = env.step(a)
@@ -171,6 +171,7 @@ class TD_Control():
 
                     r = step_result.reward
 
+                    # accumulate return for this episode i
                     performance_traj_Q[i] += r
                     
                     if (env.state().is_game_over()):
@@ -179,22 +180,41 @@ class TD_Control():
                         new_actions = env.state().legal_moves(env.state().get_side_to_move())
                     
                     # Single update with (S, A, R', S')
-                    new_a = self.single_step_update(s, chess_py.Move.to_uci(a), r, new_s, new_actions, done, td_error_algorithm=td_error_algorithm)
+                    new_a = self.single_step_update(
+                        s, chess_py.Move.to_uci(a), r, new_s, new_actions, done, 
+                        td_error_algorithm=td_error_algorithm
+                    )
                                             
                     a = new_a
                     s = new_s
 
-                    if counter > self.tstar:
-                        # UPDATE OF LEARNING
-                        self.lr_v = lr_v_0/(1 + 0.003*(counter - self.tstar)**0.75)
-                        # UPDATE OF EPSILON
-                        self.epsilon = epsilon_0/(1. + 0.005*(counter - self.tstar)**1.05)
-
+                    # (tstar-based decays currently disabled)
+                    # if counter > self.tstar:
+                    #     self.lr_v = lr_v_0/(1 + 0.003*(counter - self.tstar)**0.75)
+                    #     self.epsilon = epsilon_0/(1. + 0.005*(counter - self.tstar)**1.05)
 
                 pbar.update(1)
-        
+
+        # >>>>>> ADD THIS BLOCK: save returns to disk (CSV + NPY) <<<<<<
+        metrics_dir = os.path.join(
+            os.path.dirname(__file__), '..', '..', '..', '..', 'artifacts', 'metrics'
+        )
+        os.makedirs(metrics_dir, exist_ok=True)
+
+        csv_path = os.path.join(
+            metrics_dir, f"TD_{td_error_algorithm}_{self.endgame_type}_{config['defender_type']}_returns.csv"
+        )
+        npy_path = os.path.join(
+            metrics_dir, f"TD_{td_error_algorithm}_{self.endgame_type}_{config['defender_type']}_returns.npy"
+        )
+
+        # CSV (human-readable) + NPY (fast to reload)
+        np.savetxt(csv_path, performance_traj_Q, delimiter=',', header='episode_return', comments='')
+        np.save(npy_path, performance_traj_Q)
+        logger.info(f"Saved returns to {csv_path} and {npy_path}")
+        # <<<<<< END OF SAVE BLOCK >>>>>>
+
         policy = {}
-        
         logger.info(f'Starting saving best policy...')
         
         for state in self.states:
@@ -212,7 +232,10 @@ class TD_Control():
             policy[state] = best_move
         
         # Save policy to file
-        save_policy_jsonl(policy, f"../../../../artifacts/policies/TD_{td_error_algorithm}_{self.endgame_type}_{config['defender_type']}_greedy.jsonl")
+        save_policy_jsonl(
+            policy, 
+            f"../../../../artifacts/policies/TD_{td_error_algorithm}_{self.endgame_type}_{config['defender_type']}_greedy.jsonl"
+        )
 
         logger.info('Training completed.')
 

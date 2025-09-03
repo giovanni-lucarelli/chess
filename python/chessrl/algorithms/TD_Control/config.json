@@ -1,12 +1,13 @@
 {
-    "n_episodes": 50000,
+    "n_episodes": 10,
     "endgame_type": "krk",
-    "tstar": 100,
-    "epsilon": 0.1,
-    "max_steps": 100,
-    "lr_v": 0.15,
+    "tstar": 25,
+    "epsilon": 0.3,
+    "max_steps": 50,
+    "lr_v": 0.05,
     "epsilon_decay": 0.999993,
     "log_level": "INFO",
     "defender_type": "SyzygyDefender",
-    "td_error_algorithms": ["QLearning"]
+    "td_error_algorithms": ["QLearning"],
+    "gamma": 0.99
 }

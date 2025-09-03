@@ -78,8 +78,8 @@ class ValueIterationProbabilistic:
                     logger.info(f"  Processing state {state_idx+1}/{len(states)} in iteration {i+1}")
                 
                 maxvalue = -100
-                
-                enviroment = Env.from_fen(fen, gamma = self.gamma, defender=self.defender, two_ply_cost = 2)
+
+                enviroment = Env.from_fen(fen, gamma = self.gamma, checkmate_reward=config['checkmate_reward'], draw_penalty=config['draw_penalty'], defender=self.defender, two_ply_cost = 2)
                 color = enviroment.state().get_side_to_move()
 
                 # Check if it's already checkmate
@@ -95,7 +95,7 @@ class ValueIterationProbabilistic:
                 # it "tries out" all actions and store the best
                 for A in legal_moves:
 
-                    enviroment = Env.from_fen(fen, gamma = self.gamma, defender = self.defender, two_ply_cost = 2)
+                    enviroment = Env.from_fen(fen, gamma = self.gamma, checkmate_reward=config['checkmate_reward'], draw_penalty=config['draw_penalty'], defender=self.defender, two_ply_cost = 2)
                     # Contains both my move and all possible defender's reply
                     fens_new, Rs = enviroment.all_possible_steps(A)
                     
