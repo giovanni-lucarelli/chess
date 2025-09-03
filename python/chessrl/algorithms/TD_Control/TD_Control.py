@@ -137,12 +137,16 @@ class TD_Control():
     def train(self, endgames, td_error_algorithm: str, n_episodes: int = config['n_episodes']):
         performance_traj_Q = np.zeros(n_episodes)
 
-        epsilon_0 = self.epsilon
-        lr_v_0 = self.lr_v
-        
         logger.info(f'Starting {td_error_algorithm} training...')
         with tqdm(total=len(endgames), desc="Training") as pbar:  
-            for s in endgames:
+            for s,i in enumerate(endgames):
+
+                epsilon_0 = config['epsilon']
+                lr_v_0 = config['lr_v']
+
+                self.lr_v = lr_v_0
+                self.epsilon = epsilon_0
+
                 done = False
                 env = Env.from_fen(s, defender=self.defender) 
                 a = self.get_action_epsilon_greedy(env.state().to_fen(), env.state().legal_moves(env.state().get_side_to_move()))
@@ -156,9 +160,9 @@ class TD_Control():
                 while not done:
                     counter += 1
 
-                    if counter >= self.max_steps:
+                    """if counter >= self.max_steps:
                         logger.debug(f"Reached max steps of {self.max_steps}, ending episode.")
-                        break
+                        break """
 
                     # Evolve one step
                     step_result = env.step(a)
@@ -166,6 +170,8 @@ class TD_Control():
                     done = step_result.done 
 
                     r = step_result.reward
+
+                    performance_traj_Q[i] += r
                     
                     if (env.state().is_game_over()):
                         new_actions = []

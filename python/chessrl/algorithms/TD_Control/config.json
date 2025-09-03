@@ -1,8 +1,8 @@
 {
-    "n_episodes": 1000000,
+    "n_episodes": 50000,
     "endgame_type": "krk",
-    "tstar": 50,
-    "epsilon": 0.05,
+    "tstar": 100,
+    "epsilon": 0.1,
     "max_steps": 100,
     "lr_v": 0.15,
     "epsilon_decay": 0.999993,
