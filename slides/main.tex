@@ -15,13 +15,17 @@
 
 \maketitle
 
-% \begin{frame}{Project Overview}
-%   * goal of the Project
+\begin{frame}{Project Overview}
+  \begin{itemize}
+    \textbf{Objectives:}
+  \begin{itemize}
+    \item Fastest checkmate against optimal player
+    \item Experiment with training against random player
+    \item Comparison of different RL approaches
+  \end{itemize}
+  \end{itemize}
 
-%   * used algorithms
-  
-%   * metrics overview ?
-% \end{frame}
+\end{frame}
 
 \section{Chess Programming Background}
 \begin{frame}
@@ -50,10 +54,11 @@
 \begin{frame}{Elementary Endgames}
 \begin{itemize}
   \item subset of endgames with few pieces left
-  \item clear theoretical results: forced checkmate or draw
   \item foundation for learning more complex endgames
-  \item example: KRK
-  \item solved with tablebases up to 7 pieces
+  \item clear theoretical results: forced checkmate or draw
+  \item Sygyzy endgame tablebases
+  \item examples: KRK
+  \alert{Remark:} white is always winning in elementary endgames!
 \end{itemize}
 \alert{Remark:} white is always winning in elementary endgames!
 \end{frame}
@@ -136,7 +141,7 @@
     \item draw: -1 (always winning for white)
     \item encourage faster mates 
     \begin{itemize}
-      \item step penalty: -0.01
+      \item step penalty: -2/-0.01
       \item discount factor $\gamma = 0.99$
     \end{itemize}
   \end{itemize}
@@ -147,19 +152,11 @@
 
 \section{RL Algorithms}
 
-\begin{frame}{Monte Carlo Tree Search}
+\begin{frame}{Value Iteration}
   \begin{itemize}
-    \item One of the oldest methods to solve chess
-    \item Explore the game tree by simulating moves
-  \end{itemize}
-\end{frame}
-
-\begin{frame}{Dynamic Programming}
-  \includegraphics[width=\textwidth]{images/ValueIteration.PNG}
-  \begin{itemize}
+  \item $V(s) \leftarrow \max_a \sum_{s',r}p(s',r'|s,a)[r(s,a,s')+\gamma V(s')]$
+  \item $\pi(s) = \arg\max_a \sum_{s',r}p(s'|s,a)[r(s,a,s')+\gamma V(s')]$
   \item KRk: 182.676 states
-  \item KQk: 152.968 states
-  \item KBBk: ? states
   \end{itemize}
 \end{frame}
 
@@ -170,36 +167,45 @@
     \item $\gamma = 1$
     \item $\theta = 0.0001$
   \end{itemize}
+  \includegraphics[width=0.7\textwidth]{images/DTZ_values.png}
 \end{frame}
 
 \begin{frame}{Random Player}
-  \textit{Strong assumption}: opponent plays optimally!
   Idea: train against an opponent that plays at random and see how well it can play against an optimal one.
+  Put somehow justification for Qlearning/random player
 \end{frame}
 
 \begin{frame}{Q-Learning: model-free approach}
-  Assume no information on transitions!
-  \includegraphics[width=\textwidth]{images/QLearning.PNG}
-  Off-policy: we don't care about the behavior policy!
+  \begin{itemize}
+    \item $Q(s,a) \leftarrow Q(s,a) + \alpha[r + \gamma \max_{a'}Q(s',a') - Q(s,a)]$
+    \item $\pi(s) = \arg\max_a Q(s,a)$
+    \item Assume no information on transitions!
+    \item Off-policy, online and one-step.
+  \end{itemize}
 \end{frame}
 
 \begin{frame}{Choice of parameters}
   \begin{itemize}
     \item Max steps per episode: 50 $\rightarrow$ if it's too far from mate, agent may never reach terminal state
-    \item Step penalty: 0 $\rightarrow$ otherwise would learn wrong values from early termination
+    \item Step penalty: -0.01
     \item Draw penalty: -1
     \item $\gamma = 0.99$
-    \item Learning rate $\alpha = 0.05$
+    \item Learning rate $\alpha = 0.05$ $\rightarrow$ smaller variance
     \item $\epsilon$-greedy policy with $\epsilon = 0.3$ with decay
   \end{itemize}
 \end{frame}
 
-\begin{frame}{Full Reinforcement Learning}
+\begin{frame}{Approximate solution methods}
   \begin{itemize}
-    \item Problem: too many states, \textbf{curse of dimensionality}!
-    \item Idea: use neural networks for policy and linear approximation for value function
+    \item Non-elementary chess endgames $\rightarrow$ \textbf{curse of dimensionality}
+    \item Use one-step actor-critic
+    \item Update rules:
+    \begin{itemize}
+      \item $\delta = r + \gamma V(s';w) - V(s;w)$
+      \item $\theta \leftarrow \theta + \alpha^{\theta} \delta \nabla_\\theta \log \pi(a|s;\theta) $
+      \item $w \leftarrow w + \alpha^{w} \delta \nabla_w V(s;w)$
+    \end{itemize} 
   \end{itemize}
-  \includegraphics[width=\textwidth]{images/Actor-Critic.PNG}
 \end{frame}
 
 \begin{frame}{Approximations}
@@ -212,9 +218,17 @@
       \item Manhattan distance between black king and white rook 
       \item File and rank of the kings
       \item Distance of the Black King from the side of the board
-      \item Distance of the black king from the corner of the board
-      \item Binary indicator of opposition 
+      \item Binary indicator of opposition, parity 
     \end{itemize}
+    \includegraphics[width=0.5\textwidth]{images/features.png}
+  \end{itemize}
+\end{frame}
+
+\begin{frame}{Monte Carlo Tree Search}
+  \begin{itemize}
+    \item One of the first methods to solve chess
+    \item No need to train!
+    \item Heuristic methods
   \end{itemize}
 \end{frame}
 
