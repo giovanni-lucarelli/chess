@@ -81,11 +81,10 @@ A major drawback to the DP methods is that they require sweeps of the entire sta
 
 In our specific case the number of states is:
 - **182676** states (including terminal states, 175168 excluding terminal states) and 3383416 state-action pairs (excluding terminal states since there are no possible actions) in the KRvK endgame
--  **152968** in the KQvK endgame
 
 Since, in practice, DP methods can be used with today’s computers to solve MDPs with **millions** of states, DP is a **feasible** solution to our specific problem.
 
-#### Methodoly
+#### Methodology
 
 We used 2 as the step penalty, 1 as the checkmate reward and 1000 as the draw penalty. The reason is such that the algorithm will always learn to prefer a long mate rather than a quick draw. Also, since from all states it is possible to win the final values will exactly correspond to the number of moves to mate (the draw penalty will never be chosen since it's much lower than the longest mate in 32 plys).
 
