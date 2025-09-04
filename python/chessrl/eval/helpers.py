@@ -214,6 +214,7 @@ def move_from_policy_map(policy_map: Dict[str, Optional[str]]) -> Callable[[str,
     """
     def move_fn(fen: str, budget: Optional[int] = None) -> str:
         u = policy_map.get(fen)
+        # print(f"Policy map lookup for FEN {fen}: {u}")
         if u: 
             return u
         ms = legal_moves_uci(fen)

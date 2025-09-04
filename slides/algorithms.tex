@@ -1,13 +1,13 @@
-\section{RL Algorithms}
+% \section{RL Algorithms}
 
-\begin{frame}{Value Iteration: model-based approach}
-  \begin{itemize}
-  \item KRk: 182.676 states
-  \item Feasible number of states + perfect knowledge $\rightarrow$ Dynamic Programming
-  \item $V(s) \leftarrow \max_a \sum_{s',r}p(s',r'|s,a)[r(s,a,s')+\gamma V(s')]$
-  \item $\pi(s) = \arg\max_a \sum_{s',r}p(s'|s,a)[r(s,a,s')+\gamma V(s')]$
-  \end{itemize}
-\end{frame}
+% \begin{frame}{Value Iteration: model-based approach}
+%   \begin{itemize}
+%   \item KRk: 182.676 states
+%   \item Feasible number of states + perfect knowledge $\rightarrow$ Dynamic Programming
+%   \item $V(s) \leftarrow \max_a \sum_{s',r}p(s',r'|s,a)[r(s,a,s')+\gamma V(s')]$
+%   \item $\pi(s) = \arg\max_a \sum_{s',r}p(s'|s,a)[r(s,a,s')+\gamma V(s')]$
+%   \end{itemize}
+% \end{frame}
 
 \begin{frame}{Choice of parameters}
   \begin{itemize}
@@ -18,39 +18,39 @@
   \end{itemize}
 \end{frame}
 
-\begin{frame}{Q-Learning: model-free approach}
-  \begin{itemize}
-    \item How good of a policy without knowing the ``level" of the opponent?
-    \item $Q(s,a) \leftarrow Q(s,a) + \alpha[r + \gamma \max_{a'}Q(s',a') - Q(s,a)]$
-    \item $\pi(s) = \arg\max_a Q(s,a)$
-    \item Off-policy, online and one-step.
-  \end{itemize}
-\end{frame}
+% \begin{frame}{Q-Learning: model-free approach}
+%   \begin{itemize}
+%     \item How good of a policy without knowing the ``level" of the opponent?
+%     \item $Q(s,a) \leftarrow Q(s,a) + \alpha[r + \gamma \max_{a'}Q(s',a') - Q(s,a)]$
+%     \item $\pi(s) = \arg\max_a Q(s,a)$
+%     \item Off-policy, online and one-step.
+%   \end{itemize}
+% \end{frame}
 
-\begin{frame}{Choice of parameters}
-  \begin{itemize}
-    \item \textbf{Max steps} per episode: 50 $\rightarrow$ if it's too far from mate, agent may never reach terminal state
-    \item \textbf{Step penalty}: -0.01
-    \item \textbf{Draw penalty}: -1
-    \item $\mathbf{\gamma} = 0.99$
-    \item Costant \textbf{learning rate} $\alpha = 0.05$ $\rightarrow$ smaller variance
-    \item $\mathbf{\varepsilon}$-greedy policy with $\varepsilon = 0.3$ and  $\varepsilon_{\textit{decay}}=0.999993$
-    \item $\varepsilon_t = 0.3\varepsilon_{\textit{decay}}^{t+1}$
-  \end{itemize}
-\end{frame}
+% \begin{frame}{Choice of parameters}
+%   \begin{itemize}
+%     \item \textbf{Max steps} per episode: 50 $\rightarrow$ if it's too far from mate, agent may never reach terminal state
+%     \item \textbf{Step penalty}: -0.01
+%     \item \textbf{Draw penalty}: -1
+%     \item $\mathbf{\gamma} = 0.99$
+%     \item Costant \textbf{learning rate} $\alpha = 0.05$ $\rightarrow$ smaller variance
+%     \item $\mathbf{\varepsilon}$-greedy policy with $\varepsilon = 0.3$ and  $\varepsilon_{\textit{decay}}=0.999993$
+%     \item $\varepsilon_t = 0.3\varepsilon_{\textit{decay}}^{t+1}$
+%   \end{itemize}
+% \end{frame}
 
-\begin{frame}{Actor-critic: approximate solution approach}
-  \begin{itemize}
-    \item Non-elementary chess endgames $\rightarrow$ \textbf{curse of dimensionality}
-    \item Use one-step actor-critic
-    \item Update rules:
-    \begin{itemize}
-      \item $\delta = r + \gamma \hat{V}(s';w) - \hat{V}(s;w)$
-      \item $\theta \leftarrow \theta + \alpha^{\theta} \delta \nabla_{{\theta}} \log \pi(a|s;\theta) $
-      \item $w \leftarrow w + \alpha^{w} \delta \nabla_w \hat{V}(s;w)$
-    \end{itemize} 
-  \end{itemize}
-\end{frame}
+% \begin{frame}{Actor-critic: approximate solution approach}
+%   \begin{itemize}
+%     \item Non-elementary chess endgames $\rightarrow$ \textbf{curse of dimensionality}
+%     \item Use one-step actor-critic
+%     \item Update rules:
+%     \begin{itemize}
+%       \item $\delta = r + \gamma \hat{V}(s';w) - \hat{V}(s;w)$
+%       \item $\theta \leftarrow \theta + \alpha^{\theta} \delta \nabla_{{\theta}} \log \pi(a|s;\theta) $
+%       \item $w \leftarrow w + \alpha^{w} \delta \nabla_w \hat{V}(s;w)$
+%     \end{itemize} 
+%   \end{itemize}
+% \end{frame}
 
 \begin{frame}{Parameters Choice}
 \begin{itemize}
@@ -66,12 +66,12 @@
 \end{itemize}
 \end{frame}
 
-\begin{frame}{Feature engineering}
-  \begin{figure}
-    \centering
-    \includegraphics[width=0.8\textwidth]{images/features.png}
-  \end{figure}
-\end{frame}
+% \begin{frame}{Feature engineering}
+%   \begin{figure}
+%     \centering
+%     \includegraphics[width=0.8\textwidth]{images/features.png}
+%   \end{figure}
+% \end{frame}
 
 
 

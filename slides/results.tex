@@ -37,12 +37,14 @@ Convergence to \textbf{suboptimal} policy after 1M episodes ($\sim 8$h wct)
     \end{figure}
 \end{frame}
 
-\begin{frame}{AC convergence: first phase}
+\begin{frame}{Actor-Critic convergence}
+    \begin{itemize}
+        \item Partial convergence after 3k epochs (1.5k DTZ=1, 1.5k DTZ=3) ($\sim 6$h wct)
+        \item Suboptimal policy
+        \item Explainable critic!
+    \end{itemize}
     
-\end{frame}
 
-\begin{frame}{AC convergence: second phase}
-    
 \end{frame}
 
 \begin{frame}
@@ -53,6 +55,7 @@ Convergence to \textbf{suboptimal} policy after 1M episodes ($\sim 8$h wct)
 \end{frame}
 
 \begin{frame}{Critic through human chess principles}
+    \centering
     \begin{itemize}
         \item \texttt{d\_edgeBK} = -0.269
         \item \texttt{d\_cornerBK} = -0.402
@@ -80,3 +83,61 @@ Convergence to \textbf{suboptimal} policy after 1M episodes ($\sim 8$h wct)
         \includegraphics[width=0.3\textwidth]{images/mcts_mate.png}
     \end{figure}
 \end{frame}
+
+\begin{frame}{Against the oracle ($DTZ=1$)}
+    \centering
+    \begin{tabular}{ccccc}
+    \hline
+    Method & gap & success & ms\_per\_move & top1  \\
+    \hline
+    VI             & $0.000$ & $1.0$ & $0.002$   & $1.000$  \\
+    Q-Learning     & $4.600$ & $1.0$ & $0.002$   & $0.823$  \\
+    Actor-Critic   & $2.857$ & $0.7$ & $0.865$   & $0.639$  \\
+    MCTS           & $0.000$ & $1.0$ & $5155.985$ & $1.000$ \\
+    \hline
+    \end{tabular}
+\end{frame}
+
+\begin{frame}{Against the oracle (DTZ=3)}
+    \centering
+    \begin{tabular}{ccccc}
+    \hline
+    Method & gap & success & ms\_per\_move & top1 \\
+    \hline
+    VI            & 0.000 & 1.0 & 0.003   & 1.000 \\
+    Q-Learning    & 31.111 & 0.9 & 0.003   & 0.664\\
+    Actor-Critic  & 1.200 & 0.5 & 1.231   & 0.606  \\
+    MCTS          & 0.000 & 1.0 & 7312.591 & 1.000 \\
+    \hline
+    \end{tabular}
+\end{frame}
+
+\begin{frame}{Against the Dummy (DTZ=1)}
+    \centering
+    \begin{tabular}{ccccc}
+    \hline
+    Method & gap & success & ms\_per\_move & top1 \\
+    \hline
+    VI            & 0.000 & 1.0 & 0.004   & 1.000 \\
+    Q-Learning    & 0.857 & 0.7 & 0.004   & 0.686 \\
+    Actor-Critic  & 11.429 & 0.7 & 0.987   & 0.574\\
+    MCTS          & 0.000 & 1.0 & 8440.939 & 1.000 \\
+    \hline
+    \end{tabular}
+\end{frame}
+
+\begin{frame}{Against the Dummy (DTZ=3)}
+    \centering
+    \begin{tabular}{ccccc}
+    \hline
+    Method & gap & success & ms\_per\_move & top1 \\
+    \hline
+    VI            & 0.000 & 1.0 & 0.002   & 1.000 \\
+    Q-Learning    & 34.000 & 0.3 & 0.002   & 0.180 \\
+    Actor-Critic  & 10.667 & 0.9 & 0.835   & 0.554 \\
+    MCTS          & 2.400  & 1.0 & 8395.397 & 0.914\\
+    \hline
+    \end{tabular}
+\end{frame}
+
+
