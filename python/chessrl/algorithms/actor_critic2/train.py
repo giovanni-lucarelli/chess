@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 
 # system
+from random import random
 import sys 
 sys.path.insert(0, '../../../')
 
@@ -11,6 +12,9 @@ import numpy as np
 from chessrl.utils.load_config import load_config
 from chessrl.utils.endgame_loader import get_all_endgames_from_dtz
 import matplotlib.pyplot as plt
+import torch
+import csv
+import pandas as pd
 
 # Import the optimized REINFORCE
 from chessrl.algorithms.actor_critic2.ac2 import ActorCritic
@@ -28,14 +32,27 @@ if __name__ == '__main__':
     )
     
     logger.info(f"Model parameters: {sum(p.numel() for p in ac.policy.parameters()):,}")
-    
-    # DTZ = 1
-    train_positions = get_all_endgames_from_dtz(csv_path='../../../../tablebase/krk/krk_train.csv', dtz=1)
-    train_endgames = [pos['fen'] for pos in train_positions[:2000]]
+
+    def load_fens_from_csv(csv_path, limit=None):
+        fens = []
+        with open(csv_path, newline='') as f:
+            r = csv.DictReader(f)
+            for row in r:
+                fen = row["fen"]
+                # make sure it's White to move
+                if " w " in fen.split(" ", 2)[1:2] or fen.split()[1] == 'w':
+                    fens.append(fen)
+                    if limit and len(fens) >= limit: break
+        return fens
+    device = torch.device('cpu')
+
+    csv_path_train_1 = "../../../../tablebase/krk/krk_train.csv"   # <-- point to your CSV (fen,side,wdl,dtz)
+    df_1 = pd.read_csv(csv_path_train_1)
+    train_endgames_1 = df_1[df_1['dtz'] == 1]['fen'].tolist()
 
     # Start training DTZ=1
     losses, rewards = ac.train(
-        train_endgames,
+        train_endgames_1[:500],
         epochs=1500,
         device='cpu',
         max_steps=4
@@ -44,12 +61,13 @@ if __name__ == '__main__':
     ac.save('output/actor_critic2_model_dtz1.pth')
 
     # DTZ = 3
-    train_positions = get_all_endgames_from_dtz(csv_path='../../../../tablebase/krk/krk_train.csv', dtz=3)
-    train_endgames = [pos['fen'] for pos in train_positions[:2000]]
+    csv_path_train_3 = "../../../../tablebase/krk/krk_test.csv"   # <-- point to your CSV (fen,side,wdl,dtz)
+    df_3 = pd.read_csv(csv_path_train_3)
+    train_endgames_3 = df_3[df_3['dtz'] == 3]['fen'].tolist()
 
     # Start training DTZ=3
     losses, rewards = ac.train(
-        train_endgames,
+        train_endgames_3[:500],
         epochs=1500,
         device='cpu',
         max_steps=8

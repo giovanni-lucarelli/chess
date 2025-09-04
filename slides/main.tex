@@ -52,10 +52,10 @@
   \item subset of endgames with few pieces left
   \item clear theoretical results: forced checkmate or draw
   \item foundation for learning more complex endgames
-  \item examples: KRK, KQK, KBBK
+  \item example: KRK
   \item solved with tablebases up to 7 pieces
 \end{itemize}
-
+\alert{Remark:} white is always winning in elementary endgames!
 \end{frame}
 
 
@@ -69,7 +69,6 @@
   
   Markov Game $\rightarrow$ MDP
 \end{itemize}
-\alert{Remark:} white is always winning in elementary endgames!
 \end{frame}
 
 \begin{frame}[fragile]{MDP: States}
@@ -130,14 +129,14 @@
 
   \textbf{Goal:} find the fastest mate
 
-  \textbf{Reward:}
+  \textbf{Reward:}\footnote{\tiny{Except for Value Iteration}}
 
   \begin{itemize}
     \item checkmate: +1
     \item draw: -1 (always winning for white)
     \item encourage faster mates 
     \begin{itemize}
-      \item step penalty: -2
+      \item step penalty: -0.01
       \item discount factor $\gamma = 0.99$
     \end{itemize}
   \end{itemize}

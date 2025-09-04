@@ -85,7 +85,7 @@ class ActorCritic:
                         gamma=self.gamma,
                         defender=self.defender,
                         absorb_black_reply=True,
-                        two_ply_cost=0.0,
+                        two_ply_cost=0.01,
                         draw_penalty=1.0,
                         checkmate_reward=1.0
                     )
