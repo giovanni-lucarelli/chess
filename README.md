@@ -32,7 +32,6 @@ chess/
 │   ├── main.cpp                   # Entry point for standalone chess engine
 │   ├── game.cpp                   # Game logic implementation
 │   ├── chessboard.cpp             # Board state and move validation
-│   ├── mcts.cpp                   # MCTS algorithm implementation
 │   └── move.cpp                   # Move generation and utilities
 │
 ├── 📁 binding/                    
@@ -133,15 +132,4 @@ pip install -e .
 ## Contributing
 
 Contributions and suggestions are welcome! Please open an issue or submit a pull request.
-
-## RL project presentation
-
-- Describe and motivate the problem
-- How did you translate the problem into a RL framework?
-- How did you try to solve it? Why did you use one algorithm or another?
-- Is there something else you could have done?
-- Did it work? (Can you interpret the optimal policy?)
-- Are the results consistent with your expectation?
-
-**More theory, less practice**
 
