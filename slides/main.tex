@@ -152,11 +152,12 @@
 
 \section{RL Algorithms}
 
-\begin{frame}{Value Iteration}
+\begin{frame}{Value Iteration: model-based approach}
   \begin{itemize}
+  \item KRk: 182.676 states
+  \item Feasible number of states + perfect knowledge $\rightarrow$ Dynamic Programming
   \item $V(s) \leftarrow \max_a \sum_{s',r}p(s',r'|s,a)[r(s,a,s')+\gamma V(s')]$
   \item $\pi(s) = \arg\max_a \sum_{s',r}p(s'|s,a)[r(s,a,s')+\gamma V(s')]$
-  \item KRk: 182.676 states
   \end{itemize}
 \end{frame}
 
@@ -171,15 +172,18 @@
 \end{frame}
 
 \begin{frame}{Random Player}
-  Idea: train against an opponent that plays at random and see how well it can play against an optimal one.
-  Put somehow justification for Qlearning/random player
+  \begin{itemize}
+    \item Idea: how much different is the policy learned against a random player?
+    \item Applied Value Iteration with uniform random black defender
+    \item Applied Q-Learning with uniform random black defender 
+  \end{itemize}
 \end{frame}
 
 \begin{frame}{Q-Learning: model-free approach}
   \begin{itemize}
+    \item How good of a policy without knowing the "level" of the opponent?
     \item $Q(s,a) \leftarrow Q(s,a) + \alpha[r + \gamma \max_{a'}Q(s',a') - Q(s,a)]$
     \item $\pi(s) = \arg\max_a Q(s,a)$
-    \item Assume no information on transitions!
     \item Off-policy, online and one-step.
   \end{itemize}
 \end{frame}
@@ -190,12 +194,12 @@
     \item Step penalty: -0.01
     \item Draw penalty: -1
     \item $\gamma = 0.99$
-    \item Learning rate $\alpha = 0.05$ $\rightarrow$ smaller variance
+    \item Costant learning rate $\alpha = 0.05$ $\rightarrow$ smaller variance
     \item $\epsilon$-greedy policy with $\epsilon = 0.3$ with decay
   \end{itemize}
 \end{frame}
 
-\begin{frame}{Approximate solution methods}
+\begin{frame}{Actor-critic: approximate solution approach}
   \begin{itemize}
     \item Non-elementary chess endgames $\rightarrow$ \textbf{curse of dimensionality}
     \item Use one-step actor-critic
@@ -228,7 +232,7 @@
   \begin{itemize}
     \item One of the first methods to solve chess
     \item No need to train!
-    \item Heuristic methods
+    \item Heuristic method
   \end{itemize}
 \end{frame}
 
@@ -249,7 +253,7 @@
     \begin{itemize}
       \item too many possible actions at each step
       \item ideal opponent that never makes mistakes
-      \item very sparse rewards in an episode
+      \item very sparse positive rewards in training episodes
     \end{itemize}
     \item Possible solutions:
     \begin{itemize}
