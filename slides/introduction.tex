@@ -2,9 +2,9 @@
 
 \textbf{Objectives:}
   \begin{itemize}
-    \item Fastest checkmate against optimal player
-    \item Experiment with training against random player
-    \item Comparison of different RL approaches
+    \item Fastest checkmate against optimal player in KRk endgame
+    \item Compare different Reinforcement Learning approaches
+    \item Assess performance against different opponents (oracle and dummy)
   \end{itemize}
 
 \end{frame}
@@ -23,7 +23,7 @@
 
 \begin{frame}{Chess Rules}
 \begin{figure}
-  \includegraphics[width=\textwidth]{images/chess-moves.png}
+  \includegraphics[width=0.8\textwidth]{images/chess-moves.png}
 \end{figure}
 
   \begin{itemize}
@@ -141,7 +141,7 @@
     \item encourage faster mates 
     \begin{itemize}
       \item step penalty: -2/-0.01
-      \item discount factor $\gamma = 0.99$
+      \item discount factor $\gamma = 1$
     \end{itemize}
   \end{itemize}
 

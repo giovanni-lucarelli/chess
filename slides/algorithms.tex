@@ -13,8 +13,9 @@
   \begin{itemize}
     \item \textbf{Step penalty}: -2 $\rightarrow$ values = DTZ
     \item \textbf{Draw penalty}: -100 $\rightarrow$ slow mates > quick draws
+    \item \textbf{Checkmate reward}: +1
     \item $\mathbf{\gamma} = 1$
-    \item $\mathbf{\theta} = 0.0001$
+    \item $\mathbf{\theta} = 0.01$
   \end{itemize}
 \end{frame}
 
@@ -30,11 +31,10 @@
 \begin{frame}{Choice of parameters}
   \begin{itemize}
     \item \textbf{Max steps} per episode: 50 $\rightarrow$ if it's too far from mate, agent may never reach terminal state
-    \item \textbf{Step penalty}: -0.01
-    \item \textbf{Draw penalty}: -1
+    \item \textbf{Step/Draw/Mate}: -0.01/-1/+1
     \item $\mathbf{\gamma} = 0.99$
     \item Costant \textbf{learning rate} $\alpha = 0.05$ $\rightarrow$ smaller variance
-    \item $\mathbf{\varepsilon}$-greedy policy with $\varepsilon = 0.3$ and  $\varepsilon_{\textit{decay}}=0.999993$
+    \item $\mathbf{\varepsilon}$-greedy policy with $\varepsilon = 0.3$ and  $\varepsilon_{\textit{decay}}=0.99$
     \item $\varepsilon_t = 0.3\varepsilon_{\textit{decay}}^{t+1}$
   \end{itemize}
 \end{frame}
@@ -54,14 +54,15 @@
 
 \begin{frame}{Parameters Choice}
 \begin{itemize}
-    \item \textbf{Policy}: MLP(128,128,64), ReLU activations, softmax output 
+    \item \textbf{Policy}: MLP(128,128,64), ReLU activations, softmax output.
+    \begin{itemize}
+      \item \textbf{Input}: pieces coordinates + stm (7 inputs) 
+    \end{itemize}
     \item \textbf{Value function}: $\hat{V}(s;w) = \sum_{i=1}^{16} w_i \phi_i(s)$
-    \item $\mathbb{\gamma} = 0.99$
-    \item \textbf{Step penalty}: -0.01
-    \item \textbf{Draw penalty}: -1
-    \item $\mathbb{\alpha^{\theta}} = 0.0001$
-    \item $\mathbb{\alpha^{w}} = 0.02$
-    \item $\mathbb{w} = 0.003$
+    \item $\gamma = 0.99$
+    \item \textbf{Step/Draw/Mate}: -0.01/-1/+1
+    \item $\alpha^w = 0.02$
+    \item $\alpha^\theta = 0.003$
     \item Too many iterations and no generalization $\rightarrow$ curriculum learning
 \end{itemize}
 \end{frame}
@@ -81,7 +82,7 @@
     \item \textbf{Draw penalty}: -1
     \item \textbf{Seconds per move}: $10$s
     \item \textbf{Exploration constant}: $c=\sqrt{2}$
-    \item \textbf{Upper confidence bound} applied to trees (UCT):
-    \item \texttt{next\_node} $= \arg\max_{n \in N} \left(\frac{w_i}{n_i} + c\sqrt{\frac{\ln N_i}{n_i}}\right)$
+    \item \textbf{Upper confidence bound} applied to trees:
+    $UCT(s,a) = Q(s,a) + c \sqrt{\frac{\ln N(s)}{N(s,a)}}$
   \end{itemize}
 \end{frame}

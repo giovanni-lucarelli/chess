@@ -58,6 +58,11 @@
   tabsize=2
 }
 
+\setbeamertemplate{footline}{%
+  \hfill\insertframenumber/\inserttotalframenumber\hspace{2ex}%
+  \vspace{2ex} % <-- spazio verticale dal bordo inferiore
+}
+
 %"mystyle" code listing set
 \lstset{style=mystyle}
 \newcommand{\customcite}[1]{\citeauthor{#1}, \citetitle{#1}, \citeyear{#1}}

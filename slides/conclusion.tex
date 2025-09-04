@@ -14,33 +14,32 @@
   \end{itemize}
 \end{frame}
 
-\begin{frame}{What did we learn?}
-  \begin{itemize}
-    \item The importance of parameters choice (e.g., rewards)
-    \item The danger of introducing a maximum length for each episode
-    \item The importance of starting from simpler solutions and then increase complexity
-  \end{itemize}
-\end{frame}
-
 \begin{frame}
   Why is it so difficult to solve chess endgames?
-
+\vfill
 \begin{quote}
 A player can sometimes afford the luxury of an inaccurate move, or even a definite error, in the opening or middlegame without necessarily obtaining a lost position. In the endgame … an error can be decisive, and we are rarely presented with a second chance.
 \end{quote}
 
 \hfill - Paul Keres
+\vfill
+\end{frame}
+
+\begin{frame}{What did we learn?}
+  \begin{itemize}
+    \item The importance of parameters choice (e.g., rewards)
+    \item The danger of introducing a maximum length for each episode
+    \item The importance of starting from simpler solutions and then increase complexity
+    \item RL theory guides, but practice means dealing with gaps (e.g., hyperparameters).
+  \end{itemize}
 \end{frame}
 
 \begin{frame}{Future Work}
   \begin{itemize}
     \item Zobrist hashing and invariance properties in chess endgames to reduce state space cardinality
-    \item Implementing draw by repetition and 50-move rule
-    \item Other chess endgames (e.g., KBBK, KRPK)
-    \item Experiment with training against random player
-    \item work on hyperparameters (Robbins-Monro conditions)
-    \item rook policy on queen endgames ?
-    \item other RL algorithms (e.g., $\alpha$-Zero, NN-AC)
+    \item Implementing all chess rules
+    \item Experiments with more complex chess endgames (e.g., KBBK, KRPK)
+    \item Experiments with hyperparameters 
   \end{itemize}
 \end{frame}
 
