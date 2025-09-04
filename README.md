@@ -48,10 +48,16 @@ chess/
 │   ├── theory.md                  # Intro to chess programming
 │   ├── demo.ipynb                 # Simple demo of the chess library 
 │   └── project.md                 # RL project docs
-│
+├── 📁 python/
+│   └── chessrl
+│       ├── algorithms
+│       ├── env.py
+│       ├── eval
+│       └── utils
+│      
 ├── 🔧 CMakeLists.txt              
 ├── 🚫 .gitignore                  
-├── 📝 todo.md                    
+├── 📝 results.ipynb                   
 └── 📖 README.md                   
 ```
 
