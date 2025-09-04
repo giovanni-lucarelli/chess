@@ -51,14 +51,22 @@ if __name__ == '__main__':
     train_endgames_1 = df_1[df_1['dtz'] == 1]['fen'].tolist()
 
     # Start training DTZ=1
-    losses, rewards = ac.train(
+    losses, rewards, all_ep_discounted = ac.train(
         train_endgames_1[:500],
         epochs=1500,
         device='cpu',
         max_steps=4
     )
 
-    ac.save('output/actor_critic2_model_dtz1.pth')
+    ac.save('output/actor_critic2_model_dtz1.pth', critic_path='output/actor_critic2_critic_dtz1.npy')
+
+    # Saving losses, rewards, all_ep_discounted to csv
+    csv_path = 'output/actor_critic2_dtz_1_results.csv'
+    with open(csv_path, mode='w', newline='') as file:
+        writer = csv.writer(file)
+        writer.writerow(['loss', 'reward', 'episode_return_discounted'])
+        for loss, reward, ep_return_discounted in zip(losses, rewards, all_ep_discounted):
+            writer.writerow([loss, reward, ep_return_discounted])
 
     # DTZ = 3
     csv_path_train_3 = "../../../../tablebase/krk/krk_test.csv"   # <-- point to your CSV (fen,side,wdl,dtz)
@@ -66,32 +74,19 @@ if __name__ == '__main__':
     train_endgames_3 = df_3[df_3['dtz'] == 3]['fen'].tolist()
 
     # Start training DTZ=3
-    losses, rewards = ac.train(
+    losses, rewards, all_ep_discounted = ac.train(
         train_endgames_3[:500],
         epochs=1500,
         device='cpu',
         max_steps=8
     )
 
-    ac.save('output/actor_critic2_model_dtz3.pth')
-    """
-    fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(12, 5))
-    
-    # Loss curve
-    ax1.plot(losses)
-    ax1.set_xlabel('Batch')
-    ax1.set_ylabel('Loss')
-    ax1.set_title('Training Loss')
-    ax1.grid(True)
-    
-    # Rewards curve
-    ax2.plot(rewards)
-    ax2.set_xlabel('Batch')
-    ax2.set_ylabel('Average Reward')
-    ax2.set_title('Average Reward per Batch')
-    ax2.grid(True)  
-    
-    plt.tight_layout()
-    plt.savefig('output/training.png')
-    logger.info("Training curves saved to 'output/training.png'")
-    """
+    ac.save('output/actor_critic2_model_dtz3.pth', critic_path='output/actor_critic2_critic_dtz3.npy')
+
+    # Saving losses, rewards, all_ep_discounted to csv
+    csv_path = 'output/actor_critic2_dtz_3_results.csv'
+    with open(csv_path, mode='w', newline='') as file:
+        writer = csv.writer(file)
+        writer.writerow(['loss', 'reward', 'episode_return_discounted'])
+        for loss, reward, ep_return_discounted in zip(losses, rewards, all_ep_discounted):
+            writer.writerow([loss, reward, ep_return_discounted])

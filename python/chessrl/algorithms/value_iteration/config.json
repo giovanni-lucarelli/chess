@@ -7,5 +7,6 @@
     "endgame_type": "krk",
     "log_level": "INFO",
     "type_of_tests": "fixed",
-    "defender_type": "SyzygyDefender"
+    "defender_type": "SyzygyDefender",
+    "test_endgames": ["8/3k4/8/3K4/8/8/3R4/8 w - - 0 1"]
 }

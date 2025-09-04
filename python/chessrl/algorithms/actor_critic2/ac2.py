@@ -126,7 +126,7 @@ class ActorCritic:
                     G_discounted=f"{ep_return_discounted:.3f}"
                 )
 
-        return all_losses, all_rewards
+        return all_losses, all_rewards, all_ep_discounted
 
     def save(self, policy_path="policy_mlp.pt", critic_path="critic_w.npy"):
         torch.save(self.policy.state_dict(), policy_path)
