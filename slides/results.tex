@@ -3,49 +3,80 @@
 \begin{frame}{Value iterations}
 
 \begin{itemize}
-    \item Convergence to $\pi_*$ after 17 iterations ($\sim 8$h on a laptop)
-    \item Optimal policy $\pi_*$ plays perfectly against an optimal opponent
+    \item Convergence to $\pi_*$ after 17 iterations ($\sim 6$h wct on a laptop)
+    \item Optimal policy $\pi_*$ plays perfectly against an optimal opponent $\forall$ DTZ
 \end{itemize}
-
+    \begin{figure}
+        \centering
+        \includegraphics[width=0.7\textwidth]{images/learned_vi.png}
+    \end{figure}
 \end{frame}
 
-\begin{frame}{Why no convergence?}
-  \begin{itemize}
-    \item Difficulties:
-    \begin{itemize}
-      \item too many possible actions at each step
-      \item ideal opponent that never makes mistakes
-      \item very sparse positive rewards in training episodes
-    \end{itemize}
-    \item Possible solutions:
-    \begin{itemize}
-      \item more training time 
-      \item implement draw by repetition and 50-move rule $\rightarrow$ more frequent terminal states
-    \end{itemize}
-  \end{itemize}
+\begin{frame}{Partial value iteration}
+    After $n$ iterations it is able to solve mates only up to $\text{DTZ} = 2n+1$
+    \begin{figure}
+        \centering
+        \includegraphics[width=0.7\textwidth]{images/learned_vi_9.png}
+    \end{figure}
+    \centering{Here $n=9$}
 \end{frame}
 
-\begin{frame}{Policy interpretability through human chess principles}
-  
-\end{frame}
+\begin{frame}{Q-learning convergence}
+Convergence to \textbf{suboptimal} policy after 1M episodes ($\sim 8$h wct)
 
-\begin{frame}{Video Animation of optimal ply vs our policy}
-  maybe for a mate in 5 or more
-
+    \begin{figure}
+        \centering
+        \includegraphics[width=0.7\textwidth]{images/q_convergence.png}
+    \end{figure}
 \end{frame}
 
 \begin{frame}
-  Future Works
+    \begin{figure}
+        \centering
+        \includegraphics[width=\textwidth]{images/q_success.png}
+    \end{figure}
+\end{frame}
 
-  * zobrist hashing and invariance properties in chess endgames to reduce state space cardinality
+\begin{frame}{AC convergence: first phase}
+    
+\end{frame}
+
+\begin{frame}{AC convergence: second phase}
+    
 \end{frame}
 
 \begin{frame}
-Why is it so difficult to solve chess endgames?
+    \begin{figure}
+        \centering
+        \includegraphics[width=\textwidth]{images/ac_success.png}
+    \end{figure}
+\end{frame}
 
-\begin{quote}
-A player can sometimes afford the luxury of an inaccurate move, or even a definite error, in the opening or middlegame without necessarily obtaining a lost position. In the endgame … an error can be decisive, and we are rarely presented with a second chance.
-\end{quote}
+\begin{frame}{Critic through human chess principles}
+    \begin{itemize}
+        \item \texttt{d\_edgeBK} = -0.269
+        \item \texttt{d\_cornerBK} = -0.402
+        \item \texttt{dInf(WK,BK)} = -0.286
+        \item \texttt{dMan(WK,BK)} = -0.375
+        \item \texttt{dInf(WR,BK)} = -0.069
+        \item \texttt{dMan(WR,BK)} = +0.200
+        \item \texttt{cut\_w} = +0.103
+    \end{itemize}
+\end{frame}
 
-\hfill - Paul Keres
+\begin{frame}[fragile]{MCTS-10s}
+    With 10s of budget per move $\rightarrow$ solve mates up to DTZ=5
+
+    \scriptsize{\begin{verbatim}
+        Top 5 white moves from root:
+        1.   e3a3  visits=  4897  pct= 97.9%  Q=+1.0000  
+        2.   e3c3  visits=    10  pct=  0.2%  Q=-0.3562
+        3.   e3e4  visits=     8  pct=  0.2%  Q=-0.4388
+        4.   e3e2  visits=     5  pct=  0.1%  Q=-0.8457
+        5.   e3e7  visits=     5  pct=  0.1%  Q=-0.8516  
+    \end{verbatim}}
+    \begin{figure}
+        \centering
+        \includegraphics[width=0.3\textwidth]{images/mcts_mate.png}
+    \end{figure}
 \end{frame}

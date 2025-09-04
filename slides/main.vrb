@@ -1,19 +1,15 @@
-\frametitle{MDP: Transition}
+\frametitle{MCTS-10s}
+With 10s of budget per move $\rightarrow$ solve mates up to DTZ=5
 
-  Transition probability $\Pr(S_{t+1}=s' | S_t=s, A_t=a)$
-
-  \begin{itemize}
-    \item \textbf{Oracle Defender}: deterministic evolution
-
-  {\scriptsize\begin{verbatim}
-  state.do_move(Move)             // white deterministic
-  state.do_move(oracle.reply())   // black deterministic
-  \end{verbatim}}
-    \item \textbf{Random Defender}: stochastic evolution
-
-  {\scriptsize\begin{verbatim}
-  state.do_move(Move)               // white deterministic
-  state.do_move(random_reply())     // black random
-  \end{verbatim}}
-  \end{itemize}
-
+    \scriptsize{\begin{verbatim}
+        Top 5 white moves from root:
+        1.   e3a3  visits=  4897  pct= 97.9%  Q=+1.0000
+        2.   e3c3  visits=    10  pct=  0.2%  Q=-0.3562
+        3.   e3e4  visits=     8  pct=  0.2%  Q=-0.4388
+        4.   e3e2  visits=     5  pct=  0.1%  Q=-0.8457
+        5.   e3e7  visits=     5  pct=  0.1%  Q=-0.8516
+    \end{verbatim}}
+    \begin{figure}
+        \centering
+        \includegraphics[width=0.3\textwidth]{images/mcts_mate.png}
+    \end{figure}
