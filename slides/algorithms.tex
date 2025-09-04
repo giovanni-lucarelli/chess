@@ -11,21 +11,13 @@
 
 \begin{frame}{Choice of parameters}
   \begin{itemize}
-    \item Step penalty: -2 $\rightarrow$ values = DTZ
-    \item Draw penalty: -100 $\rightarrow$ slow mates > quick draws
-    \item $\gamma = 1$
-    \item $\theta = 0.0001$
+    \item \textbf{Step penalty}: -2 $\rightarrow$ values = DTZ
+    \item \textbf{Draw penalty}: -100 $\rightarrow$ slow mates > quick draws
+    \item $\mathbf{\gamma} = 1$
+    \item $\mathbf{\theta} = 0.0001$
   \end{itemize}
   % \includegraphics[width=0.7\textwidth]{images/DTZ_values.png}
 \end{frame}
-
-% \begin{frame}{Random Player}
-%   \begin{itemize}
-%     \item Idea: how much different is the policy learned against a random player?
-%     \item Applied Value Iteration with uniform random black defender
-%     \item Applied Q-Learning with uniform random black defender 
-%   \end{itemize}
-% \end{frame}
 
 \begin{frame}{Q-Learning: model-free approach}
   \begin{itemize}
@@ -39,11 +31,12 @@
 \begin{frame}{Choice of parameters}
   \begin{itemize}
     \item \textbf{Max steps} per episode: 50 $\rightarrow$ if it's too far from mate, agent may never reach terminal state
-    \item Step penalty: -0.01
-    \item Draw penalty: -1
-    \item $\gamma = 0.99$
-    \item Costant learning rate $\alpha = 0.05$ $\rightarrow$ smaller variance
-    \item $\epsilon$-greedy policy with $\epsilon = 0.3$ with decay
+    \item \textbf{Step penalty}: -0.01
+    \item \textbf{Draw penalty}: -1
+    \item $\mathbf{\gamma} = 0.99$
+    \item Costant \textbf{learning rate} $\alpha = 0.05$ $\rightarrow$ smaller variance
+    \item $\mathbf{\varepsilon}$-greedy policy with $\varepsilon = 0.3$ and  $\varepsilon_{\textit{decay}}=0.999993$
+    \item $\varepsilon_t = 0.3\varepsilon_{\textit{decay}}^{t+1}$
   \end{itemize}
 \end{frame}
 
@@ -53,33 +46,27 @@
     \item Use one-step actor-critic
     \item Update rules:
     \begin{itemize}
-      \item $\delta = r + \gamma V(s';w) - V(s;w)$
+      \item $\delta = r + \gamma \hat{V}(s';w) - \hat{V}(s;w)$
       \item $\theta \leftarrow \theta + \alpha^{\theta} \delta \nabla_{{\theta}} \log \pi(a|s;\theta) $
-      \item $w \leftarrow w + \alpha^{w} \delta \nabla_w V(s;w)$
+      \item $w \leftarrow w + \alpha^{w} \delta \nabla_w \hat{V}(s;w)$
     \end{itemize} 
   \end{itemize}
 \end{frame}
 
 \begin{frame}{Parameters Choice}
 \begin{itemize}
-    \item Policy: MLP(128,128,64), ReLU activations, softmax output 
-    \item Value function: $V(s) = \sum_{i=1}^{16} w_i \phi_i(s)$
-    \item parameters: %TODO
+    \item \textbf{Policy}: MLP(128,128,64), ReLU activations, softmax output 
+    \item \textbf{Value function}: $\hat{V}(s;w) = \sum_{i=1}^{16} w_i \phi_i(s)$
+    \item $\mathbf{\gamma} = 0.99$
+    \item \textbf{Step penalty}: -0.01
+    \item \textbf{Draw penalty}: -1
+    \item $\textbf{\alpha^{\theta}} = 0.0001$
+    \item $\textbf[\alpha^{w}] = 0.02$
+    \item $\textbf{w} = 0.003$
 \end{itemize}
 \end{frame}
 
 \begin{frame}{Feature engineering}
-  % \begin{itemize}
-  %   \item Feature engineering:
-  %   \begin{itemize}
-  %     \item Manhattan distance between kings
-  %     \item Manhattan distance between black king and white rook 
-  %     \item File and rank of the kings
-  %     \item Distance of the Black King from the side of the board
-  %     \item Binary indicator of opposition, parity 
-  %   \end{itemize}
-  % \end{itemize}
-
   \begin{figure}
     \centering
     \includegraphics[width=0.8\textwidth]{images/features.png}
@@ -90,8 +77,13 @@
 
 \begin{frame}{Monte Carlo Tree Search}
   \begin{itemize}
-    \item One of the first methods to solve chess
+    \item One of the most common approaches to chess
     \item No need to train!
-    \item Heuristic method
+    \item \textbf{Step penalty}: 0
+    \item \textbf{Draw penalty}: -1
+    \item \textbf{N iterations}: $50000$
+    \item \textbf{Exploration constant}: $c=\sqrt{2}$
+    \item \textbf{Selection policy}: Upper confidence bound applied to trees
+    \item $\text_it{next node} = \argmax_{n \in N} \frac{w_i}{n_i} + c\sqrt{\frac{\ln N_i}{n_i}}$
   \end{itemize}
 \end{frame}
