@@ -75,7 +75,7 @@ In particular, we focused on:
 ### Value Iteration
 
 Value Iteration is a **Dynamic Programming** (DP) algorithm that assure us to find the optimal value function.
-As a Dynamic Programming algorithm, it updates estimates of the values of states based on estimates of the values of successor states. That is, it updates estimates on the basis of other estimates. We call this general idea **bootstrapping**. 
+As a Dynamic Programming algorithm, it updates estimates of the values of states based on estimates of the values of successor states. That is, it updates estimates on the basis of other estimates. We call this general idea **bootstrapping**.
 
 A major drawback to the DP methods is that they require sweeps of the entire state set. If the state set is very large, then even a single sweep can be prohibitively expensive. We also have to consider that in the worst case, the time that DP methods take to find an optimal policy is **polynomial** in the number of states and actions.
 
@@ -136,10 +136,6 @@ At first we wanted to use a decaying $\alpha$ but we realized we obtained better
 #### Result
 
 After many iterations, the algorithm converges to a suboptimal solution. To check for convergence we plotted the return for each episode: after 600.000 iterations it started to converge.
-
-Ideal Q learning vs ideal value iteration: (TODO)
-
-Random Q learning vs Random value iteration: (TODO)
 
 Overall, there aren't really may reasons why one would prefer Q learning over Value iteration: we still have the disadvantage of memory while obtaining a worse performance.
 

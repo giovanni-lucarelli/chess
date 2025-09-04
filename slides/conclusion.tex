@@ -14,8 +14,16 @@
   \end{itemize}
 \end{frame}
 
+\begin{frame}{What did we learn?}
+  \begin{itemize}
+    \item The importance of parameters choice (e.g., rewards)
+    \item The danger of introducing a maximum length for each episode
+    \item The importance of starting from simpler solutions and then increase complexity
+  \end{itemize}
+\end{frame}
+
 \begin{frame}
-Why is it so difficult to solve chess endgames?
+  Why is it so difficult to solve chess endgames?
 
 \begin{quote}
 A player can sometimes afford the luxury of an inaccurate move, or even a definite error, in the opening or middlegame without necessarily obtaining a lost position. In the endgame … an error can be decisive, and we are rarely presented with a second chance.
@@ -24,17 +32,18 @@ A player can sometimes afford the luxury of an inaccurate move, or even a defini
 \hfill - Paul Keres
 \end{frame}
 
-
-
 \begin{frame}{Video Animation of optimal ply vs our policy}
   maybe for a mate in 5 or more
 
 \end{frame}
 
-\begin{frame}
-  Future Works
-
-  * zobrist hashing and invariance properties in chess endgames to reduce state space cardinality
+\begin{frame}{Future Work}
+  \begin{itemize}
+    \item Zobrist hashing and invariance properties in chess endgames to reduce state space cardinality
+    \item Implementing draw by repetition and 50-move rule
+    \item Other chess endgames (e.g., KBBK, KRPK)
+    \item Experiment with training against random player
+  \end{itemize}
 \end{frame}
 
 {\setbeamercolor{palette primary}{fg=white, bg=bluscuro}

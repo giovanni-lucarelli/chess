@@ -16,7 +16,6 @@
     \item $\mathbf{\gamma} = 1$
     \item $\mathbf{\theta} = 0.0001$
   \end{itemize}
-  % \includegraphics[width=0.7\textwidth]{images/DTZ_values.png}
 \end{frame}
 
 \begin{frame}{Q-Learning: model-free approach}
@@ -63,6 +62,7 @@
     \item $\textbf{\alpha^{\theta}} = 0.0001$
     \item $\textbf[\alpha^{w}] = 0.02$
     \item $\textbf{w} = 0.003$
+    \item Too many iterations and no generalization $\rightarrow$ curriculum learning
 \end{itemize}
 \end{frame}
 
@@ -83,7 +83,7 @@
     \item \textbf{Draw penalty}: -1
     \item \textbf{N iterations}: $50000$
     \item \textbf{Exploration constant}: $c=\sqrt{2}$
-    \item \textbf{Selection policy}: Upper confidence bound applied to trees
+    \item \textbf{Upper confidence bound} applied to trees (UCT):
     \item $\text_it{next node} = \argmax_{n \in N} \frac{w_i}{n_i} + c\sqrt{\frac{\ln N_i}{n_i}}$
   \end{itemize}
 \end{frame}
