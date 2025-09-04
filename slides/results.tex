@@ -1,0 +1,51 @@
+\section{Results}
+
+\begin{frame}{Value iterations}
+
+\begin{itemize}
+    \item Convergence to $\pi_*$ after 17 iterations ($\sim 8$h on a laptop)
+    \item Optimal policy $\pi_*$ plays perfectly against an optimal opponent
+\end{itemize}
+
+\end{frame}
+
+\begin{frame}{Why no convergence?}
+  \begin{itemize}
+    \item Difficulties:
+    \begin{itemize}
+      \item too many possible actions at each step
+      \item ideal opponent that never makes mistakes
+      \item very sparse positive rewards in training episodes
+    \end{itemize}
+    \item Possible solutions:
+    \begin{itemize}
+      \item more training time 
+      \item implement draw by repetition and 50-move rule $\rightarrow$ more frequent terminal states
+    \end{itemize}
+  \end{itemize}
+\end{frame}
+
+\begin{frame}{Policy interpretability through human chess principles}
+  
+\end{frame}
+
+\begin{frame}{Video Animation of optimal ply vs our policy}
+  maybe for a mate in 5 or more
+
+\end{frame}
+
+\begin{frame}
+  Future Works
+
+  * zobrist hashing and invariance properties in chess endgames to reduce state space cardinality
+\end{frame}
+
+\begin{frame}
+Why is it so difficult to solve chess endgames?
+
+\begin{quote}
+A player can sometimes afford the luxury of an inaccurate move, or even a definite error, in the opening or middlegame without necessarily obtaining a lost position. In the endgame … an error can be decisive, and we are rarely presented with a second chance.
+\end{quote}
+
+\hfill - Paul Keres
+\end{frame}
