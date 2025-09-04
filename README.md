@@ -1,5 +1,7 @@
 # Chess RL Project
 
+![](python/chessrl/algorithms/value_iteration/chess_sequence.gif)
+
 This repository contains the final project for the **Reinforcement Learning** exam at the **University of Trieste**.
 
 The objective is to develop a chess game environment and implement various **Reinforcement Learning (RL) algorithms** to solve simplified chess scenarios with a limited number of pieces, commonly known in chess terminology as **endgames**.
