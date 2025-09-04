@@ -65,7 +65,7 @@ class MCTS:
         step_penalty: float = 0.0,
         defender=None,
         absorb_black_reply: bool = True,
-        max_playout_ply: int = 200,
+        max_playout_ply: int = 100,
         seed: Optional[int] = None,
         draw_value: float = -1.0,   # <— NEW: penalty for draws in rollout returns
     ):

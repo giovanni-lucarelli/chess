@@ -3,7 +3,7 @@ from chessrl.env import Env
 import chessrl.chess_py as cp
 from chessrl.algorithms.mcts.mcts import MCTS
 
-def evaluate(move_fn, defender, fens, dtm_oracle, optimal_moves=None, max_plies=300):
+def evaluate(move_fn, defender, fens, dtm_oracle, optimal_moves=None, max_plies=100):
     rows = []
     for fen in fens:
         env = Env.from_fen(
