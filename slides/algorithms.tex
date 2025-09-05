@@ -4,8 +4,8 @@
   \begin{itemize}
   \item KRk: 182.676 states
   \item Feasible number of states + perfect knowledge $\rightarrow$ Dynamic Programming
-  \item $V(s) \leftarrow \max_a \sum_{s',r}p(s',r'|s,a)[r(s,a,s')+\gamma V(s')]$
-  \item $\pi(s) = \arg\max_a \sum_{s',r}p(s'|s,a)[r(s,a,s')+\gamma V(s')]$
+  \item $V(s) \leftarrow \max_a \sum_{s'}p(s'|s,a)[r(s,a,s')+\gamma V(s')]$
+  \item $\pi(s) = \arg\max_a \sum_{s'}p(s'|s,a)[r(s,a,s')+\gamma V(s')]$
   \end{itemize}
 \end{frame}
 
@@ -22,8 +22,8 @@
 \begin{frame}{Q-Learning: model-free approach}
   \begin{itemize}
     \item How good of a policy without knowing the ``level" of the opponent?
-    \item $Q(s,a) \leftarrow Q(s,a) + \alpha[r + \gamma \max_{a'}Q(s',a') - Q(s,a)]$
-    \item $\pi(s) = \arg\max_a Q(s,a)$
+    \item $Q(S,a) \leftarrow Q(S,a) + \alpha[R + \gamma \max_{a'}Q(S',a') - Q(S,a)]$
+    \item $\pi(S) = \arg\max_a Q(S,a)$
     \item Off-policy, online and one-step.
   \end{itemize}
 \end{frame}
@@ -45,9 +45,9 @@
     \item Use one-step actor-critic
     \item Update rules:
     \begin{itemize}
-      \item $\delta = r + \gamma \hat{V}(s';w) - \hat{V}(s;w)$
-      \item $\theta \leftarrow \theta + \alpha^{\theta} \delta \nabla_{{\theta}} \log \pi(a|s;\theta) $
-      \item $w \leftarrow w + \alpha^{w} \delta \nabla_w \hat{V}(s;w)$
+      \item $\delta = R + \gamma \hat{V}(S';w) - \hat{V}(S;w)$
+      \item $\theta \leftarrow \theta + \alpha^{\theta} \delta \nabla_{{\theta}} \log \pi(A|S;\theta) $
+      \item $w \leftarrow w + \alpha^{w} \delta \nabla_w \hat{V}(S;w)$
     \end{itemize} 
   \end{itemize}
 \end{frame}
