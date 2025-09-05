@@ -133,7 +133,7 @@ We wanted to change to a decaying $\alpha$ but we didn't manage to train the alg
 
 #### Result
 
-After 1 million iterations, the algorithm converges to a solution. To check for convergence we plotted the return for each episode: after 600.000 iterations it started to converge.
+After 1 million iterations, the algorithm start to converge. To check for convergence we plotted the return for each episode: it slowly started to stabilize. It is possible that with more training time it would have actually converged to optimum.
 
 When tested against the optimal player we found that it managed to win in many states, though often with more steps than necessary. We didn't have the time to test it over all the state space, but it seems that the the mate-in-1 positions are correctly won, while the more steps are required to win the less probable it is victory.
 
